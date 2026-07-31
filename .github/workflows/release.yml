@@ -1,0 +1,70 @@
+name: Automated Release Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Build & Release Standalone Binaries
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'pnpm'
+
+      - name: Install Monorepo Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Workspace Packages
+        run: pnpm run build
+
+      - name: Package Standalone CLI Executables
+        run: pnpm --filter @collagility/cli package
+
+      - name: Create GitHub Release & Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Collagility ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+          files: |
+            apps/cli/dist/releases/collagility-linux-x64.tar.gz
+            apps/cli/dist/releases/collagility-linux-arm64.tar.gz
+            apps/cli/dist/releases/collagility-macos-x64.tar.gz
+            apps/cli/dist/releases/collagility-macos-arm64.tar.gz
+            apps/cli/dist/releases/collagility-windows-x64.zip
+          body: |
+            # Collagility ${{ github.ref_name }}
+
+            🚀 **Single-Command Installation**
+
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/JhaSourav07/Collagility/main/install.sh | bash
+            ```
+
+            ## Release Assets
+            - **Linux (x64)**: `collagility-linux-x64.tar.gz`
+            - **Linux (arm64)**: `collagility-linux-arm64.tar.gz`
+            - **macOS (Intel x64)**: `collagility-macos-x64.tar.gz`
+            - **macOS (Apple Silicon arm64)**: `collagility-macos-arm64.tar.gz`
+            - **Windows (x64)**: `collagility-windows-x64.zip`
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

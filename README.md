@@ -38,18 +38,47 @@ Prompt: "create index.ts"                           ─────────�
 
 ## 📦 Installation
 
-Prerequisites: Node.js `>= 22.0.0`, `pnpm` >= 9.0.0, and Antigravity CLI (`agy`) or Gemini CLI.
+### Single-Command Quick Install (Zero Dependencies Required)
+
+No Node.js, pnpm, or repository cloning is required. Run the automated installer in your terminal:
 
 ```bash
-# 1. Clone repository
+curl -fsSL https://raw.githubusercontent.com/JhaSourav07/Collagility/main/install.sh | bash
+```
+
+The installer detects your OS and architecture, downloads the latest standalone release binary, and installs it into `~/.local/bin/collagility`.
+
+---
+
+### 💻 Supported Platforms
+
+| Platform | Architecture | Binary Archive |
+| -------- | ------------ | -------------- |
+| Linux | x64 (AMD64) | `collagility-linux-x64.tar.gz` |
+| Linux | arm64 (AArch64) | `collagility-linux-arm64.tar.gz` |
+| macOS | Intel (x64) | `collagility-macos-x64.tar.gz` |
+| macOS | Apple Silicon (M1/M2/M3) | `collagility-macos-arm64.tar.gz` |
+| Windows | x64 | `collagility-windows-x64.zip` |
+
+---
+
+### 🔄 Updating Collagility
+
+To update Collagility to the latest version at any time, re-run the installation command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/JhaSourav07/Collagility/main/install.sh | bash
+```
+
+---
+
+### 🛠️ Installing from Source (Contributors)
+
+```bash
+# Clone repository & build monorepo packages
 git clone https://github.com/JhaSourav07/Collagility.git
 cd Collagility
-
-# 2. Install dependencies & build monorepo packages (single command at root)
-pnpm install
-pnpm run build
-
-# 3. Link CLI globally (runs right from root)
+pnpm install && pnpm run build
 sudo npm link
 ```
 
