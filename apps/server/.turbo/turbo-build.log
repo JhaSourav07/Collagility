@@ -1,0 +1,4 @@
+
+> @collagility/server@0.1.0 build /run/media/sourav/New Volume/Projects/Collagility/apps/server
+> tsc --build
+

@@ -1,0 +1,21 @@
+
+> @collagility/types@0.1.0 test /run/media/sourav/New Volume/Projects/Collagility/packages/types
+> vitest run
+
+
+ RUN  v2.1.9 /run/media/sourav/New Volume/Projects/Collagility/packages/types
+
+[?25l ✓ src/index.test.ts (1)
+   ✓ @collagility/types (1)
+     ✓ should construct a valid Participant object structu
+re
+[?25l[?25l[2K[1A[2K[1A[2K[1A[2K[1A[2K[G ✓ src/index.test.ts (1)
+   ✓ @collagility/types (1)
+     ✓ should construct a valid Participant object structure
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  12:01:26
+   Duration  9.58s (transform 106ms, setup 0ms, collect 101ms, tests 6ms, environment 0ms, prepare 1.19s)
+
+[?25h[?25h

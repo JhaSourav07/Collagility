@@ -1,0 +1,20 @@
+
+> @collagility/sdk@0.1.0 test /run/media/sourav/New Volume/Projects/Collagility/packages/sdk
+> vitest run
+
+
+ RUN  v2.1.9 /run/media/sourav/New Volume/Projects/Collagility/packages/sdk
+
+[?25l ✓ src/index.test.ts (1)
+   ✓ @collagility/sdk (1)
+     ✓ should initialize SDK with server configuration
+[?25l[2K[1A[2K[1A[2K[1A[2K[G ✓ src/index.test.ts (1)
+   ✓ @collagility/sdk (1)
+     ✓ should initialize SDK with server configuration
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  12:01:26
+   Duration  9.53s (transform 119ms, setup 0ms, collect 125ms, tests 7ms, environment 0ms, prepare 2.63s)
+
+[?25h[?25h

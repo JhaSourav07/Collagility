@@ -1,0 +1,4 @@
+
+> @collagility/cli@0.1.0 lint /run/media/sourav/New Volume/Projects/Collagility/apps/cli
+> eslint src/**/*.ts
+

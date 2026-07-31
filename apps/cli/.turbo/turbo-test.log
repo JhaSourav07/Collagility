@@ -1,0 +1,21 @@
+
+> @collagility/cli@0.1.0 test /run/media/sourav/New Volume/Projects/Collagility/apps/cli
+> vitest run
+
+
+ RUN  v2.1.9 /run/media/sourav/New Volume/Projects/Collagility/apps/cli
+
+[?25l ✓ src/index.test.ts (1)
+   ✓ @collagility/cli (1)
+     ✓ should initialize commander CLI program with name c
+ollagility
+[?25l[?25l[2K[1A[2K[1A[2K[1A[2K[1A[2K[G ✓ src/index.test.ts (1)
+   ✓ @collagility/cli (1)
+     ✓ should initialize commander CLI program with name collagility
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  12:01:26
+   Duration  9.73s (transform 144ms, setup 0ms, collect 265ms, tests 10ms, environment 1ms, prepare 1.82s)
+
+[?25h[?25h
