@@ -8,12 +8,16 @@ import { HeartbeatManager } from './websocket/heartbeat.js';
 import { MessageValidator } from './validation/websocket.js';
 import { MessageHandler } from './websocket/message-handler.js';
 import { WebSocketGateway } from './websocket/gateway.js';
+import { SessionStore } from './sessions/session-store.js';
+import { HumanReadableSessionIdGenerator } from './sessions/id-generator.js';
+import { SessionManager } from './sessions/session-manager.js';
 
 export interface ServerInstance {
   app: FastifyInstance;
   connectionManager: ConnectionManager;
   broadcaster: Broadcaster;
   heartbeatManager: HeartbeatManager;
+  sessionManager: SessionManager;
   validator: MessageValidator;
   messageHandler: MessageHandler;
   gateway: WebSocketGateway;
@@ -29,14 +33,22 @@ export function buildServer(): ServerInstance {
   const connectionManager = new ConnectionManager(logger);
   const broadcaster = new Broadcaster(connectionManager, logger);
   const heartbeatManager = new HeartbeatManager(connectionManager, broadcaster, logger);
+
+  const sessionStore = new SessionStore();
+  const sessionIdGenerator = new HumanReadableSessionIdGenerator();
+  const sessionManager = new SessionManager(sessionStore, sessionIdGenerator, logger);
+
+  broadcaster.setSessionManager(sessionManager);
+
   const validator = new MessageValidator(logger);
-  const messageHandler = new MessageHandler(broadcaster, logger);
+  const messageHandler = new MessageHandler(broadcaster, sessionManager, logger);
   const gateway = new WebSocketGateway(
     connectionManager,
     broadcaster,
     heartbeatManager,
     validator,
     messageHandler,
+    sessionManager,
     logger
   );
 
@@ -58,6 +70,7 @@ export function buildServer(): ServerInstance {
       status: 'ok',
       service: 'collagility-server',
       activeClients: connectionManager.getClientCount(),
+      activeSessions: sessionStore.getAll().length,
       timestamp: Date.now(),
     };
   });
@@ -73,6 +86,7 @@ export function buildServer(): ServerInstance {
     logger.info('Shutting down Collagility Realtime Server...');
     heartbeatManager.stop();
     connectionManager.clearAll();
+    sessionStore.clear();
     await app.close();
     logger.info('Collagility Realtime Server stopped gracefully');
   };
@@ -82,6 +96,7 @@ export function buildServer(): ServerInstance {
     connectionManager,
     broadcaster,
     heartbeatManager,
+    sessionManager,
     validator,
     messageHandler,
     gateway,

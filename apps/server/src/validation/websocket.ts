@@ -7,11 +7,28 @@ export const BaseIncomingPacketSchema = z.object({
   payload: z.unknown().optional(),
 });
 
+export const CreateSessionPacketSchema = z.object({
+  type: z.literal('session.create'),
+  payload: z.object({
+    metadata: z.record(z.unknown()).optional(),
+  }).optional(),
+});
+
+export const JoinSessionPacketSchema = z.object({
+  type: z.literal('session.join'),
+  payload: z.object({
+    sessionId: z.string().min(1, 'Session ID is required'),
+  }),
+});
+
+export const LeaveSessionPacketSchema = z.object({
+  type: z.literal('session.leave'),
+  payload: z.unknown().optional(),
+});
+
 export const ChatPayloadSchema = z.object({
   text: z.string().min(1, 'Chat message text cannot be empty'),
 });
-
-export const PingPayloadSchema = z.object({}).optional();
 
 export class MessageValidator {
   private logger: ServerLogger;
@@ -40,6 +57,15 @@ export class MessageValidator {
       return { success: false, error: errorMsg };
     }
 
-    return { success: true, data: result.data };
+    // Specific packet validation rules
+    const packet = result.data;
+    if (packet.type === 'session.join') {
+      const joinValidation = JoinSessionPacketSchema.safeParse(packet);
+      if (!joinValidation.success) {
+        return { success: false, error: 'Invalid session.join payload: sessionId is required' };
+      }
+    }
+
+    return { success: true, data: packet };
   }
 }

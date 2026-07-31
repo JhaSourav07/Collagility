@@ -5,8 +5,10 @@ import type { Broadcaster } from './broadcaster.js';
 import type { HeartbeatManager } from './heartbeat.js';
 import type { MessageValidator } from '../validation/websocket.js';
 import type { MessageHandler } from './message-handler.js';
+import type { SessionManager } from '../sessions/session-manager.js';
 import type { ServerLogger } from '../logger/logger.js';
-import { createConnectedEvent, createDisconnectedEvent, createErrorEvent } from './events.js';
+import { createConnectedEvent, createErrorEvent } from './events.js';
+import { handleLeaveSession } from '../sessions/handlers/leave-session.js';
 
 export class WebSocketGateway {
   private connectionManager: ConnectionManager;
@@ -14,6 +16,7 @@ export class WebSocketGateway {
   private heartbeatManager: HeartbeatManager;
   private validator: MessageValidator;
   private messageHandler: MessageHandler;
+  private sessionManager: SessionManager;
   private logger: ServerLogger;
 
   constructor(
@@ -22,6 +25,7 @@ export class WebSocketGateway {
     heartbeatManager: HeartbeatManager,
     validator: MessageValidator,
     messageHandler: MessageHandler,
+    sessionManager: SessionManager,
     logger: ServerLogger
   ) {
     this.connectionManager = connectionManager;
@@ -29,6 +33,7 @@ export class WebSocketGateway {
     this.heartbeatManager = heartbeatManager;
     this.validator = validator;
     this.messageHandler = messageHandler;
+    this.sessionManager = sessionManager;
     this.logger = logger;
   }
 
@@ -46,9 +51,6 @@ export class WebSocketGateway {
     // Send connection acknowledgement
     const connectedEvent = createConnectedEvent(client.id);
     this.broadcaster.sendToClient(client.id, connectedEvent);
-
-    // Broadcast presence event to other connected peers
-    this.broadcaster.broadcast(connectedEvent, client.id);
 
     // Handle WebSocket native ping/pong frames
     socket.on('pong', () => {
@@ -75,10 +77,11 @@ export class WebSocketGateway {
       const reasonStr = reason.toString('utf-8') || `Code ${code}`;
       this.logger.info({ clientId: client.id, code, reason: reasonStr }, 'WebSocket connection closed');
 
-      this.connectionManager.removeClient(client.id);
+      // Leave any active session upon socket close
+      handleLeaveSession(client.id, this.sessionManager, this.broadcaster);
 
-      const disconnectEvent = createDisconnectedEvent(client.id, reasonStr);
-      this.broadcaster.broadcast(disconnectEvent);
+      // Remove from global connection manager
+      this.connectionManager.removeClient(client.id);
     });
 
     // Handle socket error
