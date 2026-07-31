@@ -88,7 +88,7 @@ describe('AIAdapter Lifecycle & Contract', () => {
 
   it('should verify provider adapter stubs (Gemini, Claude, Codex, Aider, Goose)', async () => {
     const adapters = [
-      new GeminiAIAdapter(),
+      new GeminiAIAdapter({ mockMode: true }),
       new ClaudeAIAdapter(),
       new CodexAIAdapter(),
       new AiderAIAdapter(),
