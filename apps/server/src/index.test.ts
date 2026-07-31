@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { createServer } from './index.js';
+import { buildServer } from './server.js';
 
 describe('@collagility/server', () => {
   it('should respond to GET /health with status ok', async () => {
-    const { server } = createServer();
-    const response = await server.inject({
+    const { app } = buildServer();
+    const response = await app.inject({
       method: 'GET',
       url: '/health',
     });

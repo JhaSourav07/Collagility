@@ -1,25 +1,43 @@
-import Fastify from 'fastify';
-import { pino } from 'pino';
+import { buildServer } from './server.js';
+import { logger } from './logger/logger.js';
 
-export function createServer() {
-  const logger = pino({ level: 'info' });
-  const server = Fastify({ logger: true });
+async function main() {
+  const server = buildServer();
+  const PORT = Number(process.env['PORT'] || 8080);
+  const HOST = process.env['HOST'] || '0.0.0.0';
 
-  server.get('/health', async () => {
-    return { status: 'ok', service: 'collagility-server', timestamp: Date.now() };
+  const shutdown = async (signal: string) => {
+    logger.info({ signal }, 'Received termination signal, starting graceful shutdown');
+    try {
+      await server.close();
+      process.exit(0);
+    } catch (err) {
+      logger.error({ error: err }, 'Error during server shutdown');
+      process.exit(1);
+    }
+  };
+
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+  process.on('uncaughtException', (err) => {
+    logger.fatal({ error: err }, 'Uncaught exception encountered');
+    shutdown('uncaughtException');
   });
 
-  return { server, logger };
+  process.on('unhandledRejection', (reason) => {
+    logger.fatal({ reason }, 'Unhandled promise rejection encountered');
+    shutdown('unhandledRejection');
+  });
+
+  try {
+    await server.listen(PORT, HOST);
+  } catch (err) {
+    logger.fatal({ error: err }, 'Failed to start Collagility server');
+    process.exit(1);
+  }
 }
 
 if (process.env['NODE_ENV'] !== 'test' && import.meta.url === `file://${process.argv[1]}`) {
-  const { server } = createServer();
-  const PORT = Number(process.env['PORT'] || 8080);
-  server.listen({ port: PORT, host: '0.0.0.0' }, (err, address) => {
-    if (err) {
-      console.error(err);
-      process.exit(1);
-    }
-    console.log(`Collagility relay server listening on ${address}`);
-  });
+  main();
 }
