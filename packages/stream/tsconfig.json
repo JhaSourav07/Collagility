@@ -5,14 +5,12 @@
     "declaration": true,
     "declarationMap": true,
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "."
   },
   "references": [
-    { "path": "../../packages/types" },
-    { "path": "../../packages/protocol" },
-    { "path": "../../packages/sdk" },
-    { "path": "../../packages/stream" }
+    { "path": "../types" },
+    { "path": "../protocol" }
   ],
-  "include": ["src/**/*"],
+  "include": ["**/*.ts"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }

@@ -29,6 +29,16 @@ export const EVENT_TYPES = {
   AI_FAILED: 'ai.failed',
   AI_STATUS: 'ai.status',
   AI_ERROR: 'ai.error',
+
+  // AI Stream Event Types (Milestone 8)
+  AI_STREAM_STARTED: 'ai.stream.started',
+  AI_STREAM_CHUNK: 'ai.stream.chunk',
+  AI_STREAM_PROGRESS: 'ai.stream.progress',
+  AI_STREAM_COMPLETED: 'ai.stream.completed',
+  AI_STREAM_CANCELLED: 'ai.stream.cancelled',
+  AI_STREAM_FAILED: 'ai.stream.failed',
+  AI_STREAM_TIMEOUT: 'ai.stream.timeout',
+  AI_STREAM_ERROR: 'ai.stream.error',
 } as const;
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES] | (string & {});

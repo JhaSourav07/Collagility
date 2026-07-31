@@ -9,6 +9,7 @@
   "references": [
     { "path": "./packages/types" },
     { "path": "./packages/protocol" },
+    { "path": "./packages/stream" },
     { "path": "./packages/sdk" },
     { "path": "./apps/server" },
     { "path": "./apps/cli" }

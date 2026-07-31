@@ -7,7 +7,7 @@ import { GeminiStdoutHandler } from './stdout.js';
 import { GeminiStderrHandler } from './stderr.js';
 
 function createMockChildProcess(): ChildProcess {
-  const proc = new EventEmitter() as ChildProcess;
+  const proc = new EventEmitter() as any;
   const stdin = new EventEmitter() as any;
   stdin.writable = true;
   stdin.write = vi.fn().mockImplementation((str: string) => {
@@ -31,7 +31,7 @@ function createMockChildProcess(): ChildProcess {
     proc.emit('exit', 0, signal || 'SIGTERM');
   });
 
-  return proc;
+  return proc as ChildProcess;
 }
 
 describe('Gemini Output Parser & Stream Handlers', () => {
@@ -107,7 +107,7 @@ describe('Gemini Process Adapter Execution & Lifecycle', () => {
   });
 
   it('should handle prompt cancellation gracefully', async () => {
-    const proc = new EventEmitter() as ChildProcess;
+    const proc = new EventEmitter() as any;
     const stdin = new EventEmitter() as any;
     stdin.writable = true;
     stdin.write = vi.fn();
@@ -123,7 +123,7 @@ describe('Gemini Process Adapter Execution & Lifecycle', () => {
     });
 
     const adapter = new GeminiAIAdapter({
-      mockProcessFactory: () => proc,
+      mockProcessFactory: () => proc as ChildProcess,
     });
 
     await adapter.initialize();

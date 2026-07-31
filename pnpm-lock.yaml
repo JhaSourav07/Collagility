@@ -53,6 +53,9 @@ importers:
       '@collagility/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
+      '@collagility/stream':
+        specifier: workspace:*
+        version: link:../../packages/stream
       '@collagility/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -90,6 +93,9 @@ importers:
       '@collagility/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
+      '@collagility/stream':
+        specifier: workspace:*
+        version: link:../../packages/stream
       '@collagility/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -178,6 +184,25 @@ importers:
       '@types/ws':
         specifier: ^8.5.13
         version: 8.18.1
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)
+
+  packages/stream:
+    dependencies:
+      '@collagility/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@collagility/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.20.1
       typescript:
         specifier: ^5.7.2
         version: 5.9.3

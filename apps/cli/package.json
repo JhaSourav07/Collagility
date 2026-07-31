@@ -19,6 +19,7 @@
   "dependencies": {
     "@collagility/protocol": "workspace:*",
     "@collagility/sdk": "workspace:*",
+    "@collagility/stream": "workspace:*",
     "@collagility/types": "workspace:*",
     "chalk": "^5.4.1",
     "commander": "^13.0.0",

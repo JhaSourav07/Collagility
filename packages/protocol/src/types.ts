@@ -69,3 +69,70 @@ export interface AIChunkPayload {
   content: string;
   isFinal: boolean;
 }
+
+// AI Stream Event Payloads (Milestone 8)
+export interface AIStreamStartedPayload {
+  streamId: string;
+  adapterName: string;
+  prompt: string;
+  ownerId: string;
+  startedAt: number;
+  initialState?: string;
+}
+
+export interface AIStreamChunkPayload {
+  streamId: string;
+  sequenceNumber: number;
+  timestamp: number;
+  sender: EventSender;
+  sessionId: string;
+  content: string;
+  isFinal: boolean;
+  adapterName?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AIStreamProgressPayload {
+  streamId: string;
+  sequenceNumber: number;
+  totalChunks: number;
+  bufferedBytes: number;
+  elapsedMs: number;
+}
+
+export interface AIStreamCompletedPayload {
+  streamId: string;
+  adapterName: string;
+  totalChunks: number;
+  fullResponse: string;
+  durationMs: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AIStreamCancelledPayload {
+  streamId: string;
+  adapterName: string;
+  reason?: string;
+  cancelledAt: number;
+}
+
+export interface AIStreamFailedPayload {
+  streamId: string;
+  adapterName: string;
+  error: string;
+  code?: string;
+  failedAt: number;
+}
+
+export interface AIStreamTimeoutPayload {
+  streamId: string;
+  adapterName: string;
+  timeoutMs: number;
+}
+
+export interface AIStreamErrorPayload {
+  streamId?: string;
+  adapterName?: string;
+  error: string;
+  code?: string;
+}

@@ -12,6 +12,14 @@ import type {
   AIFAILEDPayload,
   AICancelledPayload,
   AIChunkPayload,
+  AIStreamStartedPayload,
+  AIStreamChunkPayload,
+  AIStreamProgressPayload,
+  AIStreamCompletedPayload,
+  AIStreamCancelledPayload,
+  AIStreamFailedPayload,
+  AIStreamTimeoutPayload,
+  AIStreamErrorPayload,
 } from './types.js';
 
 export function createEnvelope<T>(
@@ -136,4 +144,77 @@ export function createAIChunkEvent(
     { adapterName, messageId, chunkIndex, content, isFinal },
     { sender: { id: adapterName, name: adapterName, role: 'ai' }, sessionId }
   );
+}
+
+// AI Stream Event Factories (Milestone 8)
+export function createAIStreamStartedEvent(
+  payload: AIStreamStartedPayload,
+  sessionId?: string
+): EventEnvelope<AIStreamStartedPayload> {
+  return createEnvelope(EVENT_TYPES.AI_STREAM_STARTED, payload, {
+    sessionId: sessionId || payload.streamId,
+    sender: { id: payload.adapterName, name: payload.adapterName, role: 'ai' },
+  });
+}
+
+export function createAIStreamChunkEvent(
+  payload: AIStreamChunkPayload,
+  sessionId?: string
+): EventEnvelope<AIStreamChunkPayload> {
+  return createEnvelope(EVENT_TYPES.AI_STREAM_CHUNK, payload, {
+    sessionId: sessionId || payload.sessionId,
+    sender: payload.sender,
+    seq: payload.sequenceNumber,
+  });
+}
+
+export function createAIStreamProgressEvent(
+  payload: AIStreamProgressPayload,
+  sessionId?: string
+): EventEnvelope<AIStreamProgressPayload> {
+  return createEnvelope(EVENT_TYPES.AI_STREAM_PROGRESS, payload, { sessionId });
+}
+
+export function createAIStreamCompletedEvent(
+  payload: AIStreamCompletedPayload,
+  sessionId?: string
+): EventEnvelope<AIStreamCompletedPayload> {
+  return createEnvelope(EVENT_TYPES.AI_STREAM_COMPLETED, payload, {
+    sessionId,
+    sender: { id: payload.adapterName, name: payload.adapterName, role: 'ai' },
+  });
+}
+
+export function createAIStreamCancelledEvent(
+  payload: AIStreamCancelledPayload,
+  sessionId?: string
+): EventEnvelope<AIStreamCancelledPayload> {
+  return createEnvelope(EVENT_TYPES.AI_STREAM_CANCELLED, payload, {
+    sessionId,
+    sender: { id: payload.adapterName, name: payload.adapterName, role: 'ai' },
+  });
+}
+
+export function createAIStreamFailedEvent(
+  payload: AIStreamFailedPayload,
+  sessionId?: string
+): EventEnvelope<AIStreamFailedPayload> {
+  return createEnvelope(EVENT_TYPES.AI_STREAM_FAILED, payload, {
+    sessionId,
+    sender: { id: payload.adapterName, name: payload.adapterName, role: 'ai' },
+  });
+}
+
+export function createAIStreamTimeoutEvent(
+  payload: AIStreamTimeoutPayload,
+  sessionId?: string
+): EventEnvelope<AIStreamTimeoutPayload> {
+  return createEnvelope(EVENT_TYPES.AI_STREAM_TIMEOUT, payload, { sessionId });
+}
+
+export function createAIStreamErrorEvent(
+  payload: AIStreamErrorPayload,
+  sessionId?: string
+): EventEnvelope<AIStreamErrorPayload> {
+  return createEnvelope(EVENT_TYPES.AI_STREAM_ERROR, payload, { sessionId });
 }
