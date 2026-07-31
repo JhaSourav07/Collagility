@@ -1,8 +1,11 @@
 {
   "name": "collagility-monorepo",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "private": true,
   "type": "module",
+  "bin": {
+    "collagility": "./apps/cli/dist/index.js"
+  },
   "description": "The Multiplayer Workspace for AI Coding Agents - Monorepo Root",
   "packageManager": "pnpm@9.15.4",
   "engines": {

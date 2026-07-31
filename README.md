@@ -1,63 +1,124 @@
 # Collagility
 
-> **The Multiplayer Workspace for AI Coding Agents.**
+> **The Multiplayer Terminal for AI Coding Agents**
 
-Collagility is an open-source, terminal-native multiplayer platform that allows multiple developers to collaborate with the same local AI coding session directly from their own terminals.
+[![Release](https://img.shields.io/badge/version-v0.1.0--alpha.1-cyan.svg)](https://github.com/JhaSourav07/Collagility/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 
----
-
-## 🌟 Vision
-
-Modern AI coding agents (such as Gemini CLI, Claude Code, Aider, and Goose) operate in isolated local terminals. Collagility enables teams to pair-program and debug collaboratively in real time while keeping **all AI compute and credentials strictly on the host developer's machine**.
-
-* **Local Compute Sovereignty:** The AI agent executes exclusively on the owner's machine.
-* **Zero-Knowledge Relay:** The server routes real-time collaboration events but never sees or handles AI API keys or provider requests.
-* **Terminal Native:** Lightweight TUI experience designed for Unix workflows.
+Collagility is an open-source multiplayer workspace that turns local AI coding agents into real-time collaborative pair programming sessions. Connect your local CLI tools (`agy`, `gemini`, `claude`) with collaborators and stream AI execution output token-by-token across every participant's terminal simultaneously.
 
 ---
 
-## 🏗️ Repository Architecture
+## ⚡ Key Features
 
-This repository is structured as a pnpm monorepo managed with Turborepo:
+- **Multiplayer AI Streaming**: Every session member observes the exact same real-time token output and progress logs from the session owner's local AI agent.
+- **Provider-Agnostic Adapter Registry**: Seamlessly route prompts to Antigravity (`agy`), Gemini (`gemini`), Claude (`claude`), or Codex (`codex`). Dynamic `@agi` tag automatically targets the active adapter.
+- **Project Workspace Integration**: AI agents execute commands and file modifications directly within the owner's project root workspace directory.
+- **Permission Controls**: Session owner maintains strict control over AI execution triggers while participants collaborate via live session chat.
+- **Zero-Latency Event Protocol**: Lightweight Fastify & WebSocket event plane architecture built with TypeScript.
 
+---
+
+## 📽️ Demo
+
+```text
+[Owner Terminal]                                     [Collaborator Terminal]
+> @agi create index.ts                              
+                                                     🤖 ANTIGRAVITY AI Stream Started (agi)
+🤖 ANTIGRAVITY AI Stream Started (agi)              Prompt: "create index.ts"
+Prompt: "create index.ts"                           ────────────────────────────────────────────
+────────────────────────────────────────────        ⚡ Thinking...
+⚡ Thinking...                                       ⚡ Creating index.ts in project root...
+⚡ Creating index.ts in project root...             ✓ File created successfully
+✓ File created successfully
 ```
-collagility/
-├── apps/
-│   ├── cli/           # Terminal CLI entrypoint (@collagility/cli)
-│   └── server/        # Fastify WebSocket relay server (@collagility/server)
-├── packages/
-│   ├── protocol/      # Event frame schemas and serialization (@collagility/protocol)
-│   ├── sdk/           # Client WebSocket connection library (@collagility/sdk)
-│   └── types/         # Shared domain types & interfaces (@collagility/types)
-└── docs/              # Architecture Decision Records (ADRs) & Specs
-```
 
 ---
 
-## 🚀 Quickstart Development Guide
+## 📦 Installation
 
-### Prerequisites
-* Node.js `>= 22.0.0`
-* pnpm `>= 9.0.0`
-
-### Setup & Build Commands
+Prerequisites: Node.js `>= 22.0.0`, `pnpm` >= 9.0.0, and Antigravity CLI (`agy`) or Gemini CLI.
 
 ```bash
-# Install dependencies across all workspace packages
+# 1. Clone repository
+git clone https://github.com/JhaSourav07/Collagility.git
+cd Collagility
+
+# 2. Install dependencies & build monorepo packages (single command at root)
 pnpm install
+pnpm run build
 
-# Build all packages & applications via Turborepo
-pnpm build
-
-# Execute unit test suite with Vitest
-pnpm test
-
-# Run code linters
-pnpm lint
+# 3. Link CLI globally (runs right from root)
+sudo npm link
 ```
 
 ---
 
-## 📄 License
+## 🚀 Usage
 
-Apache 2.0 / MIT © Collagility Authors
+### 1. Start Collagility Server
+
+```bash
+collagility server start
+```
+
+### 2. Create a Session (Session Owner)
+
+```bash
+collagility start
+```
+
+### 3. Join a Session (Participant)
+
+```bash
+collagility join <session-id>
+```
+
+### 4. Invoke AI Commands
+
+Inside an active session terminal:
+
+```text
+> @agi create a responsive landing page in index.html
+> @gemini explain mutex lock in src/index.ts
+> hello team (normal chat)
+```
+
+---
+
+## 🗺️ Roadmap
+
+- [x] **v0.1.0-alpha.1**: Multiplayer WebSocket relay, AI stream chunking, `agy`/`gemini` CLI adapter, workspace execution, terminal renderer.
+- [ ] **v0.2.0**: IDE extension integration (VS Code & Antigravity IDE plugin).
+- [ ] **v0.3.0**: Interactive co-driver permission approvals (peer code review for agent tool calls).
+- [ ] **v0.4.0**: Multi-agent consensus swarm routing.
+
+---
+
+## 📐 Architecture Overview
+
+```text
+┌────────────────┐     WebSocket     ┌────────────────┐     WebSocket     ┌────────────────┐
+│   Owner CLI    │ ────────────────> │ Fastify Server │ ────────────────> │  Participant   │
+│  (AI Adapter)  │ <──────────────── │ (StreamManager)│ <──────────────── │      CLI       │
+└────────────────┘                   └────────────────┘                   └────────────────┘
+```
+
+- **`apps/cli`**: Terminal user interface, command parser, stream renderer.
+- **`apps/server`**: High-performance WebSocket control plane and session manager.
+- **`packages/adapters`**: Multi-provider AI process manager (`agy`, `gemini`, `claude`, `codex`).
+- **`packages/stream`**: Token chunking, sequence ordering, and stream state management.
+- **`packages/protocol`**: Shared WebSocket event schemas and envelope types.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) and adhere to our [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+
+---
+
+## 📜 License
+
+Distributed under the MIT License. See [`LICENSE`](LICENSE) for details.
