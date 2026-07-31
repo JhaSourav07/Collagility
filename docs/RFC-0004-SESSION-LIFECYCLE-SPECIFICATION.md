@@ -12,9 +12,9 @@
 
 This document specifies the authoritative distributed state machine and complete lifecycle management model for collaborative sessions in **Collagility**.
 
-A Collagility session represents an active, synchronized multiplayer workspace where multiple developers interact with a local AI coding agent running on the session owner's machine. Because Collagility enforces a local-first, zero-trust architecture, session state is distributed across the local host CLI, stateless relay server nodes, and remote participant clients.
+A Collagility session represents an active, synchronized multiplayer workspace where multiple developers interact with a local AI coding agent running on the session owner's machine. Because Collagility enforces a local-first, zero-trust architecture, session state is distributed across the local host CLI, stateless relay server nodes (`SessionStore` / `SessionManager`), and remote participant clients.
 
-This specification defines all formal session states, state transitions, heartbeat mechanics, disconnect/reconnect recovery policies, local AI execution lifecycles, ownership transfers, edge case handling, and cleanup protocols required to ensure fault tolerance in unreliable network environments.
+This specification defines all formal session states **(done)**, state transitions **(done)**, heartbeat mechanics **(done)**, disconnect/reconnect recovery policies **(done)**, local AI execution lifecycles **(done)**, ownership transfers **(done)**, edge case handling **(done)**, and cleanup protocols **(done)** required to ensure fault tolerance in unreliable network environments. Persistent database archival is reserved for future enterprise milestones **(future)**.
 
 ---
 

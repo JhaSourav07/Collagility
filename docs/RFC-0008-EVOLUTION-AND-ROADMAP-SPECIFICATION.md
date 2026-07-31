@@ -10,9 +10,9 @@
 
 ## 1. Executive Summary
 
-This document specifies the architectural evolution trajectory for **Collagility**, detailing how the platform transforms from an initial single-server, self-hosted open-source utility into a highly available, multi-region, enterprise-grade SaaS ecosystem.
+This document specifies the architectural evolution trajectory for **Collagility**, detailing how the platform transforms from an initial single-server, self-hosted open-source utility **(done)** into a highly available, multi-region, enterprise-grade SaaS ecosystem **(future)**.
 
-As developer adoption grows from local pairing sessions to global enterprise engineering squads, Collagility's infrastructure must scale horizontally across several dimensions: persistent WebSocket connection multiplexing, distributed Redis Pub/Sub state management, Kubernetes container orchestration, multi-tenant billing models, IDE extension integrations, and multi-region data routing.
+As developer adoption grows from local pairing sessions to global enterprise engineering squads, Collagility's infrastructure will scale horizontally across several dimensions: persistent WebSocket connection multiplexing, distributed Redis Pub/Sub state management, Kubernetes container orchestration, multi-tenant billing models, IDE extension integrations, and multi-region data routing.
 
 Crucially, throughout every evolutionary phase, Collagility adheres to its foundational architectural invariant: **Local Compute Sovereignty**. The cloud control plane scales relay traffic and collaboration metadata without ever centralizing AI model inferencing, source code storage, or LLM credentials.
 
@@ -23,8 +23,8 @@ Crucially, throughout every evolutionary phase, Collagility adheres to its found
 The evolution of Collagility spans four major architectural milestones:
 
 ```
-[Phase 1: Single-Node MVP] ──> [Phase 2: Cloud Native & Scale] ──> [Phase 3: Multi-Client Ecosystem] ──> [Phase 4: Global Enterprise SaaS]
-(Self-Hosted Docker)            (K8s / Redis Cluster)             (Web / VS Code / IDEs)            (Multi-Region / E2EE / Marketplace)
+[Phase 1: Single-Node MVP (done)] ──> [Phase 2: Cloud Native (future)] ──> [Phase 3: Multi-Client (future)] ──> [Phase 4: Global Enterprise (future)]
+(Self-Hosted Docker / Single Binary)   (K8s / Redis Cluster)             (Web / VS Code / IDEs)          (Multi-Region / E2EE / Marketplace)
 ```
 
 ```mermaid

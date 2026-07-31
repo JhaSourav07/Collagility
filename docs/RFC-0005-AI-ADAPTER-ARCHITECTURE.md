@@ -12,7 +12,7 @@
 
 This document specifies the formal **AI Adapter Architecture** for **Collagility**, the open-source multiplayer workspace for local AI coding agents.
 
-Collagility enables real-time collaboration across local AI coding sessions (such as **Gemini CLI** initially, and **Claude Code**, **OpenAI Codex CLI**, **Aider**, and **Goose** in future iterations). To achieve zero-trust security and complete code privacy, Collagility mandates a strict boundary constraint: **the central relay server must never know about AI, LLM vendor APIs, or prompt contexts.** All AI process execution, credential management, local file system interactions, prompt execution, and response token parsing occur exclusively on the session host's local machine via the `@collagility/cli` client.
+Collagility enables real-time collaboration across local AI coding sessions (including **Gemini CLI (done)**, **Claude Code (done)**, **OpenAI Codex CLI (done)**, **Aider (done)**, **Goose (done)**, and **Mock (done)**). To achieve zero-trust security and complete code privacy, Collagility mandates a strict boundary constraint: **the central relay server must never know about AI, LLM vendor APIs, or prompt contexts.** All AI process execution, credential management, local file system interactions, prompt execution, and response token parsing occur exclusively on the session host's local machine via the `@collagility/cli` client.
 
 This specification details how the Hexagonal Adapter Pattern decouples Collagility's core collaboration domain from heterogeneous local AI binaries, CLI interfaces, stdio streams, PTY pseudo-terminals, and IPC protocols.
 

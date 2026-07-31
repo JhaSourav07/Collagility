@@ -14,9 +14,9 @@ This document specifies the end-to-end Security Architecture and Threat Model fo
 
 Because Collagility connects local developer environments across enterprise networks and bridges terminal processes with central event relays, it operates under a strict **Zero Trust Architecture (ZTA)** model: **no network, client, server, or user is inherently trusted**.
 
-The primary security imperative of Collagility is **Local Compute & Credential Sovereignty**: AI model inferencing, source code execution, and AI vendor API credentials remain 100% isolated to the session owner's host machine. The central relay infrastructure acts exclusively as an authenticated, authorized, zero-knowledge event router.
+The primary security imperative of Collagility is **Local Compute & Credential Sovereignty (done)**: AI model inferencing, source code execution, and AI vendor API credentials remain 100% isolated to the session owner's host machine. The central relay infrastructure acts exclusively as an authenticated, authorized, zero-knowledge event router.
 
-This specification details authentication mechanics, fine-grained access control (ReBAC/ABAC), token lifecycles, WebSocket security, cryptographic envelope protection, rate limiting, anti-replay guards, AI safety filters, tamper-evident audit trails, disaster recovery, and a complete STRIDE threat analysis.
+This specification details authentication mechanics **(done)**, owner execution guards **(done)**, session token lifecycles **(done)**, WebSocket security **(done)**, cryptographic envelope validation **(done)**, rate limiting **(done)**, AI execution permissions **(done)**, and future tamper-evident audit trails and enterprise E2EE **(future)**.
 
 ---
 

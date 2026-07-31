@@ -10,13 +10,15 @@ Collagility is an open-source multiplayer workspace that turns local AI coding a
 
 ---
 
-## ⚡ Key Features
+### ⚡ Key Features
 
-- **Multiplayer AI Streaming**: Every session member observes the exact same real-time token output and progress logs from the session owner's local AI agent.
-- **Provider-Agnostic Adapter Registry**: Seamlessly route prompts to Antigravity (`agy`), Gemini (`gemini`), Claude (`claude`), or Codex (`codex`). Dynamic `@agi` tag automatically targets the active adapter.
-- **Project Workspace Integration**: AI agents execute commands and file modifications directly within the owner's project root workspace directory.
-- **Permission Controls**: Session owner maintains strict control over AI execution triggers while participants collaborate via live session chat.
-- **Zero-Latency Event Protocol**: Lightweight Fastify & WebSocket event plane architecture built with TypeScript.
+- **Multiplayer AI Streaming (done)**: Every session member observes the exact same real-time token output and progress logs from the session owner's local AI agent.
+- **Provider-Agnostic Adapter Registry (done)**: Seamlessly route prompts to Antigravity (`agy`), Gemini (`gemini`), Claude (`claude`), Codex (`codex`), Aider (`aider`), or Goose (`goose`). Dynamic `@agi` tag automatically targets the active adapter.
+- **Project Workspace Integration (done)**: AI agents execute commands and file modifications directly within the owner's project root workspace directory.
+- **Permission Controls (done)**: Session owner maintains strict control over AI execution triggers while participants collaborate via live session chat.
+- **Zero-Latency Event Protocol (done)**: Lightweight Fastify & WebSocket event plane architecture built with TypeScript.
+- **IDE Extension Integration (future)**: VS Code & Antigravity IDE plugin integration for GUI-based pairing.
+- **Interactive Co-Driver Approvals (future)**: Peer code review for agent tool calls in real time.
 
 ---
 
@@ -38,7 +40,7 @@ Prompt: "create index.ts"                           ─────────�
 
 ## 📦 Installation
 
-### Single-Command Quick Install (Zero Dependencies Required)
+### Single-Command Quick Install (Zero Dependencies Required) (done)
 
 No Node.js, pnpm, or repository cloning is required. Run the automated installer in your terminal:
 
@@ -46,23 +48,25 @@ No Node.js, pnpm, or repository cloning is required. Run the automated installer
 curl -fsSL https://raw.githubusercontent.com/JhaSourav07/Collagility/main/install.sh | bash
 ```
 
+> **Note**: The automated installer fetches published release binaries from GitHub Releases. If installing prior to a published release or on private repos, use the [Source Build](#-installing-from-source-contributors) option below.
+
 The installer detects your OS and architecture, downloads the latest standalone release binary, and installs it into `~/.local/bin/collagility`.
 
 ---
 
 ### 💻 Supported Platforms
 
-| Platform | Architecture | Binary Archive |
-| -------- | ------------ | -------------- |
-| Linux | x64 (AMD64) | `collagility-linux-x64.tar.gz` |
-| Linux | arm64 (AArch64) | `collagility-linux-arm64.tar.gz` |
-| macOS | Intel (x64) | `collagility-macos-x64.tar.gz` |
-| macOS | Apple Silicon (M1/M2/M3) | `collagility-macos-arm64.tar.gz` |
-| Windows | x64 | `collagility-windows-x64.zip` |
+| Platform | Architecture | Binary Archive | Status |
+| -------- | ------------ | -------------- | ------ |
+| Linux | x64 (AMD64) | `collagility-linux-x64.tar.gz` | **(done)** |
+| Linux | arm64 (AArch64) | `collagility-linux-arm64.tar.gz` | **(done)** |
+| macOS | Intel (x64) | `collagility-macos-x64.tar.gz` | **(done)** |
+| macOS | Apple Silicon (M1/M2/M3) | `collagility-macos-arm64.tar.gz` | **(done)** |
+| Windows | x64 | `collagility-windows-x64.zip` | **(future)** |
 
 ---
 
-### 🔄 Updating Collagility
+### 🔄 Updating Collagility (done)
 
 To update Collagility to the latest version at any time, re-run the installation command:
 
@@ -72,7 +76,7 @@ curl -fsSL https://raw.githubusercontent.com/JhaSourav07/Collagility/main/instal
 
 ---
 
-### 🛠️ Installing from Source (Contributors)
+### 🛠️ Installing from Source (Contributors) (done)
 
 ```bash
 # Clone repository & build monorepo packages
@@ -84,27 +88,27 @@ sudo npm link
 
 ---
 
-## 🚀 Usage
+## 🚀 Usage (done)
 
-### 1. Start Collagility Server
+### 1. Start Collagility Server (done)
 
 ```bash
 collagility server start
 ```
 
-### 2. Create a Session (Session Owner)
+### 2. Create a Session (Session Owner) (done)
 
 ```bash
 collagility start
 ```
 
-### 3. Join a Session (Participant)
+### 3. Join a Session (Participant) (done)
 
 ```bash
 collagility join <session-id>
 ```
 
-### 4. Invoke AI Commands
+### 4. Invoke AI Commands (done)
 
 Inside an active session terminal:
 
@@ -118,10 +122,11 @@ Inside an active session terminal:
 
 ## 🗺️ Roadmap
 
-- [x] **v0.1.0-alpha.1**: Multiplayer WebSocket relay, AI stream chunking, `agy`/`gemini` CLI adapter, workspace execution, terminal renderer.
-- [ ] **v0.2.0**: IDE extension integration (VS Code & Antigravity IDE plugin).
-- [ ] **v0.3.0**: Interactive co-driver permission approvals (peer code review for agent tool calls).
-- [ ] **v0.4.0**: Multi-agent consensus swarm routing.
+- [x] **v0.1.0-alpha.1 (done)**: Multiplayer WebSocket relay, AI stream chunking, `agy`/`gemini` CLI adapter, workspace execution, terminal renderer.
+- [x] **v0.1.0-alpha.2 (done)**: Multi-provider adapters (`claude`, `codex`, `aider`, `goose`), permissions guard, binary packager, and release CI workflow.
+- [ ] **v0.2.0 (future)**: IDE extension integration (VS Code & Antigravity IDE plugin).
+- [ ] **v0.3.0 (future)**: Interactive co-driver permission approvals (peer code review for agent tool calls).
+- [ ] **v0.4.0 (future)**: Multi-agent consensus swarm routing and Redis cluster scaling.
 
 ---
 

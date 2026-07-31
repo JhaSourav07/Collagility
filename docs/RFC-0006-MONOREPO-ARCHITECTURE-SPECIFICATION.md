@@ -12,7 +12,7 @@
 
 This document specifies the scalable monorepo architecture for **Collagility**, an open-source multiplayer workspace for local AI coding agents. 
 
-As Collagility expands across multiple client form factors (CLI, Web Application, VS Code Extension, JetBrains Plugin) and backend components (Relay Server, Auth Service, Telemetry Ingestion), a strict monorepo strategy is essential to prevent code duplication, enforce type safety across network boundaries, maintain build determinism, and streamline package publishing.
+As Collagility expands across multiple client form factors (CLI **(done)**, Web Application **(future)**, VS Code Extension **(future)**) and backend components (Relay Server **(done)**), a strict monorepo strategy is essential to prevent code duplication, enforce type safety across network boundaries, maintain build determinism, and streamline package publishing.
 
 This specification details the pnpm workspace directory tree, package boundaries, dependency flow rules, shared configuration packages, plugin extensions, build pipelines, CI/CD stages, and version management strategy designed for long-term production scalability.
 
@@ -20,39 +20,27 @@ This specification details the pnpm workspace directory tree, package boundaries
 
 ## 2. Repository Structure
 
-The monorepo uses a modular multi-package structure organized into standard top-level workspaces: `apps/`, `packages/`, `plugins/`, `tools/`, and `docs/`.
+The monorepo uses a modular multi-package structure organized into standard top-level workspaces: `apps/`, `packages/`, `tools/`, and `docs/`.
 
 ```
 collagility/
-├── .github/                       # GitHub Actions CI/CD workflows & automation templates
-│   ├── workflows/                 # CI pipelines (test, build, release, security)
-│   └── ISSUE_TEMPLATE/            # Issue and PR templates
+├── .github/                       # GitHub Actions CI/CD workflows & automation templates (done)
 ├── apps/                          # Executable applications and entrypoint targets
-│   ├── cli/                       # Terminal CLI binary application (@collagility/cli)
-│   ├── server/                    # Fastify WebSocket relay server (@collagility/server)
-│   ├── web/                       # Future Web browser client SPA (@collagility/web)
-│   └── vscode/                    # Future VS Code extension (@collagility/vscode)
+│   ├── cli/                       # Terminal CLI binary application (@collagility/cli) (done)
+│   ├── server/                    # Fastify WebSocket relay server (@collagility/server) (done)
+│   └── web/                       # Next.js Web browser client SPA (@collagility/web) (future)
 ├── packages/                      # Core domain, shared libraries, and abstractions
-│   ├── core/                      # Domain entities, use cases, business logic (@collagility/core)
-│   ├── protocol/                  # WebSocket event schemas & serialization (@collagility/protocol)
-│   ├── drivers/                   # AI provider driver engine & adapters (@collagility/drivers)
-│   ├── tui/                       # React/Ink terminal UI component library (@collagility/tui)
-│   ├── client-sdk/                # Unified TypeScript SDK for clients (@collagility/client-sdk)
-│   ├── logger/                    # Structured logging wrapper (Pino) (@collagility/logger)
-│   └── telemetry/                 # OpenTelemetry instrumentation (@collagility/telemetry)
-├── plugins/                       # Extensible community driver plugins & adapters
-│   ├── driver-gemini/             # Official Gemini CLI adapter plugin (@collagility/driver-gemini)
-│   ├── driver-claude/             # Official Claude Code adapter plugin (@collagility/driver-claude)
-│   └── driver-codex/              # Official OpenAI Codex CLI plugin (@collagility/driver-codex)
-├── tools/                         # Build, code generator, and dev scripts
-│   ├── scripts/                   # Dev setup, database migration, and test runners
-│   └── eslint-config/             # Shared ESLint configuration (@collagility/eslint-config)
-├── docs/                          # Architecture RFCs, user guides, API docs
-├── pnpm-workspace.yaml            # pnpm workspace configuration file
-├── turbo.json                     # TurboRepo build pipeline pipeline definition
-├── tsconfig.json                  # Root TypeScript base configuration
-├── package.json                   # Root package definition and scripts
-└── README.md                      # Project overview and quickstart
+│   ├── adapters/                  # Multi-provider AI process adapters (@collagility/adapters) (done)
+│   ├── protocol/                  # WebSocket event schemas & serialization (@collagility/protocol) (done)
+│   ├── sdk/                       # Unified WebSocket SDK for clients (@collagility/sdk) (done)
+│   ├── stream/                    # Token chunking & stream assembler (@collagility/stream) (done)
+│   └── types/                     # Shared TypeScript domain interfaces (@collagility/types) (done)
+├── docs/                          # Architecture RFCs, user guides, API docs (done)
+├── install.sh                     # Standalone quick installer script (done)
+├── pnpm-workspace.yaml            # pnpm workspace configuration file (done)
+├── turbo.json                     # TurboRepo build pipeline definition (done)
+├── tsconfig.base.json             # Root TypeScript base configuration (done)
+└── README.md                      # Project overview and quickstart (done)
 ```
 
 ---

@@ -11,6 +11,8 @@
 
 This repository uses Architecture Decision Records (ADRs) to document significant architectural and engineering decisions made during the evolution of **Collagility**.
 
+All core architectural decisions (ADR-001 through ADR-020) have been accepted and implemented **(done)** for the v0.1.0 release, while future considerations (such as cloud SaaS multi-tenancy, WebRTC data channels, binary Protobuf frames, and IDE extension plugins) are reserved for subsequent milestones **(future)**.
+
 Each record captures the **Context**, **Problem**, **Decision**, **Alternatives Considered**, **Pros & Cons**, **Consequences**, **Future Considerations**, and explicit rationale (**Why this decision was selected**).
 
 ---

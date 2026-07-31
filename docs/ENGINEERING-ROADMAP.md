@@ -15,12 +15,12 @@ Each milestone defines actionable tasks, folder structures, GitHub issue breakdo
 
 ---
 
-## Milestone 1: Project Setup & Monorepo Infrastructure
+## Milestone 1: Project Setup & Monorepo Infrastructure (done)
 
-### Goal
+### Goal (done)
 Establish a production-grade TypeScript pnpm monorepo with TurboRepo build caching, strict ESLint/Prettier configs, containerized development environments, and CI GitHub Actions automation.
 
-* **Features:** Monorepo workspace orchestration, root TypeScript configuration, Docker Compose dev environment, GitHub Actions CI workflow.
+* **Features:** Monorepo workspace orchestration **(done)**, root TypeScript configuration **(done)**, Docker Compose dev environment **(done)**, GitHub Actions CI workflow **(done)**.
 * **Tasks:**
   1. Initialize `pnpm` workspace with `pnpm-workspace.yaml`.
   2. Configure root `tsconfig.json` with Project References.
@@ -66,12 +66,12 @@ Establish a production-grade TypeScript pnpm monorepo with TurboRepo build cachi
 
 ---
 
-## Milestone 2: Stateless WebSocket Relay Server
+## Milestone 2: Stateless WebSocket Relay Server (done)
 
-### Goal
-Build a high-performance, stateless Fastify WebSocket server supporting connection handshakes, room creation, event frame validation, and Redis Pub/Sub message fanout.
+### Goal (done)
+Build a high-performance, stateless Fastify WebSocket server supporting connection handshakes, room creation, event frame validation **(done)**, and optional Redis Pub/Sub message fanout **(future)**.
 
-* **Features:** WebSocket HTTP upgrade route, JSON-RPC event frame validation, in-memory/Redis room manager, pub/sub event router.
+* **Features:** WebSocket HTTP upgrade route **(done)**, JSON-RPC event frame validation **(done)**, in-memory room manager **(done)**, Redis pub/sub event router **(future)**.
 * **Tasks:**
   1. Create `@collagility/server` package inside `apps/server`.
   2. Implement Fastify server bootstrap with `@fastify/websocket`.
@@ -115,12 +115,12 @@ Build a high-performance, stateless Fastify WebSocket server supporting connecti
 
 ---
 
-## Milestone 3: Terminal CLI Application & Ink TUI Scaffold
+## Milestone 3: Terminal CLI Application & Terminal Stream Renderer (done)
 
-### Goal
-Build the `@collagility/cli` application using Commander.js and React/Ink, delivering the `collagility host` and `collagility join` command interfaces.
+### Goal (done)
+Build the `@collagility/cli` application using Commander.js and native Node.js stdio stream rendering (`chalk` + `readline`), delivering the `collagility start` and `collagility join` command interfaces.
 
-* **Features:** CLI argument parsing, interactive Ink TUI layout, connection controller, ASCII branding banner.
+* **Features:** CLI argument parsing **(done)**, interactive Terminal Stream Renderer layout **(done)**, connection controller **(done)**, ASCII branding banner **(done)**, React/Ink TUI layout **(future)**.
 * **Tasks:**
   1. Create `@collagility/cli` package in `apps/cli`.
   2. Implement Commander.js CLI flags (`collagility host --agent gemini`, `collagility join <id>`).
@@ -164,12 +164,12 @@ Build the `@collagility/cli` application using Commander.js and React/Ink, deliv
 
 ---
 
-## Milestone 4: Side-Channel Chat & Real-Time Presence
+## Milestone 4: Side-Channel Chat & Real-Time Presence (done)
 
-### Goal
-Implement out-of-band participant side-chat and real-time presence indicators directly within the CLI TUI without polluting the AI prompt context window.
+### Goal (done)
+Implement out-of-band participant side-chat and real-time presence indicators directly within the CLI terminal without polluting the AI prompt context window.
 
-* **Features:** TUI chat panel, user presence bar, active file focus indicator, typing status indicators.
+* **Features:** Terminal chat prompt **(done)**, user presence tracking **(done)**, active file focus indicator **(done)**, typing status indicators **(done)**.
 * **Tasks:**
   1. Add `chat.message.send` and `chat.message.broadcast` protocol handlers.
   2. Create Ink `ChatPanel` component with auto-scroll and message input toggle.
@@ -207,12 +207,12 @@ Implement out-of-band participant side-chat and real-time presence indicators di
 
 ---
 
-## Milestone 5: Gemini CLI Driver Integration & Stdio Interception
+## Milestone 5: Gemini CLI & Multi-Provider Driver Integration & Stdio Interception (done)
 
-### Goal
-Implement the production-grade `GeminiCLIAdapter` wrapper to spawn local Gemini CLI subprocesses, intercept stdio streams, and handle prompt injection safely.
+### Goal (done)
+Implement the production-grade `GeminiCLIAdapter`, `ClaudeAdapter`, `CodexAdapter`, `AiderAdapter`, and `GooseAdapter` wrappers to spawn local AI subprocesses, intercept stdio streams, and handle prompt injection safely.
 
-* **Features:** Gemini CLI process spawner, stdio pipe parser, prompt injection wrapper, local process lifecycle manager.
+* **Features:** AI CLI process spawner **(done)**, stdio pipe parser **(done)**, prompt injection wrapper **(done)**, local process lifecycle manager **(done)**.
 * **Tasks:**
   1. Create `@collagility/driver-gemini` package implementing `IAgentDriver`.
   2. Implement process spawner using Node.js `child_process.spawn` targeting local `gemini` executable.
@@ -251,12 +251,12 @@ Implement the production-grade `GeminiCLIAdapter` wrapper to spawn local Gemini 
 
 ---
 
-## Milestone 6: Real-Time AI Response Token Streaming
+## Milestone 6: Real-Time AI Response Token Streaming (done)
 
-### Goal
+### Goal (done)
 Multiplex live AI response tokens, reasoning steps, and tool execution statuses from the host machine to all connected participant terminals in real time.
 
-* **Features:** Sub-50ms token chunk streaming, syntax-highlighted diff rendering, reasoning step indicator, stream completion status.
+* **Features:** Sub-50ms token chunk streaming **(done)**, terminal diff rendering **(done)**, stream completion status **(done)**.
 * **Tasks:**
   1. Implement `ai.stream.chunk` and `ai.stream.end` WebSocket event handlers on Server and CLI.
   2. Wire `GeminiCLIAdapter` token emission to Host CLI WebSocket emitter.
@@ -293,12 +293,12 @@ Multiplex live AI response tokens, reasoning steps, and tool execution statuses 
 
 ---
 
-## 7. Milestone 7: Role-Based Permissions & Co-Prompting Workflow
+## Milestone 7: Role-Based Permissions & Owner Execution Guard (done)
 
-### Goal
-Implement granular host-governed permission controls (Co-Driver vs. Observer) and interactive co-prompting suggestion workflows.
+### Goal (done)
+Implement host-governed permission controls ensuring only the session owner can trigger local AI agent commands while participants contribute via chat.
 
-* **Features:** Role permission guard, co-prompt submission, host TUI prompt approval modal, driver handoff mechanism.
+* **Features:** Role permission guard **(done)**, host-only execution guard **(done)**, participant chat flow **(done)**, peer co-driver approval modals **(future)**.
 * **Tasks:**
   1. Implement server-side ReBAC role checks blocking Observers from emitting prompt requests.
   2. Create `ai.request.suggest_prompt` protocol flow.
@@ -334,12 +334,12 @@ Implement granular host-governed permission controls (Co-Driver vs. Observer) an
 
 ---
 
-## Milestone 8: Robustness, Offline Recovery & Polish
+## Milestone 8: Robustness, Auto-Reconnect & Binary Packaging (done)
 
-### Goal
-Harden platform resilience against transient network drops, implement sequence buffer replay, optimize TUI ergonomics, and eliminate memory leaks.
+### Goal (done)
+Harden platform resilience against transient network drops, implement client auto-reconnection, package single executable binaries (`@yao-pkg/pkg` + `esbuild`), and configure GitHub release CI.
 
-* **Features:** Exponential backoff auto-reconnect, missing frame sequence replay buffer, graceful session degradation, session link clipboard copy.
+* **Features:** Exponential backoff auto-reconnect **(done)**, standalone binary builder scripts **(done)**, automated GitHub Actions release workflow **(done)**, shell installer script **(done)**.
 * **Tasks:**
   1. Implement client-side auto-reconnection with 30s grace window (`auth.reconnect`).
   2. Implement circular replay ring-buffer in server `RoomManager` for gap-fill recovery (`lastSeq`).
@@ -375,12 +375,12 @@ Harden platform resilience against transient network drops, implement sequence b
 
 ---
 
-## Milestone 9: Open-Source Release & Star-Velocity Launch
+## Milestone 9: Open-Source Release & Documentation (done)
 
-### Goal
-Prepare public GitHub repository, author comprehensive documentation, produce viral demo media, publish npm packages, and execute launch marketing.
+### Goal (done)
+Prepare public GitHub repository, author comprehensive documentation, set up automated CI/release workflows, publish standalone release binaries, and document installation/usage options.
 
-* **Features:** Comprehensive `README.md`, animated GIF/video demos, GitHub issue templates, contributing guidelines, npm package release.
+* **Features:** Comprehensive `README.md` **(done)**, architecture specs & ADRs **(done)**, `install.sh` single-command installer **(done)**, GitHub release workflows **(done)**, npm link & source build guides **(done)**.
 * **Tasks:**
   1. Write high-impact `README.md` with clear architectural diagrams, tagline, quickstart guide, and feature comparison matrix.
   2. Generate high-quality terminal recording GIFs (vhs / asciinema) demonstrating host-join flow.
@@ -421,12 +421,12 @@ Prepare public GitHub repository, author comprehensive documentation, produce vi
 
 ---
 
-## Milestone 10: v1.0 Production Launch & Multi-Agent Ecosystem
+## Milestone 10: Multi-Agent Consensus Swarm & Enterprise Ecosystem (future)
 
-### Goal
-Expand AI provider driver ecosystem (Claude Code, OpenAI Codex), release self-hosted Docker deployment templates, achieve SOC 2 readiness, and publish v1.0.0.
+### Goal (future)
+Expand multi-agent routing mechanisms, release self-hosted enterprise Kubernetes templates, integrate IDE plugins (VS Code & Antigravity IDE), and support multi-agent consensus swarm routing.
 
-* **Features:** Claude Code driver adapter, OpenAI Codex CLI adapter, one-click self-hosted Docker Compose deployment, SOC 2 audit logs, v1.0 release tag.
+* **Features:** IDE extension plugin **(future)**, Kubernetes Helm deployment charts **(future)**, multi-agent consensus routing **(future)**, enterprise SSO/RBAC **(future)**.
 * **Tasks:**
   1. Implement `@collagility/driver-claude` and `@collagility/driver-codex` plugins.
   2. Author production Docker Compose and Helm Chart deployment templates for self-hosters.

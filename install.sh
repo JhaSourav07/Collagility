@@ -103,6 +103,12 @@ log_info "Fetching latest release metadata from GitHub..."
 RELEASE_JSON="$(curl -sSL -H "Accept: application/vnd.github+json" "$API_URL" || true)"
 
 if [ -z "$RELEASE_JSON" ] || echo "$RELEASE_JSON" | grep -q '"message": "Not Found"'; then
+  # Fall back to all releases endpoint (supports pre-releases like alpha/beta/rc)
+  API_URL="https://api.github.com/repos/${REPO}/releases"
+  RELEASE_JSON="$(curl -sSL -H "Accept: application/vnd.github+json" "$API_URL" || true)"
+fi
+
+if [ -z "$RELEASE_JSON" ] || echo "$RELEASE_JSON" | grep -q '"message": "Not Found"'; then
   log_error "No published GitHub release found for ${REPO} yet."
   log_info "Please check https://github.com/${REPO}/releases or tag a release to build binaries."
   exit 1

@@ -10,13 +10,14 @@
 
 ## 1. Executive Summary
 
-Collagility is a real-time, terminal-native multiplayer platform designed to multiplex local AI coding sessions (such as Gemini CLI, Claude Code, and OpenAI Codex CLI) across distributed engineering teams. 
+Collagility is a real-time, terminal-native multiplayer platform designed to multiplex local AI coding sessions (such as Gemini CLI, Claude Code, Codex, Aider, and Goose) across distributed engineering teams. 
 
 Traditional collaboration tools either sacrifice security by routing sensitive codebase context and API keys through central cloud servers, or sacrifice interactivity by relying on passive screen shares. Collagility resolves this dichotomy by employing a zero-trust, local-first hybrid architecture:
 
-* **Local AI Agent Execution:** The AI model executes exclusively on the session host's local machine, utilizing local API keys, local credentials, and local project context.
-* **Stateless Relay Infrastructure:** The central backend acts solely as a high-throughput, low-latency pub/sub event router. It handles authentication, presence, workspace session state, and event multiplexing without ever touching AI provider APIs or storing AI context payloads.
-* **Provider-Agnostic CLI Engine:** A modular CLI client acts as the local bridge between terminal UI components, local file systems, provider-specific AI drivers, and the central relay backend.
+* **Local AI Agent Execution (done):** The AI model executes exclusively on the session host's local machine, utilizing local API keys, local credentials, and local project context.
+* **Stateless Relay Infrastructure (done):** The central backend acts solely as a high-throughput, low-latency pub/sub event router (`apps/server`). It handles authentication, presence, workspace session state, and event multiplexing without ever touching AI provider APIs or storing AI context payloads.
+* **Provider-Agnostic CLI Engine (done):** A modular CLI client (`apps/cli`) acts as the local bridge between terminal stream rendering, local file systems, provider-specific AI drivers (`packages/adapters`), and the central relay backend.
+* **Redis Cluster Scaling (future):** Multi-node Redis Pub/Sub cluster fan-out for horizontal server scaling.
 
 This document details the complete end-to-end architecture for Collagility, structured around Clean Architecture, Hexagonal (Ports & Adapters) principles, Domain-Driven Design (DDD), and Event-Driven Architecture (EDA).
 

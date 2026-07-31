@@ -12,7 +12,7 @@
 
 This document specifies the formal real-time WebSocket protocol (`collagility-v1`) for **Collagility**, the open-source multiplayer workspace for local AI coding agents. 
 
-The protocol establishes a standardized, client-agnostic binary and JSON messaging wire format connecting local client instances (Hosts, Co-Drivers, Observers) through stateless relay nodes. It governs session initialization, bidirectional stream multiplexing, presence synchronization, out-of-band chat, permission authorization, and offline state recovery.
+The protocol establishes a standardized, client-agnostic JSON messaging wire format connecting local client instances (Hosts, Co-Drivers, Observers) through stateless relay nodes. It governs session initialization **(done)**, bidirectional stream multiplexing **(done)**, presence synchronization **(done)**, out-of-band chat **(done)**, permission authorization **(done)**, and offline state recovery **(done)**. Binary Protobuf frames are reserved for future optimizations **(future)**.
 
 The protocol strictly maintains Collagility's local-first security architecture: **all AI prompt execution and model credential handling remain isolated to the session host**. The relay server operates purely as an event router, validating envelope headers, verifying role permissions, and fanning out self-describing event frames to active session participants.
 
