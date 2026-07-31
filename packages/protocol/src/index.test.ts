@@ -1,20 +1,47 @@
 import { describe, it, expect } from 'vitest';
-import { BaseEnvelopeSchema, PROTOCOL_VERSION } from './index.js';
+import {
+  createChatMessageEvent,
+  createChatSystemEvent,
+  parseEnvelope,
+  serializeEnvelope,
+  validateEnvelope,
+  CURRENT_PROTOCOL_VERSION,
+  EVENT_TYPES,
+} from './index.js';
 
 describe('@collagility/protocol', () => {
-  it('should validate a correct base envelope frame', () => {
-    const validFrame = {
-      version: PROTOCOL_VERSION,
-      id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
-      event: 'system.ping',
-      type: 'EVENT' as const,
-      seq: 1,
-      timestamp: Date.now(),
-      sessionId: 'sess_123',
-      workspaceId: 'ws_456',
-    };
+  it('should create and validate a versioned Chat Message envelope', () => {
+    const sender = { id: 'user-1', name: 'Sourav', role: 'owner' as const };
+    const event = createChatMessageEvent(sender, 'Hello Collagility!', 'blue-hawk-1234', 1);
 
-    const parsed = BaseEnvelopeSchema.safeParse(validFrame);
+    expect(event.version).toBe(CURRENT_PROTOCOL_VERSION);
+    expect(event.type).toBe(EVENT_TYPES.CHAT_MESSAGE);
+    expect(event.sessionId).toBe('blue-hawk-1234');
+    expect(event.seq).toBe(1);
+    expect(event.sender).toEqual(sender);
+    expect(event.payload.text).toBe('Hello Collagility!');
+
+    const serialized = serializeEnvelope(event);
+    const parsed = parseEnvelope(serialized);
+
     expect(parsed.success).toBe(true);
+    expect(parsed.envelope).toEqual(event);
+  });
+
+  it('should reject malformed packets', () => {
+    const invalidJson = parseEnvelope('{ invalid json }');
+    expect(invalidJson.success).toBe(false);
+    expect(invalidJson.error).toBe('Invalid JSON string');
+
+    const invalidEnvelope = validateEnvelope({ version: 1 });
+    expect(invalidEnvelope.success).toBe(false);
+    expect(invalidEnvelope.error).toContain('Invalid envelope schema');
+  });
+
+  it('should create a system event', () => {
+    const sysEvent = createChatSystemEvent('Emma joined the session', 'blue-hawk-1234');
+    expect(sysEvent.type).toBe(EVENT_TYPES.CHAT_SYSTEM);
+    expect(sysEvent.sender?.role).toBe('system');
+    expect(sysEvent.payload.message).toBe('Emma joined the session');
   });
 });

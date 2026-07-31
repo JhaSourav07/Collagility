@@ -3,11 +3,14 @@ import { establishConnection } from '../client/connection.js';
 import { CLIProgressSpinner } from '../terminal/spinner.js';
 import { CLILogger } from '../terminal/logger.js';
 import { colors } from '../terminal/colors.js';
-import { renderSessionHeader, renderMemberList } from '../terminal/renderer.js';
+import { renderSessionHeader, renderMemberList, TerminalRenderer } from '../terminal/renderer.js';
+import { ChatPrompt } from '../terminal/chat-prompt.js';
 
 export async function joinCommand(targetSessionId: string, options: Partial<CLIConfig>): Promise<void> {
   const logger = new CLILogger(options.verbose);
   const spinner = new CLIProgressSpinner(`Connecting to server to join session '${targetSessionId}'...`);
+  let chatPrompt: ChatPrompt | null = null;
+
   spinner.start();
 
   try {
@@ -21,19 +24,51 @@ export async function joinCommand(targetSessionId: string, options: Partial<CLIC
         const isOwner = ownerId === memberId;
         console.log(renderSessionHeader(sessionId, isOwner, members.length));
         console.log(renderMemberList(members, ownerId));
-        logger.info(colors.dim('Connected to multiplayer workspace. (Press Ctrl+C to leave)'));
+        logger.info(colors.dim('Connected to multiplayer workspace. (Type a message and press Enter to chat)\n'));
+
+        chatPrompt = new ChatPrompt(client);
+        chatPrompt.start();
+      },
+
+      onChatMessage: (msg) => {
+        const rendered = TerminalRenderer.renderChatMessage(msg);
+        if (chatPrompt) {
+          chatPrompt.printAbovePrompt(rendered);
+        } else {
+          console.log(rendered);
+        }
+      },
+
+      onChatSystem: (msg) => {
+        const rendered = TerminalRenderer.renderSystemMessage(msg);
+        if (chatPrompt) {
+          chatPrompt.printAbovePrompt(rendered);
+        } else {
+          console.log(rendered);
+        }
       },
 
       onMemberJoined: (_sessionId, newMemberId) => {
-        logger.success(`Member ${colors.cyan(newMemberId)} joined the session`);
+        const notice = TerminalRenderer.renderSystemMessage(`Member ${newMemberId} joined the session`);
+        if (chatPrompt) {
+          chatPrompt.printAbovePrompt(notice);
+        } else {
+          logger.success(`Member ${colors.cyan(newMemberId)} joined the session`);
+        }
       },
 
       onMemberLeft: (_sessionId, leftMemberId, isOwner) => {
         const ownerNotice = isOwner ? ' (Owner)' : '';
-        logger.info(`Member ${colors.cyan(leftMemberId)}${ownerNotice} left the session`);
+        const notice = TerminalRenderer.renderSystemMessage(`Member ${leftMemberId}${ownerNotice} left the session`);
+        if (chatPrompt) {
+          chatPrompt.printAbovePrompt(notice);
+        } else {
+          logger.info(`Member ${colors.cyan(leftMemberId)}${ownerNotice} left the session`);
+        }
       },
 
       onSessionClosed: (_sessionId, reason) => {
+        if (chatPrompt) chatPrompt.close();
         logger.warn(`Session was closed: ${reason}`);
         client.disconnect();
         process.exit(0);
@@ -54,6 +89,7 @@ export async function joinCommand(targetSessionId: string, options: Partial<CLIC
     client.joinSession(targetSessionId);
 
     const handleExit = () => {
+      if (chatPrompt) chatPrompt.close();
       logger.info('Leaving session and disconnecting...');
       client.leaveSession();
       client.disconnect();

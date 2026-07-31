@@ -3,11 +3,14 @@ import { establishConnection } from '../client/connection.js';
 import { CLIProgressSpinner } from '../terminal/spinner.js';
 import { CLILogger } from '../terminal/logger.js';
 import { colors } from '../terminal/colors.js';
-import { renderSessionHeader } from '../terminal/renderer.js';
+import { renderSessionHeader, TerminalRenderer } from '../terminal/renderer.js';
+import { ChatPrompt } from '../terminal/chat-prompt.js';
 
 export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
   const logger = new CLILogger(options.verbose);
   const spinner = new CLIProgressSpinner('Connecting to Collagility server...');
+  let chatPrompt: ChatPrompt | null = null;
+
   spinner.start();
 
   try {
@@ -18,15 +21,46 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
         const sessionId = String(session['id']);
         console.log(renderSessionHeader(sessionId, true, members.length));
         logger.info(colors.bold(`Session ID: ${colors.code(sessionId)}`));
-        logger.info(colors.dim('Waiting for collaborators to join... (Press Ctrl+C to stop)'));
+        logger.info(colors.dim('Waiting for collaborators to join... (Type a message and press Enter to chat)\n'));
+
+        chatPrompt = new ChatPrompt(client);
+        chatPrompt.start();
+      },
+
+      onChatMessage: (msg) => {
+        const rendered = TerminalRenderer.renderChatMessage(msg);
+        if (chatPrompt) {
+          chatPrompt.printAbovePrompt(rendered);
+        } else {
+          console.log(rendered);
+        }
+      },
+
+      onChatSystem: (msg) => {
+        const rendered = TerminalRenderer.renderSystemMessage(msg);
+        if (chatPrompt) {
+          chatPrompt.printAbovePrompt(rendered);
+        } else {
+          console.log(rendered);
+        }
       },
 
       onMemberJoined: (sessionId, memberId) => {
-        logger.success(`Member ${colors.cyan(memberId)} joined session ${colors.code(sessionId)}`);
+        const notice = TerminalRenderer.renderSystemMessage(`Member ${memberId} joined the session`);
+        if (chatPrompt) {
+          chatPrompt.printAbovePrompt(notice);
+        } else {
+          logger.success(`Member ${colors.cyan(memberId)} joined session ${colors.code(sessionId)}`);
+        }
       },
 
       onMemberLeft: (sessionId, memberId, _isOwner) => {
-        logger.info(`Member ${colors.cyan(memberId)} left session ${colors.code(sessionId)}`);
+        const notice = TerminalRenderer.renderSystemMessage(`Member ${memberId} left the session`);
+        if (chatPrompt) {
+          chatPrompt.printAbovePrompt(notice);
+        } else {
+          logger.info(`Member ${colors.cyan(memberId)} left session ${colors.code(sessionId)}`);
+        }
       },
 
       onError: (error) => {
@@ -36,16 +70,13 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
       onDisconnect: (reason) => {
         logger.warn(`Disconnected from server: ${reason}`);
       },
-
-      onReconnecting: (attempt, delayMs) => {
-        logger.info(`Reconnecting to server (attempt ${attempt}, retrying in ${delayMs / 1000}s)...`);
-      },
     });
 
     logger.debug('Client connected, creating session...');
     client.createSession();
 
     const handleExit = () => {
+      if (chatPrompt) chatPrompt.close();
       logger.info('Leaving session and disconnecting...');
       client.leaveSession();
       client.disconnect();

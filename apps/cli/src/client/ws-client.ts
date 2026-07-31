@@ -2,10 +2,19 @@ import WebSocket from 'ws';
 import { z } from 'zod';
 import type { CLIConfig } from '../config/config.js';
 import { ReconnectHandler } from './reconnect.js';
+import type { ChatRenderMessage } from '../terminal/renderer.js';
 
 export const IncomingFrameSchema = z.object({
+  version: z.number().optional(),
+  id: z.string().optional(),
   type: z.string(),
   senderId: z.string().optional(),
+  sender: z.object({
+    id: z.string(),
+    name: z.string().optional(),
+    role: z.enum(['owner', 'member', 'system', 'ai']).optional(),
+  }).optional(),
+  sessionId: z.string().optional(),
   payload: z.unknown().optional(),
   timestamp: z.number().optional(),
 });
@@ -20,6 +29,8 @@ export interface WSClientEvents {
   onMemberLeft?: (sessionId: string, memberId: string, isOwner: boolean) => void;
   onSessionLeft?: (sessionId: string) => void;
   onSessionClosed?: (sessionId: string, reason: string) => void;
+  onChatMessage?: (message: ChatRenderMessage) => void;
+  onChatSystem?: (message: string) => void;
   onError?: (error: string, code?: string) => void;
   onDisconnect?: (reason: string) => void;
   onReconnecting?: (attempt: number, delayMs: number) => void;
@@ -111,7 +122,6 @@ export class WebSocketClient {
       }
 
       case 'system.disconnected': {
-        // System disconnect notification from server broadcast
         break;
       }
 
@@ -151,6 +161,37 @@ export class WebSocketClient {
         break;
       }
 
+      case 'chat':
+      case 'chat.message': {
+        const senderId = frame.sender?.id || frame.senderId || 'unknown';
+        const senderName = frame.sender?.name || senderId.slice(0, 8);
+        const senderRole = frame.sender?.role || 'member';
+        const payloadObj = (frame.payload as { text?: string }) || {};
+        const text = payloadObj.text || '';
+        const isSelf = senderId === this.clientId;
+
+        if (this.events.onChatMessage) {
+          this.events.onChatMessage({
+            id: frame.id,
+            timestamp: frame.timestamp || Date.now(),
+            senderId,
+            senderName,
+            senderRole,
+            text,
+            isSelf,
+          });
+        }
+        break;
+      }
+
+      case 'chat.system': {
+        const payloadObj = (frame.payload as { message?: string }) || {};
+        if (this.events.onChatSystem && payloadObj.message) {
+          this.events.onChatSystem(payloadObj.message);
+        }
+        break;
+      }
+
       case 'system.error':
       case 'session.error': {
         const payload = frame.payload as { error: string; code?: string };
@@ -166,6 +207,10 @@ export class WebSocketClient {
     }
     const message = JSON.stringify({ type, payload });
     this.socket.send(message);
+  }
+
+  public sendChatMessage(text: string): void {
+    this.send('chat.message', { text });
   }
 
   public createSession(metadata?: Record<string, unknown>): void {

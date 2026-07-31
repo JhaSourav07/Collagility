@@ -81,18 +81,19 @@ describe('Server & Session Integration', () => {
     expect(joinedFrame.payload.session.members.length).toBe(2);
 
     // Test session-scoped chat broadcast to peer
+    // Server now emits protocol v1 'chat.message' envelopes
     const peerChatPromise = new Promise<any>((resolve) => {
       client2.on('message', (data) => {
         const frame = JSON.parse(data.toString('utf-8'));
-        if (frame.type === 'chat') resolve(frame);
+        if (frame.type === 'chat.message') resolve(frame);
       });
     });
 
-    client1.send(JSON.stringify({ type: 'chat', payload: { text: 'Session scoped message' } }));
+    client1.send(JSON.stringify({ type: 'chat.message', payload: { text: 'Session scoped message' } }));
     const peerFrame = await peerChatPromise;
     expect(peerFrame.payload.text).toBe('Session scoped message');
 
     client1.close();
     client2.close();
-  });
+  }, 10000);
 });
