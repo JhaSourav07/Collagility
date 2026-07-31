@@ -15,18 +15,20 @@ describe('SessionManager', () => {
     return new SessionManager(store, generator, logger);
   };
 
-  it('should create a new session with owner as sole initial member', () => {
+  it('should create a new session with owner as sole initial member and store workspacePath', () => {
     const manager = createTestManager();
     const ownerId = 'user-owner-1';
+    const workspacePath = '/run/media/sourav/New Volume/Projects/Collagility';
 
-    const session = manager.createSession(ownerId, { title: 'Test Session' });
+    const session = manager.createSession(ownerId, { title: 'Test Session', workspacePath });
 
     expect(session.id).toBeDefined();
     expect(session.ownerId).toBe(ownerId);
     expect(session.members.has(ownerId)).toBe(true);
     expect(session.members.size).toBe(1);
     expect(session.status).toBe('active');
-    expect(session.metadata).toEqual({ title: 'Test Session' });
+    expect(session.workspacePath).toBe(workspacePath);
+    expect(session.metadata).toEqual({ title: 'Test Session', workspacePath });
   });
 
   it('should reject creating a second session if user is already in a session', () => {

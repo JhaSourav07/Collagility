@@ -23,25 +23,24 @@ export type { GeminiHealthInfo };
 export interface GeminiAdapterConfig {
   binaryPath?: string;
   args?: string[];
+  cwd?: string;
   mockMode?: boolean;
   mockProcessFactory?: ProcessOptions['mockProcessFactory'];
   timeoutMs?: number;
 }
 
 export class GeminiAIAdapter extends AIAdapter {
-  public readonly id = 'adapter-gemini-cli';
+  public readonly id = 'gemini';
   public readonly name = 'gemini';
-  public readonly version = '0.1.0';
+  public readonly version = '1.0.0';
 
   private healthChecker: GeminiHealthChecker;
   private lifecycleManager: GeminiLifecycleManager;
-  private parser: GeminiOutputParser;
   private stdoutHandler: GeminiStdoutHandler;
   private stderrHandler: GeminiStderrHandler;
   private promptHandler: GeminiPromptHandler;
-  private processManager?: GeminiProcessManager;
-
-  private adapterConfig: GeminiAdapterConfig = {};
+  private processManager: GeminiProcessManager | null = null;
+  private adapterConfig: GeminiAdapterConfig;
 
   constructor(config: GeminiAdapterConfig = {}) {
     super();
@@ -49,14 +48,19 @@ export class GeminiAIAdapter extends AIAdapter {
     const isMock = Boolean(config.mockMode || config.mockProcessFactory);
     this.healthChecker = new GeminiHealthChecker(config.binaryPath ?? 'gemini', isMock);
     this.lifecycleManager = new GeminiLifecycleManager();
-    this.parser = new GeminiOutputParser();
-    this.stdoutHandler = new GeminiStdoutHandler(this.parser);
+
+    const parser = new GeminiOutputParser();
+    this.stdoutHandler = new GeminiStdoutHandler(parser);
     this.stderrHandler = new GeminiStderrHandler();
-    this.promptHandler = new GeminiPromptHandler(this.name);
+    this.promptHandler = new GeminiPromptHandler('gemini');
   }
 
   public get status(): AdapterStatus {
     return this.lifecycleManager.status;
+  }
+
+  public get config(): Record<string, unknown> {
+    return { ...this._config };
   }
 
   public async checkDetailedHealth(): Promise<GeminiHealthInfo> {
@@ -77,39 +81,40 @@ export class GeminiAIAdapter extends AIAdapter {
         this.promptHandler.completeActivePrompt();
       } else {
         this.promptHandler.appendOutputChunk(parsed.content);
+        this.emit('chunk' as any, parsed.content);
       }
     });
 
-    this.stderrHandler.onErrorLine((_errLine) => {
-      // Diagnostic stderr logging
+    this.stderrHandler.onErrorLine((errLine) => {
+      if (errLine.trim().length > 0) {
+        this.emit('chunk' as any, `${errLine}\n`);
+      }
     });
 
-    if (this.adapterConfig.mockProcessFactory) {
-      this.processManager = new GeminiProcessManager(
-        {
-          binaryPath: this.adapterConfig.binaryPath,
-          mockProcessFactory: this.adapterConfig.mockProcessFactory,
-        },
-        this.stdoutHandler,
-        this.stderrHandler,
-        this.lifecycleManager
-      );
+    // Always instantiate process manager for real execution or mock factory
+    this.processManager = new GeminiProcessManager(
+      {
+        binaryPath: this.adapterConfig.binaryPath ?? 'gemini',
+        args: this.adapterConfig.args,
+        cwd: this.adapterConfig.cwd,
+        mockProcessFactory: this.adapterConfig.mockProcessFactory,
+      },
+      this.stdoutHandler,
+      this.stderrHandler,
+      this.lifecycleManager
+    );
 
-      this.processManager.onExit((code, _signal) => {
-        if (this.lifecycleManager.status === 'processing') {
-          const restarted = this.lifecycleManager.recordCrash();
-          if (restarted) {
-            this.emit('ai.status', createAIStartedEvent(this.name));
-          } else {
-            const failEvt = createAIFailedEvent(this.name, `Gemini process exited unexpectedly with code ${code}`);
-            this.emit('ai.failed', failEvt);
-            this.promptHandler.failActivePrompt(
-              new AdapterExecutionError(this.name, `Gemini process exited unexpectedly with code ${code}`)
-            );
-          }
+    this.processManager.onExit((code, _signal) => {
+      this.promptHandler.completeActivePrompt();
+      if (this.lifecycleManager.status === 'processing') {
+        if (code !== 0 && code !== null) {
+          const failEvt = createAIFailedEvent(this.name, `Process exited with code ${code}`);
+          this.emit('ai.failed', failEvt);
+        } else {
+          this.lifecycleManager.setStatus('ready');
         }
-      });
-    }
+      }
+    });
 
     this.lifecycleManager.setStatus('ready');
     this.emit('ai.ready', createAIReadyEvent(this.name));
@@ -141,10 +146,10 @@ export class GeminiAIAdapter extends AIAdapter {
     this.lifecycleManager.setStatus('processing');
     this.emit('ai.prompt', createAIPromptEvent(prompt, context));
 
-    if (this.processManager) {
-      this.processManager.spawnProcess();
+    if (this.processManager && !this.adapterConfig.mockMode) {
+      this.processManager.spawnProcessForPrompt(prompt);
       const stdinStream = this.processManager.getStdin();
-      const timeoutMs = this.adapterConfig.timeoutMs ?? 30000;
+      const timeoutMs = this.adapterConfig.timeoutMs ?? 0;
 
       try {
         const responseText = await this.promptHandler.sendPromptToStream(stdinStream, prompt, timeoutMs);
@@ -155,14 +160,15 @@ export class GeminiAIAdapter extends AIAdapter {
       } catch (err) {
         if ((this.status as string) !== 'cancelled') {
           this.lifecycleManager.setStatus('failed');
-          const errorMsg = err instanceof Error ? err.message : String(err);
+          const rawErr = err instanceof Error ? err.message : String(err);
+          const bufferedStderr = this.stderrHandler.getBufferedStderr().trim();
+          const errorMsg = bufferedStderr ? `${rawErr} (${bufferedStderr})` : rawErr;
           this.emit('ai.failed', createAIFailedEvent(this.name, errorMsg));
         }
         throw err;
       }
     } else {
-      // Direct mock fallback execution if process manager is unassigned
-      const responseText = `[Gemini CLI Stub Response]: Processed prompt "${prompt}"`;
+      const responseText = `[AI Response]: Processed prompt "${prompt}"`;
       this.lifecycleManager.setStatus('ready');
       const evt = createAICompletedEvent(this.name, responseText, { provider: 'google-gemini' });
       this.emit('ai.completed', evt);

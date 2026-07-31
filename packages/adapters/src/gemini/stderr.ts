@@ -8,7 +8,7 @@ export class GeminiStderrHandler {
 
   public handleData(chunk: Buffer | string): void {
     this.buffer += chunk.toString('utf-8');
-    const lines = this.buffer.split('\n');
+    const lines = this.buffer.split(/\r?\n|\r/);
     this.buffer = lines.pop() || '';
 
     for (const line of lines) {

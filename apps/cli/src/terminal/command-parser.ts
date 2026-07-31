@@ -5,12 +5,14 @@ export type ParsedCLIInput =
 export function parseCLIInput(rawInput: string): ParsedCLIInput {
   const trimmed = rawInput.trim();
 
-  // Match @gemini <prompt> or @ai <prompt>
-  const aiMatch = trimmed.match(/^@(gemini|ai)\s+(.+)$/i);
+  // Match @agi <prompt>, @agy <prompt>, @antigravity <prompt>, @gemini <prompt>, @ai <prompt>, or any @<tag> <prompt>
+  const aiMatch = trimmed.match(/^@([a-zA-Z0-9_-]+)\s+(.+)$/i);
   if (aiMatch) {
+    const rawTag = aiMatch[1].toLowerCase();
+    const adapterName = rawTag === 'ai' ? 'gemini' : rawTag;
     return {
       type: 'ai',
-      adapterName: aiMatch[1].toLowerCase() === 'ai' ? 'gemini' : aiMatch[1].toLowerCase(),
+      adapterName,
       prompt: aiMatch[2].trim(),
     };
   }

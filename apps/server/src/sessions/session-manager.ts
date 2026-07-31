@@ -32,6 +32,7 @@ export class SessionManager {
     }
 
     const sessionId = this.idGenerator.generate();
+    const workspacePath = String(metadata['workspacePath'] || metadata['cwd'] || process.cwd());
     const session: Session = {
       id: sessionId,
       ownerId,
@@ -39,6 +40,7 @@ export class SessionManager {
       createdAt: new Date(),
       updatedAt: new Date(),
       status: 'active',
+      workspacePath,
       metadata,
     };
 

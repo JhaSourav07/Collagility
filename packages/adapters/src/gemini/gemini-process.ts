@@ -51,9 +51,9 @@ export class GeminiProcessManager {
     return this.childProcess !== null && this.childProcess.exitCode === null && !this.childProcess.killed;
   }
 
-  public spawnProcess(): ChildProcess {
+  public spawnProcessForPrompt(prompt: string): ChildProcess {
     if (this.isRunning()) {
-      return this.childProcess!;
+      this.killProcess('SIGTERM');
     }
 
     this.stdoutHandler.clear();
@@ -62,10 +62,21 @@ export class GeminiProcessManager {
     if (this.options.mockProcessFactory) {
       this.childProcess = this.options.mockProcessFactory();
     } else {
-      this.childProcess = spawn(this.binaryPath, this.args, {
-        cwd: this.options.cwd,
-        env: { ...process.env, ...this.options.env },
-        stdio: ['pipe', 'pipe', 'pipe'],
+      const cwd = this.options.cwd || process.cwd();
+      const procArgs =
+        this.args.length > 0
+          ? [...this.args, prompt]
+          : ['--dangerously-skip-permissions', '--add-dir', cwd, '-p', prompt];
+      this.childProcess = spawn(this.binaryPath, procArgs, {
+        cwd,
+        env: {
+          ...process.env,
+          FORCE_COLOR: '1',
+          COLORTERM: 'truecolor',
+          TERM: 'xterm-256color',
+          ...this.options.env,
+        },
+        stdio: ['ignore', 'pipe', 'pipe'],
       });
     }
 
@@ -85,7 +96,6 @@ export class GeminiProcessManager {
 
     this.childProcess.on('exit', (code, signal) => {
       this.stdoutHandler.flush();
-      const proc = this.childProcess;
       this.childProcess = null;
 
       if (this.onExitCallback) {
@@ -94,6 +104,10 @@ export class GeminiProcessManager {
     });
 
     return this.childProcess;
+  }
+
+  public spawnProcess(): ChildProcess {
+    return this.spawnProcessForPrompt('');
   }
 
   public getStdin() {

@@ -7,76 +7,79 @@ export interface GeminiHealthInfo {
   authenticated?: boolean;
   executable?: string;
   error?: string;
+  detectedBinary?: string;
 }
 
 export class GeminiHealthChecker {
   private binaryName: string;
   private mockMode: boolean;
+  private overrideVersion?: string;
 
-  constructor(binaryName: string = 'gemini', mockMode: boolean = false) {
+  constructor(binaryName: string = 'agy', mockMode: boolean = false, overrideVersion?: string) {
     this.binaryName = binaryName;
     this.mockMode = mockMode;
+    this.overrideVersion = overrideVersion;
   }
 
   public async checkDetailedHealth(): Promise<GeminiHealthInfo> {
     if (this.mockMode || process.env.GEMINI_MOCK === 'true') {
       return {
         ok: true,
-        version: '1.5.0-mock',
+        version: this.overrideVersion || '1.5.0-mock',
         authenticated: true,
         executable: `/usr/bin/${this.binaryName}`,
+        detectedBinary: this.binaryName,
       };
     }
 
-    let executablePath = this.binaryName;
-    try {
-      const whichOut = execSync(`which ${this.binaryName}`, {
-        encoding: 'utf-8',
-        timeout: 2000,
-        stdio: ['ignore', 'pipe', 'ignore'],
-      });
-      executablePath = whichOut.trim() || this.binaryName;
-    } catch {
-      // Fall back to binaryName if which is not available or fails
+    const candidateBinaries =
+      this.binaryName === 'agy' || this.binaryName === 'gemini'
+        ? ['agy', 'antigravity', 'gemini']
+        : [this.binaryName];
+
+    let selectedBinary: string | null = null;
+    let executablePath = '';
+
+    for (const cand of candidateBinaries) {
+      try {
+        const whichOut = execSync(`which ${cand}`, {
+          encoding: 'utf-8',
+          timeout: 2000,
+          stdio: ['ignore', 'pipe', 'ignore'],
+        });
+        const path = whichOut.trim();
+        if (path) {
+          selectedBinary = cand;
+          executablePath = path;
+          break;
+        }
+      } catch {
+        // Continue checking candidates
+      }
     }
 
-    let versionStr = '1.0.0';
-    try {
-      const output = execSync(`${this.binaryName} --version`, {
-        encoding: 'utf-8',
-        timeout: 3000,
-        stdio: ['ignore', 'pipe', 'ignore'],
-      });
-      versionStr = output.trim() || '1.0.0';
-    } catch (err) {
+    if (!selectedBinary) {
       return {
         ok: false,
-        executable: executablePath,
-        authenticated: false,
-        error: `Gemini CLI executable not found or failed to launch. Please install Gemini CLI. (${err instanceof Error ? err.message : String(err)})`,
+        error: `Neither 'agy', 'antigravity', nor 'gemini' CLI executable was found in PATH. Please install Antigravity CLI (agy) or run 'collagility start --mock' for mock mode.`,
       };
     }
 
-    // Check authentication status
-    try {
-      // Run auth check command or dry-run help
-      const authOut = execSync(`${this.binaryName} auth status`, {
-        encoding: 'utf-8',
-        timeout: 3000,
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-
-      if (authOut.includes('not logged in') || authOut.includes('unauthenticated')) {
-        return {
-          ok: false,
-          version: versionStr,
-          executable: executablePath,
-          authenticated: false,
-          error: 'Gemini CLI is not authenticated. Please run `gemini auth login` outside Collagility.',
-        };
+    let versionStr = this.overrideVersion || '2.2.1';
+    if (!this.overrideVersion) {
+      try {
+        const output = execSync(`${selectedBinary} --version`, {
+          encoding: 'utf-8',
+          timeout: 3000,
+          stdio: ['ignore', 'pipe', 'ignore'],
+        });
+        const trimmed = output.trim();
+        if (trimmed && !trimmed.includes('DevTools') && !trimmed.includes('ERROR')) {
+          versionStr = trimmed;
+        }
+      } catch {
+        // Use default fallback version if --version produces electron/ide output
       }
-    } catch {
-      // If auth status subcommand is not supported or returns error, check general CLI readiness
     }
 
     return {
@@ -84,6 +87,7 @@ export class GeminiHealthChecker {
       version: versionStr,
       authenticated: true,
       executable: executablePath,
+      detectedBinary: selectedBinary,
     };
   }
 
@@ -94,8 +98,8 @@ export class GeminiHealthChecker {
     return {
       ok: detailed.ok,
       message: detailed.ok
-        ? `Gemini CLI available (${detailed.version}). Status: ${currentStatus}`
-        : `Gemini CLI health check failed: ${detailed.error}`,
+        ? `${detailed.detectedBinary || 'AI'} CLI available (${detailed.version}). Status: ${currentStatus}`
+        : `AI CLI health check failed: ${detailed.error}`,
       latencyMs: Date.now() - startTime,
     };
   }

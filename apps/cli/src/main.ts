@@ -23,12 +23,18 @@ export function createProgram(): Command {
   program
     .command('start')
     .description('Create and host a new realtime collaboration session')
-    .action(async () => {
+    .option('-c, --cli <binary>', 'Specify AI CLI executable name or path (e.g., antigravity, gemini)')
+    .option('--cli-version <ver>', 'Specify or override AI CLI version')
+    .option('-m, --mock', 'Run in mock AI mode without spawning real CLI process')
+    .action(async (cmdOpts) => {
       const opts = program.opts();
       const config = createConfig({
         serverUrl: opts.server,
         verbose: opts.verbose,
         autoReconnect: opts.reconnect,
+        cliBinary: cmdOpts.cli,
+        cliVersion: cmdOpts.cliVersion,
+        mockMode: cmdOpts.mock,
       });
       await startCommand(config);
     });

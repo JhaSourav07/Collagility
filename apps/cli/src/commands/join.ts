@@ -28,7 +28,7 @@ export async function joinCommand(targetSessionId: string, options: Partial<CLIC
         console.log(renderMemberList(members, ownerId));
         logger.info(colors.dim('Connected to multiplayer workspace. Observing AI stream. (Type a message and press Enter to chat)\n'));
 
-        chatPrompt = new ChatPrompt(client);
+        chatPrompt = new ChatPrompt(client, isOwner);
         chatPrompt.start();
       },
 
@@ -129,6 +129,10 @@ export async function joinCommand(targetSessionId: string, options: Partial<CLIC
     process.on('SIGTERM', handleExit);
   } catch (error) {
     logger.error('Failed to join session', error);
+    console.log(colors.dim('\nTip: Is the Collagility server running?'));
+    console.log(colors.cyan('  Start the server in another terminal:'));
+    console.log(colors.bold('  $ collagility server start'));
+    console.log(colors.dim('  or: pnpm --filter @collagility/server start\n'));
     process.exit(1);
   }
 }

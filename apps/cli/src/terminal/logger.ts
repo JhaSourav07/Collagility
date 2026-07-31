@@ -24,9 +24,10 @@ export class CLILogger {
   }
 
   public error(message: string, error?: unknown): void {
-    console.error(`${colors.symbolError} ${colors.error(message)}`);
-    if (error && this.verboseEnabled) {
-      console.error(colors.dim(error instanceof Error ? error.stack || error.message : String(error)));
+    const detail = error ? `: ${error instanceof Error ? error.message : String(error)}` : '';
+    console.error(`${colors.symbolError} ${colors.error(message + detail)}`);
+    if (error && error instanceof Error && error.stack && this.verboseEnabled) {
+      console.error(colors.dim(error.stack));
     }
   }
 

@@ -1,14 +1,21 @@
 import readline from 'node:readline';
 import type { WebSocketClient } from '../client/ws-client.js';
 import { parseCLIInput } from './command-parser.js';
+import { TerminalRenderer } from './renderer.js';
 
 export class ChatPrompt {
   private rl: readline.Interface | null = null;
   private client: WebSocketClient;
+  private isOwner: boolean;
   private active = false;
 
-  constructor(client: WebSocketClient) {
+  constructor(client: WebSocketClient, isOwner: boolean = true) {
     this.client = client;
+    this.isOwner = isOwner;
+  }
+
+  public setIsOwner(isOwner: boolean): void {
+    this.isOwner = isOwner;
   }
 
   public start(): void {
@@ -27,7 +34,11 @@ export class ChatPrompt {
       const parsed = parseCLIInput(line);
       try {
         if (parsed.type === 'ai') {
-          this.client.sendAIPrompt(parsed.prompt, parsed.adapterName);
+          if (!this.isOwner) {
+            this.printAbovePrompt(TerminalRenderer.renderSystemMessage('Only the session owner may invoke AI.'));
+          } else {
+            this.client.sendAIPrompt(parsed.prompt, parsed.adapterName);
+          }
         } else if (parsed.text.length > 0) {
           this.client.sendChatMessage(parsed.text);
         }
@@ -58,10 +69,10 @@ export class ChatPrompt {
   }
 
   public close(): void {
-    this.active = false;
     if (this.rl) {
       this.rl.close();
       this.rl = null;
     }
+    this.active = false;
   }
 }

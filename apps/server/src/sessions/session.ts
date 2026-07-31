@@ -7,6 +7,7 @@ export interface Session {
   createdAt: Date;
   updatedAt: Date;
   status: SessionStatus;
+  workspacePath: string;
   metadata: Record<string, unknown>;
 }
 
@@ -17,6 +18,7 @@ export interface SessionDTO {
   createdAt: number;
   updatedAt: number;
   status: SessionStatus;
+  workspacePath: string;
   metadata: Record<string, unknown>;
 }
 
@@ -28,6 +30,7 @@ export function toSessionDTO(session: Session): SessionDTO {
     createdAt: session.createdAt.getTime(),
     updatedAt: session.updatedAt.getTime(),
     status: session.status,
+    workspacePath: session.workspacePath || String(session.metadata?.['workspacePath'] || session.metadata?.['cwd'] || process.cwd()),
     metadata: session.metadata,
   };
 }

@@ -8,8 +8,10 @@ export const colors = {
   error: chalk.red,
   dim: chalk.gray,
   bold: chalk.bold,
+  italic: chalk.italic,
   cyan: chalk.cyan,
   green: chalk.green,
+  magenta: chalk.magenta,
   highlight: chalk.bgCyan.black.bold,
   code: chalk.yellow.bold,
   symbolSuccess: chalk.green('✔'),
@@ -18,4 +20,51 @@ export const colors = {
   symbolWarning: chalk.yellow('⚠'),
   badgeOwner: chalk.bgYellow.black.bold(' OWNER '),
   badgeMember: chalk.bgBlue.white.bold(' MEMBER '),
+  badgeAI: chalk.bgCyan.black.bold(' AI AGENT '),
+
+  // Provider-specific styling
+  aiStyles: {
+    gemini: {
+      badge: chalk.bgCyan.black.bold(' 🤖 GEMINI '),
+      title: chalk.cyan.bold,
+      thinking: chalk.cyan.italic.dim,
+      text: chalk.cyanBright,
+      border: chalk.cyan,
+    },
+    agi: {
+      badge: chalk.bgCyan.black.bold(' 🤖 ANTIGRAVITY '),
+      title: chalk.cyan.bold,
+      thinking: chalk.cyan.italic.dim,
+      text: chalk.cyanBright,
+      border: chalk.cyan,
+    },
+    antigravity: {
+      badge: chalk.bgCyan.black.bold(' 🤖 ANTIGRAVITY '),
+      title: chalk.cyan.bold,
+      thinking: chalk.cyan.italic.dim,
+      text: chalk.cyanBright,
+      border: chalk.cyan,
+    },
+    claude: {
+      badge: chalk.bgMagenta.white.bold(' 🧠 CLAUDE '),
+      title: chalk.magenta.bold,
+      thinking: chalk.magenta.italic.dim,
+      text: chalk.magentaBright,
+      border: chalk.magenta,
+    },
+    codex: {
+      badge: chalk.bgGreen.black.bold(' ⚡ CODEX '),
+      title: chalk.green.bold,
+      thinking: chalk.green.italic.dim,
+      text: chalk.greenBright,
+      border: chalk.green,
+    },
+    default: {
+      badge: chalk.bgBlue.white.bold(' 🤖 AI '),
+      title: chalk.blue.bold,
+      thinking: chalk.blue.italic.dim,
+      text: chalk.blueBright,
+      border: chalk.blue,
+    },
+  },
 };

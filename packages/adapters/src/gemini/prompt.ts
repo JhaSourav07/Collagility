@@ -24,20 +24,23 @@ export class GeminiPromptHandler {
   public sendPromptToStream(
     stdinStream: Writable | null,
     prompt: string,
-    timeoutMs: number = 30000
+    timeoutMs: number = 0
   ): Promise<string> {
     if (this.activePrompt) {
       return Promise.reject(new Error('Another prompt is currently being processed by Gemini adapter'));
     }
 
     return new Promise<string>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        if (this.activePrompt) {
-          const current = this.activePrompt;
-          this.activePrompt = null;
-          current.reject(new AdapterTimeoutError(this.adapterName, timeoutMs));
-        }
-      }, timeoutMs);
+      const timer =
+        timeoutMs > 0
+          ? setTimeout(() => {
+              if (this.activePrompt) {
+                const current = this.activePrompt;
+                this.activePrompt = null;
+                current.reject(new AdapterTimeoutError(this.adapterName, timeoutMs));
+              }
+            }, timeoutMs)
+          : null;
 
       this.activePrompt = {
         prompt,
@@ -61,34 +64,26 @@ export class GeminiPromptHandler {
     }
   }
 
-  public completeActivePrompt(finalResponse?: string): void {
+  public completeActivePrompt(): void {
     if (this.activePrompt) {
-      const current = this.activePrompt;
+      if (this.activePrompt.timeoutTimer) {
+        clearTimeout(this.activePrompt.timeoutTimer);
+      }
+      const fullResponse = this.activePrompt.accumulatedOutput.join('');
+      const resolve = this.activePrompt.resolve;
       this.activePrompt = null;
-      if (current.timeoutTimer) clearTimeout(current.timeoutTimer);
-
-      const response = finalResponse ?? current.accumulatedOutput.join('\n').trim();
-      current.resolve(response);
+      resolve(fullResponse);
     }
   }
 
-  public cancelActivePrompt(reason: string = 'Prompt cancelled'): void {
+  public cancelActivePrompt(reason = 'Prompt processing cancelled'): void {
     if (this.activePrompt) {
-      const current = this.activePrompt;
+      if (this.activePrompt.timeoutTimer) {
+        clearTimeout(this.activePrompt.timeoutTimer);
+      }
+      const reject = this.activePrompt.reject;
       this.activePrompt = null;
-      if (current.timeoutTimer) clearTimeout(current.timeoutTimer);
-
-      current.reject(new AdapterCancellationError(this.adapterName, reason));
-    }
-  }
-
-  public failActivePrompt(error: Error): void {
-    if (this.activePrompt) {
-      const current = this.activePrompt;
-      this.activePrompt = null;
-      if (current.timeoutTimer) clearTimeout(current.timeoutTimer);
-
-      current.reject(error);
+      reject(new AdapterCancellationError(this.adapterName, reason));
     }
   }
 }

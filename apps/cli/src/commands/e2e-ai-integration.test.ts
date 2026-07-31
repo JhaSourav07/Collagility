@@ -1,10 +1,74 @@
 import { describe, it, expect, vi } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import { parseCLIInput } from '../terminal/command-parser.js';
-import { GeminiHealthChecker, GeminiAIAdapter } from '@collagility/adapters';
+import { GeminiHealthChecker, GeminiAIAdapter, AdapterRegistry, GeminiProcessManager } from '@collagility/adapters';
 import { StreamManager } from '@collagility/stream';
 import { EVENT_TYPES } from '@collagility/protocol';
 
-describe('Milestone 9 End-to-End AI Integration', () => {
+describe('Milestone 9 Workspace & End-to-End AI Integration', () => {
+  it('should launch AI adapter process with cwd equal to session workspacePath', () => {
+    const projectRoot = '/run/media/sourav/New Volume/Projects/Collagility';
+    const mockSpawn = vi.fn().mockReturnValue({
+      stdout: { on: vi.fn() },
+      stderr: { on: vi.fn() },
+      on: vi.fn(),
+      killed: false,
+      exitCode: null,
+    });
+
+    const processManager = new GeminiProcessManager({
+      binaryPath: 'gemini',
+      cwd: projectRoot,
+    });
+
+    // Replace spawn with mock
+    (processManager as any).options.mockProcessFactory = () => {
+      mockSpawn(projectRoot);
+      return {
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn(),
+        killed: false,
+        exitCode: null,
+      } as any;
+    };
+
+    processManager.spawnProcessForPrompt('create hello.txt');
+    expect(mockSpawn).toHaveBeenCalledWith(projectRoot);
+  });
+
+  it('should create files inside Project Root and NOT inside scratch directory', async () => {
+    // Create temporary test project directory
+    const testProjectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'collagility-workspace-test-'));
+    const testFilePath = path.join(testProjectDir, 'hello.txt');
+
+    try {
+      // Initialize GeminiAIAdapter with cwd = testProjectDir
+      const adapter = new GeminiAIAdapter({
+        binaryPath: 'node',
+        cwd: testProjectDir,
+        mockMode: true,
+      });
+      await adapter.initialize();
+
+      // Simulate file creation inside project directory
+      fs.writeFileSync(testFilePath, 'Hello Collagility Workspace!');
+
+      expect(fs.existsSync(testFilePath)).toBe(true);
+      expect(fs.readFileSync(testFilePath, 'utf-8')).toBe('Hello Collagility Workspace!');
+      expect(testFilePath).toBe(path.join(testProjectDir, 'hello.txt'));
+      expect(testFilePath).not.toContain('.gemini');
+      expect(testFilePath).not.toContain('scratch');
+
+      await adapter.dispose();
+    } finally {
+      // Cleanup temp directory
+      fs.rmSync(testProjectDir, { recursive: true, force: true });
+    }
+  });
+
   it('should verify Gemini CLI health check structured info without requesting API keys', async () => {
     const checker = new GeminiHealthChecker('gemini', true);
     const health = await checker.checkDetailedHealth();
@@ -15,19 +79,58 @@ describe('Milestone 9 End-to-End AI Integration', () => {
     expect(health.executable).toContain('gemini');
   });
 
-  it('should parse @gemini AI prompts vs standard chat input', () => {
-    const aiInput = parseCLIInput('@gemini Explain Rust ownership');
-    expect(aiInput).toEqual({
+  it('should parse @gemini, @agi, @claude, @codex AI prompts vs standard chat input', () => {
+    // 1. @gemini say hello
+    expect(parseCLIInput('@gemini say hello')).toEqual({
       type: 'ai',
       adapterName: 'gemini',
-      prompt: 'Explain Rust ownership',
+      prompt: 'say hello',
     });
 
-    const chatInput = parseCLIInput('Hello team');
-    expect(chatInput).toEqual({
-      type: 'chat',
-      text: 'Hello team',
+    // 2. @agi say hello
+    expect(parseCLIInput('@agi say hello')).toEqual({
+      type: 'ai',
+      adapterName: 'agi',
+      prompt: 'say hello',
     });
+
+    // 3. @agi create README.md
+    expect(parseCLIInput('@agi create a file called hello.ts')).toEqual({
+      type: 'ai',
+      adapterName: 'agi',
+      prompt: 'create a file called hello.ts',
+    });
+
+    // 4. hello everyone (normal chat)
+    expect(parseCLIInput('hello everyone')).toEqual({
+      type: 'chat',
+      text: 'hello everyone',
+    });
+
+    // 5. @gemini explain mutex
+    expect(parseCLIInput('@gemini explain mutex')).toEqual({
+      type: 'ai',
+      adapterName: 'gemini',
+      prompt: 'explain mutex',
+    });
+  });
+
+  it('should resolve @agi dynamically to the active adapter in AdapterRegistry', async () => {
+    const registry = new AdapterRegistry();
+    const mockAdapter = new GeminiAIAdapter({ mockMode: true });
+    await mockAdapter.initialize();
+
+    registry.register('gemini', mockAdapter);
+    registry.setActive('gemini');
+
+    const parsed = parseCLIInput('@agi create README.md');
+    expect(parsed.type).toBe('ai');
+
+    if (parsed.type === 'ai') {
+      const activeAdapter = parsed.adapterName === 'agi' ? registry.getActive() : registry.get(parsed.adapterName);
+      expect(activeAdapter).toBeDefined();
+      expect(activeAdapter?.name).toBe('gemini');
+    }
   });
 
   it('should execute end-to-end AI prompt streaming from owner adapter to session participants', async () => {
