@@ -32,3 +32,40 @@ export interface ErrorPayload {
   code?: string;
   details?: unknown;
 }
+
+// AI Event Payloads (Milestone 6)
+export interface AIPromptPayload {
+  prompt: string;
+  context?: Record<string, unknown>;
+}
+
+export interface AIStatusPayload {
+  adapterName: string;
+  status: 'uninitialized' | 'initializing' | 'ready' | 'processing' | 'cancelled' | 'failed' | 'stopped';
+  message?: string;
+}
+
+export interface AICompletedPayload {
+  adapterName: string;
+  response: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AIFAILEDPayload {
+  adapterName: string;
+  error: string;
+  code?: string;
+}
+
+export interface AICancelledPayload {
+  adapterName: string;
+  reason?: string;
+}
+
+export interface AIChunkPayload {
+  adapterName: string;
+  messageId: string;
+  chunkIndex: number;
+  content: string;
+  isFinal: boolean;
+}

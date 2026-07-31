@@ -1,6 +1,18 @@
 import crypto from 'node:crypto';
 import { CURRENT_PROTOCOL_VERSION, EVENT_TYPES } from './constants.js';
-import type { EventEnvelope, EventSender, ChatMessagePayload, ChatSystemPayload, ErrorPayload } from './types.js';
+import type {
+  EventEnvelope,
+  EventSender,
+  ChatMessagePayload,
+  ChatSystemPayload,
+  ErrorPayload,
+  AIPromptPayload,
+  AIStatusPayload,
+  AICompletedPayload,
+  AIFAILEDPayload,
+  AICancelledPayload,
+  AIChunkPayload,
+} from './types.js';
 
 export function createEnvelope<T>(
   type: string,
@@ -46,4 +58,82 @@ export function createChatSystemEvent(
 
 export function createErrorEvent(error: string, code?: string, sessionId?: string): EventEnvelope<ErrorPayload> {
   return createEnvelope(EVENT_TYPES.ERROR, { error, code }, { sessionId });
+}
+
+// AI Event Factories (Milestone 6)
+export function createAIStartedEvent(adapterName: string, sessionId?: string): EventEnvelope<AIStatusPayload> {
+  return createEnvelope(
+    EVENT_TYPES.AI_STARTED,
+    { adapterName, status: 'initializing' },
+    { sender: { id: adapterName, name: adapterName, role: 'ai' }, sessionId }
+  );
+}
+
+export function createAIReadyEvent(adapterName: string, sessionId?: string): EventEnvelope<AIStatusPayload> {
+  return createEnvelope(
+    EVENT_TYPES.AI_READY,
+    { adapterName, status: 'ready' },
+    { sender: { id: adapterName, name: adapterName, role: 'ai' }, sessionId }
+  );
+}
+
+export function createAIPromptEvent(
+  prompt: string,
+  context?: Record<string, unknown>,
+  sessionId?: string
+): EventEnvelope<AIPromptPayload> {
+  return createEnvelope(EVENT_TYPES.AI_PROMPT, { prompt, context }, { sessionId });
+}
+
+export function createAICompletedEvent(
+  adapterName: string,
+  response: string,
+  metadata?: Record<string, unknown>,
+  sessionId?: string
+): EventEnvelope<AICompletedPayload> {
+  return createEnvelope(
+    EVENT_TYPES.AI_COMPLETED,
+    { adapterName, response, metadata },
+    { sender: { id: adapterName, name: adapterName, role: 'ai' }, sessionId }
+  );
+}
+
+export function createAIFailedEvent(
+  adapterName: string,
+  error: string,
+  code?: string,
+  sessionId?: string
+): EventEnvelope<AIFAILEDPayload> {
+  return createEnvelope(
+    EVENT_TYPES.AI_FAILED,
+    { adapterName, error, code },
+    { sender: { id: adapterName, name: adapterName, role: 'ai' }, sessionId }
+  );
+}
+
+export function createAICancelledEvent(
+  adapterName: string,
+  reason?: string,
+  sessionId?: string
+): EventEnvelope<AICancelledPayload> {
+  return createEnvelope(
+    EVENT_TYPES.AI_CANCELLED,
+    { adapterName, reason },
+    { sender: { id: adapterName, name: adapterName, role: 'ai' }, sessionId }
+  );
+}
+
+export function createAIChunkEvent(
+  adapterName: string,
+  messageId: string,
+  chunkIndex: number,
+  content: string,
+  isFinal: boolean,
+  sessionId?: string
+): EventEnvelope<AIChunkPayload> {
+  return createEnvelope(
+    EVENT_TYPES.AI_CHUNK,
+    { adapterName, messageId, chunkIndex, content, isFinal },
+    { sender: { id: adapterName, name: adapterName, role: 'ai' }, sessionId }
+  );
 }

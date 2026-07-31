@@ -18,6 +18,17 @@ export const EVENT_TYPES = {
   HEARTBEAT: 'heartbeat',
   ERROR: 'error',
   UNKNOWN: 'unknown',
+
+  // AI Adapter Event Types (Milestone 6)
+  AI_STARTED: 'ai.started',
+  AI_READY: 'ai.ready',
+  AI_PROMPT: 'ai.prompt',
+  AI_CHUNK: 'ai.chunk',
+  AI_COMPLETED: 'ai.completed',
+  AI_CANCELLED: 'ai.cancelled',
+  AI_FAILED: 'ai.failed',
+  AI_STATUS: 'ai.status',
+  AI_ERROR: 'ai.error',
 } as const;
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES] | (string & {});
