@@ -17,6 +17,7 @@
     "clean": "rimraf dist *.tsbuildinfo"
   },
   "dependencies": {
+    "@collagility/adapters": "workspace:*",
     "@collagility/protocol": "workspace:*",
     "@collagility/sdk": "workspace:*",
     "@collagility/stream": "workspace:*",

@@ -11,13 +11,14 @@ import {
 } from '@collagility/protocol';
 import { AdapterExecutionError } from '../base/errors.js';
 
-import { GeminiHealthChecker } from './health.js';
+import { GeminiHealthChecker, type GeminiHealthInfo } from './health.js';
 import { GeminiLifecycleManager } from './lifecycle.js';
 import { GeminiOutputParser } from './parser.js';
 import { GeminiStdoutHandler } from './stdout.js';
 import { GeminiStderrHandler } from './stderr.js';
 import { GeminiPromptHandler } from './prompt.js';
 import { GeminiProcessManager, type ProcessOptions } from './gemini-process.js';
+export type { GeminiHealthInfo };
 
 export interface GeminiAdapterConfig {
   binaryPath?: string;
@@ -56,6 +57,10 @@ export class GeminiAIAdapter extends AIAdapter {
 
   public get status(): AdapterStatus {
     return this.lifecycleManager.status;
+  }
+
+  public async checkDetailedHealth(): Promise<GeminiHealthInfo> {
+    return this.healthChecker.checkDetailedHealth();
   }
 
   public async initialize(config: Record<string, unknown> = {}): Promise<void> {

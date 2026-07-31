@@ -4,6 +4,15 @@ import type { CLIConfig } from '../config/config.js';
 import { ReconnectHandler } from './reconnect.js';
 import type { ChatRenderMessage } from '../terminal/renderer.js';
 
+import type {
+  AIStreamStartedPayload,
+  AIStreamChunkPayload,
+  AIStreamCompletedPayload,
+  AIStreamCancelledPayload,
+  AIStreamFailedPayload,
+  AIStreamErrorPayload,
+} from '@collagility/protocol';
+
 export const IncomingFrameSchema = z.object({
   version: z.number().optional(),
   id: z.string().optional(),
@@ -31,6 +40,12 @@ export interface WSClientEvents {
   onSessionClosed?: (sessionId: string, reason: string) => void;
   onChatMessage?: (message: ChatRenderMessage) => void;
   onChatSystem?: (message: string) => void;
+  onStreamStarted?: (payload: AIStreamStartedPayload) => void;
+  onStreamChunk?: (payload: AIStreamChunkPayload) => void;
+  onStreamCompleted?: (payload: AIStreamCompletedPayload) => void;
+  onStreamCancelled?: (payload: AIStreamCancelledPayload) => void;
+  onStreamFailed?: (payload: AIStreamFailedPayload) => void;
+  onStreamError?: (payload: AIStreamErrorPayload) => void;
   onError?: (error: string, code?: string) => void;
   onDisconnect?: (reason: string) => void;
   onReconnecting?: (attempt: number, delayMs: number) => void;
@@ -192,6 +207,36 @@ export class WebSocketClient {
         break;
       }
 
+      case 'ai.stream.started': {
+        if (this.events.onStreamStarted) this.events.onStreamStarted(frame.payload as AIStreamStartedPayload);
+        break;
+      }
+
+      case 'ai.stream.chunk': {
+        if (this.events.onStreamChunk) this.events.onStreamChunk(frame.payload as AIStreamChunkPayload);
+        break;
+      }
+
+      case 'ai.stream.completed': {
+        if (this.events.onStreamCompleted) this.events.onStreamCompleted(frame.payload as AIStreamCompletedPayload);
+        break;
+      }
+
+      case 'ai.stream.cancelled': {
+        if (this.events.onStreamCancelled) this.events.onStreamCancelled(frame.payload as AIStreamCancelledPayload);
+        break;
+      }
+
+      case 'ai.stream.failed': {
+        if (this.events.onStreamFailed) this.events.onStreamFailed(frame.payload as AIStreamFailedPayload);
+        break;
+      }
+
+      case 'ai.stream.error': {
+        if (this.events.onStreamError) this.events.onStreamError(frame.payload as AIStreamErrorPayload);
+        break;
+      }
+
       case 'system.error':
       case 'session.error': {
         const payload = frame.payload as { error: string; code?: string };
@@ -211,6 +256,10 @@ export class WebSocketClient {
 
   public sendChatMessage(text: string): void {
     this.send('chat.message', { text });
+  }
+
+  public sendAIPrompt(prompt: string, adapterName = 'gemini'): void {
+    this.send('ai.stream.prompt', { prompt, adapterName });
   }
 
   public createSession(metadata?: Record<string, unknown>): void {

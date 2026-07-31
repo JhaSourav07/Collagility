@@ -4,6 +4,7 @@ export * from './base/errors.js';
 export * from './base/registry.js';
 export * from './mock/mock-adapter.js';
 export * from './gemini/gemini-adapter.js';
+export * from './gemini/health.js';
 export * from './claude/claude-adapter.js';
 export * from './codex/codex-adapter.js';
 export * from './aider/aider-adapter.js';

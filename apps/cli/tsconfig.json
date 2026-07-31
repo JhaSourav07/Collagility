@@ -11,6 +11,7 @@
     { "path": "../../packages/types" },
     { "path": "../../packages/protocol" },
     { "path": "../../packages/sdk" },
+    { "path": "../../packages/adapters" },
     { "path": "../../packages/stream" }
   ],
   "include": ["src/**/*"],

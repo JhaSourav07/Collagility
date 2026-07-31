@@ -1,5 +1,6 @@
 import readline from 'node:readline';
 import type { WebSocketClient } from '../client/ws-client.js';
+import { parseCLIInput } from './command-parser.js';
 
 export class ChatPrompt {
   private rl: readline.Interface | null = null;
@@ -23,14 +24,17 @@ export class ChatPrompt {
     this.rl.prompt();
 
     this.rl.on('line', (line: string) => {
-      const trimmed = line.trim();
-      if (trimmed.length > 0) {
-        try {
-          this.client.sendChatMessage(trimmed);
-        } catch {
-          // Ignore send errors on prompt
+      const parsed = parseCLIInput(line);
+      try {
+        if (parsed.type === 'ai') {
+          this.client.sendAIPrompt(parsed.prompt, parsed.adapterName);
+        } else if (parsed.text.length > 0) {
+          this.client.sendChatMessage(parsed.text);
         }
+      } catch {
+        // Ignore send errors on prompt
       }
+
       if (this.active && this.rl) {
         this.rl.prompt();
       }
