@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import chalk from 'chalk';
 
@@ -27,7 +28,10 @@ export function createCliProgram() {
   return program;
 }
 
-if (process.env['NODE_ENV'] !== 'test' && import.meta.url === `file://${process.argv[1]}`) {
-  const program = createCliProgram();
-  program.parse(process.argv);
+if (process.env['NODE_ENV'] !== 'test') {
+  const currentFilePath = fileURLToPath(import.meta.url);
+  if (process.argv[1] && (process.argv[1] === currentFilePath || process.argv[1].endsWith('index.js'))) {
+    const program = createCliProgram();
+    program.parse(process.argv);
+  }
 }

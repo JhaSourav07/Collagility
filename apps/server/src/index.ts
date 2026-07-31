@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { buildServer } from './server.js';
 import { logger } from './logger/logger.js';
 
@@ -38,6 +39,9 @@ async function main() {
   }
 }
 
-if (process.env['NODE_ENV'] !== 'test' && import.meta.url === `file://${process.argv[1]}`) {
-  main();
+if (process.env['NODE_ENV'] !== 'test') {
+  const currentFilePath = fileURLToPath(import.meta.url);
+  if (process.argv[1] && (process.argv[1] === currentFilePath || process.argv[1].endsWith('index.js'))) {
+    main();
+  }
 }
