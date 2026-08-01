@@ -56,6 +56,9 @@ importers:
       '@collagility/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
+      '@collagility/server':
+        specifier: workspace:*
+        version: link:../server
       '@collagility/stream':
         specifier: workspace:*
         version: link:../../packages/stream

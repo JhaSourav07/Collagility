@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { buildServer } from '@collagility/server';
 import type { CLIConfig } from '../config/config.js';
 import { CLILogger } from '../terminal/logger.js';
 import { colors } from '../terminal/colors.js';
@@ -29,7 +29,7 @@ export async function serverCommand(action: 'start' | 'status', options: Partial
       }
     } catch {
       logger.error(
-        `Server is unreachable at '${httpUrl}'. Start it with 'collagility server start' or 'pnpm --filter @collagility/server start'`
+        `Server is unreachable at '${httpUrl}'. Start it with 'collagility server start'`
       );
     }
     return;
@@ -38,16 +38,44 @@ export async function serverCommand(action: 'start' | 'status', options: Partial
   if (action === 'start') {
     logger.info('Starting local Collagility Realtime Server instance...');
     try {
-      const child = spawn('pnpm', ['--filter', '@collagility/server', 'start'], {
-        stdio: 'inherit',
-        shell: true,
-      });
+      let port = 8080;
+      let host = '0.0.0.0';
 
-      child.on('error', (err) => {
-        logger.error('Failed to spawn server process', err);
-      });
+      if (process.env['PORT']) {
+        port = Number(process.env['PORT']);
+      } else if (options.httpUrl) {
+        try {
+          const parsed = new URL(options.httpUrl);
+          if (parsed.port) port = Number(parsed.port);
+          if (parsed.hostname) host = parsed.hostname;
+        } catch {
+          // ignore URL parse errors, fallback to default
+        }
+      }
+      if (process.env['HOST']) {
+        host = process.env['HOST'];
+      }
+
+      const server = buildServer();
+      const address = await server.listen(port, host);
+      logger.success(`Collagility Server listening at ${colors.cyan(address)}`);
+
+      const shutdown = async (signal: string) => {
+        logger.info(`Received ${signal}, shutting down server gracefully...`);
+        try {
+          await server.close();
+          process.exit(0);
+        } catch (err) {
+          logger.error('Error during server shutdown', err);
+          process.exit(1);
+        }
+      };
+
+      process.on('SIGINT', () => shutdown('SIGINT'));
+      process.on('SIGTERM', () => shutdown('SIGTERM'));
     } catch (error) {
       logger.error('Failed to start local server instance', error);
     }
   }
 }
+

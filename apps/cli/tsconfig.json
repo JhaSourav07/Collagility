@@ -12,7 +12,8 @@
     { "path": "../../packages/protocol" },
     { "path": "../../packages/sdk" },
     { "path": "../../packages/adapters" },
-    { "path": "../../packages/stream" }
+    { "path": "../../packages/stream" },
+    { "path": "../server" }
   ],
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]

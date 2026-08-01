@@ -22,6 +22,7 @@
     "@collagility/adapters": "workspace:*",
     "@collagility/protocol": "workspace:*",
     "@collagility/sdk": "workspace:*",
+    "@collagility/server": "workspace:*",
     "@collagility/stream": "workspace:*",
     "@collagility/types": "workspace:*",
     "chalk": "^5.4.1",
