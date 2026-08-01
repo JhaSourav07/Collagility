@@ -39,6 +39,11 @@ export const EVENT_TYPES = {
   AI_STREAM_FAILED: 'ai.stream.failed',
   AI_STREAM_TIMEOUT: 'ai.stream.timeout',
   AI_STREAM_ERROR: 'ai.stream.error',
+
+  // PTY Event Types
+  PTY_OUTPUT: 'pty.output',
+  PTY_RESIZE: 'pty.resize',
+  PTY_INPUT: 'pty.input',
 } as const;
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES] | (string & {});

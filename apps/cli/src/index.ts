@@ -5,6 +5,8 @@ import { main } from './main.js';
 export { createProgram } from './main.js';
 export { WebSocketClient } from './client/ws-client.js';
 export { ReconnectHandler } from './client/reconnect.js';
+export { SplitTerminalRenderer } from './terminal/split-pane-renderer.js';
+
 
 if (process.env['NODE_ENV'] !== 'test') {
   main();

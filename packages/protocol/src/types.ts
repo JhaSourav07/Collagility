@@ -136,3 +136,21 @@ export interface AIStreamErrorPayload {
   error: string;
   code?: string;
 }
+
+export interface PTYOutputPayload {
+  streamId: string;
+  adapterName: string;
+  data: string;
+}
+
+export interface PTYResizePayload {
+  streamId: string;
+  cols: number;
+  rows: number;
+}
+
+export interface PTYInputPayload {
+  streamId: string;
+  data: string;
+}
+
