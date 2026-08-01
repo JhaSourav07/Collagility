@@ -43,9 +43,15 @@ async function main() {
 }
 
 if (process.env['NODE_ENV'] !== 'test') {
-  const isDirectRun = Boolean(process.argv[1] && process.argv[1].endsWith('index.js'));
+  const isDirectRun = Boolean(
+    process.argv[1] &&
+      (process.argv[1].endsWith('apps/server/dist/index.js') ||
+        process.argv[1].endsWith('@collagility/server/dist/index.js') ||
+        (process.argv[1].endsWith('index.js') && !process.argv[1].includes('cli')))
+  );
   if (isDirectRun) {
     main();
   }
 }
+
 
