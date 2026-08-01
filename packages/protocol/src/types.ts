@@ -154,3 +154,91 @@ export interface PTYInputPayload {
   data: string;
 }
 
+// Interactive AI Event Payloads
+export interface AIQuestionPayload {
+  questionId: string;
+  streamId: string;
+  prompt: string;
+  options?: string[];
+  defaultOption?: string;
+}
+
+export interface AIAnswerPayload {
+  questionId: string;
+  streamId: string;
+  answer: string;
+}
+
+export interface AIPlanPayload {
+  planId: string;
+  streamId: string;
+  title: string;
+  steps: string[];
+  requiresApproval?: boolean;
+}
+
+export interface AIPlanApprovePayload {
+  planId: string;
+  streamId: string;
+}
+
+export interface AIPlanRejectPayload {
+  planId: string;
+  streamId: string;
+  reason?: string;
+}
+
+export interface AISelectionPayload {
+  selectionId: string;
+  streamId: string;
+  title: string;
+  options: Array<{ key: string; label: string }>;
+}
+
+export interface AISelectionResponsePayload {
+  selectionId: string;
+  streamId: string;
+  selectedKey: string;
+}
+
+export interface AIConfirmationPayload {
+  confirmationId: string;
+  streamId: string;
+  prompt: string;
+  defaultValue?: boolean;
+}
+
+export interface AIConfirmationResponsePayload {
+  confirmationId: string;
+  streamId: string;
+  approved: boolean;
+}
+
+export interface AIToolRequestPayload {
+  toolId: string;
+  streamId: string;
+  toolName: string;
+  args?: Record<string, unknown>;
+}
+
+export interface AIToolApprovedPayload {
+  toolId: string;
+  streamId: string;
+}
+
+export interface AIToolRejectedPayload {
+  toolId: string;
+  streamId: string;
+  reason?: string;
+}
+
+export interface AIWaitingPayload {
+  streamId: string;
+  reason?: string;
+}
+
+export interface AIFinishedPayload {
+  streamId: string;
+  summary?: string;
+}
+

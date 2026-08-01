@@ -54,6 +54,10 @@ export class ClaudeAIAdapter extends AIAdapter {
     return evt;
   }
 
+  public async sendInput(text: string): Promise<void> {
+    this.emit('chunk' as any, `[Claude Input]: ${text}\n`);
+  }
+
   public async cancel(): Promise<void> {
     if (this._status === 'processing') {
       this._status = 'cancelled';

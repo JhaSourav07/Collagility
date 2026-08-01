@@ -2,7 +2,6 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { GeminiStdoutHandler } from './stdout.js';
 import { GeminiStderrHandler } from './stderr.js';
 import { GeminiLifecycleManager } from './lifecycle.js';
-import { AdapterExecutionError } from '../base/errors.js';
 
 export interface ProcessOptions {
   binaryPath?: string;
@@ -67,6 +66,7 @@ export class GeminiProcessManager {
         this.args.length > 0
           ? [...this.args, prompt]
           : ['--dangerously-skip-permissions', '--add-dir', cwd, '-p', prompt];
+
       this.childProcess = spawn(this.binaryPath, procArgs, {
         cwd,
         env: {
@@ -117,6 +117,7 @@ export class GeminiProcessManager {
   public killProcess(signal: NodeJS.Signals = 'SIGTERM'): void {
     if (this.childProcess && !this.childProcess.killed) {
       this.childProcess.kill(signal);
+      this.childProcess = null;
     }
   }
 }

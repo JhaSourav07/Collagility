@@ -22,45 +22,52 @@ export const colors = {
   badgeMember: chalk.bgBlue.white.bold(' MEMBER '),
   badgeAI: chalk.bgCyan.black.bold(' AI AGENT '),
 
-  // Provider-specific styling
+  // Provider-specific styling (Clean, Professional - No Emojis)
   aiStyles: {
     gemini: {
-      badge: chalk.bgCyan.black.bold(' 🤖 GEMINI '),
+      badge: chalk.bgCyan.black.bold(' GEMINI '),
       title: chalk.cyan.bold,
       thinking: chalk.cyan.italic.dim,
       text: chalk.cyanBright,
       border: chalk.cyan,
     },
     agi: {
-      badge: chalk.bgCyan.black.bold(' 🤖 ANTIGRAVITY '),
+      badge: chalk.bgCyan.black.bold(' ANTIGRAVITY '),
+      title: chalk.cyan.bold,
+      thinking: chalk.cyan.italic.dim,
+      text: chalk.cyanBright,
+      border: chalk.cyan,
+    },
+    agy: {
+      badge: chalk.bgCyan.black.bold(' ANTIGRAVITY '),
       title: chalk.cyan.bold,
       thinking: chalk.cyan.italic.dim,
       text: chalk.cyanBright,
       border: chalk.cyan,
     },
     antigravity: {
-      badge: chalk.bgCyan.black.bold(' 🤖 ANTIGRAVITY '),
+      badge: chalk.bgCyan.black.bold(' ANTIGRAVITY '),
       title: chalk.cyan.bold,
       thinking: chalk.cyan.italic.dim,
       text: chalk.cyanBright,
       border: chalk.cyan,
     },
     claude: {
-      badge: chalk.bgMagenta.white.bold(' 🧠 CLAUDE '),
+      badge: chalk.bgMagenta.white.bold(' CLAUDE '),
       title: chalk.magenta.bold,
       thinking: chalk.magenta.italic.dim,
       text: chalk.magentaBright,
       border: chalk.magenta,
     },
     codex: {
-      badge: chalk.bgGreen.black.bold(' ⚡ CODEX '),
+      badge: chalk.bgGreen.black.bold(' CODEX '),
       title: chalk.green.bold,
       thinking: chalk.green.italic.dim,
       text: chalk.greenBright,
       border: chalk.green,
     },
     default: {
-      badge: chalk.bgBlue.white.bold(' 🤖 AI '),
+      badge: chalk.bgBlue.white.bold(' AI '),
       title: chalk.blue.bold,
       thinking: chalk.blue.italic.dim,
       text: chalk.blueBright,

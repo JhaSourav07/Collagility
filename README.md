@@ -2,7 +2,7 @@
 
 > **The Multiplayer Terminal for AI Coding Agents**
 
-[![Release](https://img.shields.io/badge/version-v0.1.0--alpha.1-cyan.svg)](https://github.com/JhaSourav07/Collagility/releases)
+[![Release](https://img.shields.io/badge/version-v0.1.0--alpha.6-cyan.svg)](https://github.com/JhaSourav07/Collagility/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 
@@ -124,6 +124,7 @@ Inside an active session terminal:
 
 - [x] **v0.1.0-alpha.1 (done)**: Multiplayer WebSocket relay, AI stream chunking, `agy`/`gemini` CLI adapter, workspace execution, terminal renderer.
 - [x] **v0.1.0-alpha.2 (done)**: Multi-provider adapters (`claude`, `codex`, `aider`, `goose`), permissions guard, binary packager, and release CI workflow.
+- [x] **v0.1.0-alpha.6 (done)**: Professional terminal UI overhaul — collapsible AI thinking steps (`Ctrl+O`), inline code badges, rich tool-call formatting, agy banner suppression, no-emoji clean output.
 - [ ] **v0.2.0 (future)**: IDE extension integration (VS Code & Antigravity IDE plugin).
 - [ ] **v0.3.0 (future)**: Interactive co-driver permission approvals (peer code review for agent tool calls).
 - [ ] **v0.4.0 (future)**: Multi-agent consensus swarm routing and Redis cluster scaling.

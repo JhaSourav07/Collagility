@@ -44,6 +44,22 @@ export const EVENT_TYPES = {
   PTY_OUTPUT: 'pty.output',
   PTY_RESIZE: 'pty.resize',
   PTY_INPUT: 'pty.input',
+
+  // Interactive AI Agent Event Types
+  AI_QUESTION: 'ai.question',
+  AI_ANSWER: 'ai.answer',
+  AI_PLAN: 'ai.plan',
+  AI_PLAN_APPROVE: 'ai.plan.approve',
+  AI_PLAN_REJECT: 'ai.plan.reject',
+  AI_SELECTION: 'ai.selection',
+  AI_SELECTION_RESPONSE: 'ai.selection.response',
+  AI_CONFIRMATION: 'ai.confirmation',
+  AI_CONFIRMATION_RESPONSE: 'ai.confirmation.response',
+  AI_TOOL_REQUEST: 'ai.tool.request',
+  AI_TOOL_APPROVED: 'ai.tool.approved',
+  AI_TOOL_REJECTED: 'ai.tool.rejected',
+  AI_WAITING: 'ai.waiting',
+  AI_FINISHED: 'ai.finished',
 } as const;
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES] | (string & {});

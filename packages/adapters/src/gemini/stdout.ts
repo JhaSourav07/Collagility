@@ -4,6 +4,7 @@ export class GeminiStdoutHandler {
   private buffer = '';
   private parser: GeminiOutputParser;
   private onParsedChunkCallback?: (chunk: ParsedChunk) => void;
+  private onTurnCompleteCallback?: () => void;
 
   constructor(parser: GeminiOutputParser = new GeminiOutputParser()) {
     this.parser = parser;
@@ -11,6 +12,10 @@ export class GeminiStdoutHandler {
 
   public onChunk(callback: (chunk: ParsedChunk) => void): void {
     this.onParsedChunkCallback = callback;
+  }
+
+  public onTurnComplete(callback: () => void): void {
+    this.onTurnCompleteCallback = callback;
   }
 
   public handleData(chunk: Buffer | string): void {
@@ -22,6 +27,10 @@ export class GeminiStdoutHandler {
       const parsed = this.parser.parseLine(line);
       if (this.onParsedChunkCallback) {
         this.onParsedChunkCallback(parsed);
+      }
+      if (parsed.type === 'completion') {
+        this.notifyTurnComplete();
+        return;
       }
     }
   }
@@ -35,6 +44,12 @@ export class GeminiStdoutHandler {
       }
     }
     this.parser.reset();
+  }
+
+  public notifyTurnComplete(): void {
+    if (this.onTurnCompleteCallback) {
+      this.onTurnCompleteCallback();
+    }
   }
 
   public clear(): void {

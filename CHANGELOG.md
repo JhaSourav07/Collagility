@@ -5,7 +5,33 @@ All notable changes to Collagility will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.0-alpha.6] - 2026-08-01
+
+### Added
+
+- **Collapsible AI Thinking Steps**: AI thinking output (internal analysis steps) is now collapsed by default into a single compact summary line (`● Thinking... (N steps)`). Press `Ctrl+O` at any time to expand/collapse the full step-by-step reasoning in-place.
+- **`Ctrl+O` Shortcut Hint**: The `Ctrl+O` toggle shortcut is now displayed in the CLI startup banner, so users see it immediately on session start.
+- **Inline Code Badges**: Backtick-wrapped code references in AI responses now render with a dark slate highlight background for quick visual scanning (e.g. `` `pnpm` `` → styled badge).
+- **Clickable Link Rendering**: Markdown hyperlinks in AI responses (e.g. `[Collagility](file://...)`) now render as underlined cyan text.
+- **Rich Tool Call Formatting**: AI tool invocations (e.g. `ListDir(...)`, `ViewFile(...)`) now render with a green bullet `●`, bold yellow tool name, and dim argument text — matching the native Antigravity IDE style.
+- **Tree Branch Results**: Tool sub-results (lines starting with `⎿` or `└`) render as dim tree branches (`└ result text`).
+
+### Changed
+
+- **Professional Badge Text**: All AI provider badges now use clean all-caps text without emojis — e.g. `[ANTIGRAVITY]`, `[GEMINI]`, `[CLAUDE]`, `[CODEX]`, `[AI]`.
+- **No-Emoji Terminal UI**: Removed all emojis from interactive prompt banners (`[AI Question]`, `[TOOL APPROVAL REQUESTED]`, `[AI Confirmation Required]`), plan renderer, and system messages. The terminal is now clean, professional, and accessible in all environments.
+- **Sentence-Boundary Line Breaking**: AI thinking output is now automatically split at sentence boundaries (`I'll...`, `Let's...`, `I see...`, `Now...`) so each thought renders on its own line instead of running together.
+
+### Fixed
+
+- **agy Banner Suppression**: `agy`'s own internal header lines (`🤖 AGY Stream Started: "..."`, `Prompt: "..."`) are now filtered out in the parser so they no longer appear as raw text in the terminal. Only Collagility's styled header renders.
+- **Interactive Context Preserved Across Stream Completion**: When `agy` finishes streaming and `onStreamCompleted` fires, any active interactive context (plan approval, question response) is now retained until the user explicitly responds — typing `r`, `y`, or `n` no longer accidentally triggers a new AI prompt.
+- **Plan File Path Extraction**: Plan artifact file paths (e.g. `[plan.md](file:///path/to/plan.md)`) are now correctly stripped of markdown link syntax before `fs.readFileSync` is called, fixing the `Plan file not found` error.
+
+---
+
 ## [v0.1.0-alpha.2] - 2026-07-31
+
 
 ### Added (done)
 

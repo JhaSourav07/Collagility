@@ -218,3 +218,133 @@ export function createAIStreamErrorEvent(
 ): EventEnvelope<AIStreamErrorPayload> {
   return createEnvelope(EVENT_TYPES.AI_STREAM_ERROR, payload, { sessionId });
 }
+
+// Interactive AI Event Creators
+export function createAIQuestionEvent(
+  questionId: string,
+  streamId: string,
+  prompt: string,
+  options?: string[],
+  defaultOption?: string,
+  sessionId?: string
+): EventEnvelope<unknown> {
+  return createEnvelope(EVENT_TYPES.AI_QUESTION, { questionId, streamId, prompt, options, defaultOption }, { sessionId });
+}
+
+export function createAIAnswerEvent(
+  questionId: string,
+  streamId: string,
+  answer: string,
+  sessionId?: string
+): EventEnvelope<unknown> {
+  return createEnvelope(EVENT_TYPES.AI_ANSWER, { questionId, streamId, answer }, { sessionId });
+}
+
+export function createAIPlanEvent(
+  planId: string,
+  streamId: string,
+  title: string,
+  steps: string[],
+  requiresApproval = true,
+  sessionId?: string
+): EventEnvelope<unknown> {
+  return createEnvelope(EVENT_TYPES.AI_PLAN, { planId, streamId, title, steps, requiresApproval }, { sessionId });
+}
+
+export function createAIPlanApproveEvent(
+  planId: string,
+  streamId: string,
+  sessionId?: string
+): EventEnvelope<unknown> {
+  return createEnvelope(EVENT_TYPES.AI_PLAN_APPROVE, { planId, streamId }, { sessionId });
+}
+
+export function createAIPlanRejectEvent(
+  planId: string,
+  streamId: string,
+  reason?: string,
+  sessionId?: string
+): EventEnvelope<unknown> {
+  return createEnvelope(EVENT_TYPES.AI_PLAN_REJECT, { planId, streamId, reason }, { sessionId });
+}
+
+export function createAISelectionEvent(
+  selectionId: string,
+  streamId: string,
+  title: string,
+  options: Array<{ key: string; label: string }>,
+  sessionId?: string
+): EventEnvelope<unknown> {
+  return createEnvelope(EVENT_TYPES.AI_SELECTION, { selectionId, streamId, title, options }, { sessionId });
+}
+
+export function createAISelectionResponseEvent(
+  selectionId: string,
+  streamId: string,
+  selectedKey: string,
+  sessionId?: string
+): EventEnvelope<unknown> {
+  return createEnvelope(EVENT_TYPES.AI_SELECTION_RESPONSE, { selectionId, streamId, selectedKey }, { sessionId });
+}
+
+export function createAIConfirmationEvent(
+  confirmationId: string,
+  streamId: string,
+  prompt: string,
+  defaultValue = true,
+  sessionId?: string
+): EventEnvelope<unknown> {
+  return createEnvelope(EVENT_TYPES.AI_CONFIRMATION, { confirmationId, streamId, prompt, defaultValue }, { sessionId });
+}
+
+export function createAIConfirmationResponseEvent(
+  confirmationId: string,
+  streamId: string,
+  approved: boolean,
+  sessionId?: string
+): EventEnvelope<unknown> {
+  return createEnvelope(EVENT_TYPES.AI_CONFIRMATION_RESPONSE, { confirmationId, streamId, approved }, { sessionId });
+}
+
+export function createAIToolRequestEvent(
+  toolId: string,
+  streamId: string,
+  toolName: string,
+  args?: Record<string, unknown>,
+  sessionId?: string
+): EventEnvelope<unknown> {
+  return createEnvelope(EVENT_TYPES.AI_TOOL_REQUEST, { toolId, streamId, toolName, args }, { sessionId });
+}
+
+export function createAIToolApprovedEvent(
+  toolId: string,
+  streamId: string,
+  sessionId?: string
+): EventEnvelope<unknown> {
+  return createEnvelope(EVENT_TYPES.AI_TOOL_APPROVED, { toolId, streamId }, { sessionId });
+}
+
+export function createAIToolRejectedEvent(
+  toolId: string,
+  streamId: string,
+  reason?: string,
+  sessionId?: string
+): EventEnvelope<unknown> {
+  return createEnvelope(EVENT_TYPES.AI_TOOL_REJECTED, { toolId, streamId, reason }, { sessionId });
+}
+
+export function createAIWaitingEvent(
+  streamId: string,
+  reason?: string,
+  sessionId?: string
+): EventEnvelope<unknown> {
+  return createEnvelope(EVENT_TYPES.AI_WAITING, { streamId, reason }, { sessionId });
+}
+
+export function createAIFinishedEvent(
+  streamId: string,
+  summary?: string,
+  sessionId?: string
+): EventEnvelope<unknown> {
+  return createEnvelope(EVENT_TYPES.AI_FINISHED, { streamId, summary }, { sessionId });
+}

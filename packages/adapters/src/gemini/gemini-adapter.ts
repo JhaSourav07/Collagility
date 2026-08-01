@@ -79,10 +79,37 @@ export class GeminiAIAdapter extends AIAdapter {
     this.stdoutHandler.onChunk((parsed) => {
       if (parsed.type === 'completion') {
         this.promptHandler.completeActivePrompt();
+      } else if (parsed.type === 'plan') {
+        this.promptHandler.appendOutputChunk(parsed.content);
+        this.emit('chunk' as any, parsed.content);
+        this.emit('plan' as any, {
+          title: 'AI Implementation Plan Proposed',
+          filePath: parsed.filePath,
+          content: parsed.content,
+          options: ['Accept & Proceed', 'Read Plan', 'Reject & Modify'],
+        });
+      } else if (parsed.type === 'confirmation') {
+        this.promptHandler.appendOutputChunk(parsed.content);
+        this.emit('chunk' as any, parsed.content);
+        this.emit('confirmation' as any, {
+          prompt: parsed.content,
+          options: ['Yes, proceed', 'No, cancel'],
+        });
+      } else if (parsed.type === 'question') {
+        this.promptHandler.appendOutputChunk(parsed.content);
+        this.emit('chunk' as any, parsed.content);
+        this.emit('question' as any, {
+          prompt: parsed.content,
+          options: parsed.options || ['1. Proceed with defaults', '2. Modify plan', '3. Ask follow-up question'],
+        });
       } else {
         this.promptHandler.appendOutputChunk(parsed.content);
         this.emit('chunk' as any, parsed.content);
       }
+    });
+
+    this.stdoutHandler.onTurnComplete(() => {
+      this.promptHandler.completeActivePrompt();
     });
 
     this.stderrHandler.onErrorLine((errLine) => {
@@ -173,6 +200,15 @@ export class GeminiAIAdapter extends AIAdapter {
       const evt = createAICompletedEvent(this.name, responseText, { provider: 'google-gemini' });
       this.emit('ai.completed', evt);
       return evt;
+    }
+  }
+
+  public async sendInput(text: string): Promise<void> {
+    if (this.processManager) {
+      const stdinStream = this.processManager.getStdin();
+      if (stdinStream && stdinStream.writable) {
+        stdinStream.write(text.endsWith('\n') ? text : `${text}\n`);
+      }
     }
   }
 

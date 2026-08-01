@@ -61,6 +61,7 @@ export abstract class AIAdapter extends EventEmitter {
     prompt: string,
     context?: Record<string, unknown>
   ): Promise<EventEnvelope<AICompletedPayload>>;
+  public abstract sendInput(text: string): Promise<void>;
   public abstract cancel(): Promise<void>;
   public abstract health(): Promise<AdapterHealth>;
   public abstract dispose(): Promise<void>;

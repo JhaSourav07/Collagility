@@ -109,6 +109,10 @@ export class MockAIAdapter extends AIAdapter {
     });
   }
 
+  public async sendInput(text: string): Promise<void> {
+    this.emit('chunk' as any, `[Input received]: ${text}\n`);
+  }
+
   public async cancel(): Promise<void> {
     if (this._status === 'processing') {
       if (this.currentTimeout) {

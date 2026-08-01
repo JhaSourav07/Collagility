@@ -217,6 +217,10 @@ export class StreamManager extends EventEmitter {
     }
 
     activeStream.stateMachine.transitionTo('Completed');
+    console.log('[Lifecycle] Completed');
+    console.log('[Lifecycle] Cleanup Started');
+    console.log('[Lifecycle] Removing Active Stream');
+    console.log('[Lifecycle] Removing Buffer');
 
     const durationMs = Date.now() - activeStream.startedAt;
     const completedEvent = createAIStreamCompletedEvent(
@@ -232,6 +236,10 @@ export class StreamManager extends EventEmitter {
 
     this.emit('streamEvent', completedEvent);
     activeStream.stateMachine.transitionTo('Idle');
+    console.log('[Lifecycle] State -> Idle');
+    console.log('[Lifecycle] Cleanup Finished');
+    activeStream.responseBuffer.clear();
+    this.activeStreamsBySession.delete(sessionId);
   }
 
   public failStream(sessionId: string, error: string, code?: string): void {

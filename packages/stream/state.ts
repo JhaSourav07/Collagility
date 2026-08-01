@@ -5,6 +5,10 @@ export type StreamState =
   | 'Preparing'
   | 'Streaming'
   | 'Paused'
+  | 'WaitingForInput'
+  | 'WaitingForApproval'
+  | 'WaitingForSelection'
+  | 'ExecutingTool'
   | 'Cancelling'
   | 'Completed'
   | 'Failed'
@@ -20,13 +24,17 @@ export interface StateChangeEvent {
 
 const VALID_TRANSITIONS: Record<StreamState, StreamState[]> = {
   Idle: ['Preparing', 'Streaming'],
-  Preparing: ['Streaming', 'Cancelling', 'Failed', 'Timeout', 'Idle'],
-  Streaming: ['Paused', 'Cancelling', 'Completed', 'Failed', 'Timeout', 'Idle'],
-  Paused: ['Streaming', 'Cancelling', 'Failed', 'Timeout', 'Idle'],
+  Preparing: ['Streaming', 'WaitingForInput', 'WaitingForApproval', 'WaitingForSelection', 'ExecutingTool', 'Cancelling', 'Failed', 'Timeout', 'Idle'],
+  Streaming: ['Paused', 'WaitingForInput', 'WaitingForApproval', 'WaitingForSelection', 'ExecutingTool', 'Cancelling', 'Completed', 'Failed', 'Timeout', 'Idle'],
+  Paused: ['Streaming', 'WaitingForInput', 'WaitingForApproval', 'WaitingForSelection', 'ExecutingTool', 'Cancelling', 'Failed', 'Timeout', 'Idle'],
+  WaitingForInput: ['Streaming', 'ExecutingTool', 'WaitingForApproval', 'WaitingForSelection', 'Cancelling', 'Completed', 'Failed', 'Timeout', 'Idle'],
+  WaitingForApproval: ['Streaming', 'ExecutingTool', 'WaitingForInput', 'WaitingForSelection', 'Cancelling', 'Completed', 'Failed', 'Timeout', 'Idle'],
+  WaitingForSelection: ['Streaming', 'ExecutingTool', 'WaitingForInput', 'WaitingForApproval', 'Cancelling', 'Completed', 'Failed', 'Timeout', 'Idle'],
+  ExecutingTool: ['Streaming', 'WaitingForInput', 'WaitingForApproval', 'WaitingForSelection', 'Cancelling', 'Completed', 'Failed', 'Timeout', 'Idle'],
   Cancelling: ['Idle', 'Failed', 'Completed'],
-  Completed: ['Idle', 'Preparing'],
-  Failed: ['Idle', 'Preparing'],
-  Timeout: ['Idle', 'Preparing'],
+  Completed: ['Idle', 'Preparing', 'Streaming'],
+  Failed: ['Idle', 'Preparing', 'Streaming'],
+  Timeout: ['Idle', 'Preparing', 'Streaming'],
 };
 
 export class StreamStateMachine extends EventEmitter {

@@ -46,6 +46,12 @@ export interface WSClientEvents {
   onStreamCancelled?: (payload: AIStreamCancelledPayload) => void;
   onStreamFailed?: (payload: AIStreamFailedPayload) => void;
   onStreamError?: (payload: AIStreamErrorPayload) => void;
+  onQuestion?: (payload: any) => void;
+  onPlan?: (payload: any) => void;
+  onSelection?: (payload: any) => void;
+  onConfirmation?: (payload: any) => void;
+  onToolRequest?: (payload: any) => void;
+  onFrame?: (frame: IncomingFrame) => void;
   onError?: (error: string, code?: string) => void;
   onDisconnect?: (reason: string) => void;
   onReconnecting?: (attempt: number, delayMs: number) => void;
@@ -57,7 +63,12 @@ export class WebSocketClient {
   private reconnectHandler: ReconnectHandler;
   private events: WSClientEvents = {};
   private clientId: string | null = null;
+  private sessionId: string | null = null;
   private isExplicitClose = false;
+
+  public getSessionId(): string | null {
+    return this.sessionId;
+  }
 
   constructor(config: CLIConfig, events: WSClientEvents = {}) {
     this.config = config;
@@ -127,6 +138,10 @@ export class WebSocketClient {
   }
 
   private handleFrame(frame: IncomingFrame, resolveConnect?: (clientId: string) => void): void {
+    if (this.events.onFrame) {
+      this.events.onFrame(frame);
+    }
+
     switch (frame.type) {
       case 'system.connected': {
         const payload = frame.payload as { clientId: string };
@@ -142,12 +157,14 @@ export class WebSocketClient {
 
       case 'session.created': {
         const payload = frame.payload as { session: Record<string, unknown> };
+        this.sessionId = (payload.session as any)?.id || null;
         if (this.events.onSessionCreated) this.events.onSessionCreated(payload.session);
         break;
       }
 
       case 'session.joined': {
         const payload = frame.payload as { session: Record<string, unknown>; memberId: string };
+        this.sessionId = (payload.session as any)?.id || null;
         if (this.events.onSessionJoined) this.events.onSessionJoined(payload.session, payload.memberId);
         break;
       }
@@ -234,6 +251,31 @@ export class WebSocketClient {
 
       case 'ai.stream.error': {
         if (this.events.onStreamError) this.events.onStreamError(frame.payload as AIStreamErrorPayload);
+        break;
+      }
+
+      case 'ai.question': {
+        if (this.events.onQuestion) this.events.onQuestion(frame.payload);
+        break;
+      }
+
+      case 'ai.plan': {
+        if (this.events.onPlan) this.events.onPlan(frame.payload);
+        break;
+      }
+
+      case 'ai.selection': {
+        if (this.events.onSelection) this.events.onSelection(frame.payload);
+        break;
+      }
+
+      case 'ai.confirmation': {
+        if (this.events.onConfirmation) this.events.onConfirmation(frame.payload);
+        break;
+      }
+
+      case 'ai.tool.request': {
+        if (this.events.onToolRequest) this.events.onToolRequest(frame.payload);
         break;
       }
 

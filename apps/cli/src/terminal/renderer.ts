@@ -52,7 +52,7 @@ export class TerminalRenderer {
   }
 
   public static renderTypingIndicator(senderName: string): string {
-    return colors.dim(`\n💬 ${senderName} is typing...`);
+    return colors.dim(`\n... ${senderName} is typing...`);
   }
 }
 
@@ -62,7 +62,7 @@ export function renderSessionHeader(sessionId: string, isOwner: boolean, memberC
     '',
     colors.dim('┌─────────────────────────────────────────────────────────────┐'),
     `│ ${colors.bold('Active Session:')} ${colors.code(sessionId)} ${badge}          │`,
-    `│ ${colors.dim('Members:')} ${colors.bold(String(memberCount))}                                             │`,
+    `│ ${colors.dim('Members:')} ${colors.bold(String(memberCount))} | ${colors.dim('Toggle Thinking:')} ${colors.cyan('Ctrl+O')}              │`,
     colors.dim('└─────────────────────────────────────────────────────────────┘'),
     '',
   ].join('\n');

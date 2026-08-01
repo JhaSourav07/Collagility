@@ -1,153 +1,83 @@
 import chalk from 'chalk';
-import { colors } from './colors.js';
 
 export interface SplitPaneOptions {
-  splitRatio?: number; // default 0.45 (45% left, 55% right)
-  chatTitle?: string;
-  ptyTitle?: string;
+  sessionId?: string;
+  isOwner?: boolean;
+  memberCount?: number;
+  workspacePath?: string;
+  aiAdapter?: string;
+  aiModel?: string;
 }
 
 export type PaneFocus = 'chat' | 'pty';
 
 export class SplitTerminalRenderer {
-  private splitRatio: number;
-  private chatTitle: string;
-  private ptyTitle: string;
-  private focus: PaneFocus = 'chat';
-
-  private chatBuffer: string[] = [];
-  private ptyBuffer: string[] = [];
-  private currentInput = '';
-
-  private maxChatHistory = 100;
-  private maxPtyHistory = 200;
+  private sessionId = '';
+  private isOwner = true;
+  private memberCount = 1;
+  private workspacePath = process.cwd();
+  private aiAdapter = 'agi';
+  private headerRendered = false;
 
   constructor(options: SplitPaneOptions = {}) {
-    this.splitRatio = options.splitRatio ?? 0.45;
-    this.chatTitle = options.chatTitle ?? '💬 CHAT & COLLABORATION';
-    this.ptyTitle = options.ptyTitle ?? '🤖 NATIVE AI VIEW (PTY)';
+    if (options.sessionId) this.sessionId = options.sessionId;
+    if (options.isOwner !== undefined) this.isOwner = options.isOwner;
+    if (options.memberCount !== undefined) this.memberCount = options.memberCount;
+    if (options.workspacePath) this.workspacePath = options.workspacePath;
+    if (options.aiAdapter) this.aiAdapter = options.aiAdapter;
+  }
+
+  public setSessionInfo(sessionId: string, isOwner: boolean, memberCount: number, workspacePath?: string): void {
+    this.sessionId = sessionId;
+    this.isOwner = isOwner;
+    this.memberCount = memberCount;
+    if (workspacePath) this.workspacePath = workspacePath;
+    this.renderHeader();
+  }
+
+  public setAiInfo(adapter: string, _model?: string, _status?: string): void {
+    this.aiAdapter = adapter;
   }
 
   public get currentFocus(): PaneFocus {
-    return this.focus;
+    return 'chat';
   }
 
-  public setFocus(focus: PaneFocus): void {
-    this.focus = focus;
-    this.render();
-  }
+  public setFocus(_focus: PaneFocus): void {}
+  public toggleFocus(): PaneFocus { return 'chat'; }
 
-  public toggleFocus(): PaneFocus {
-    this.focus = this.focus === 'chat' ? 'pty' : 'chat';
-    this.render();
-    return this.focus;
+  public renderHeader(): void {
+    if (this.headerRendered) return;
+    this.headerRendered = true;
+
+    const badge = this.isOwner
+      ? chalk.bgHex('#059669').black.bold(' OWNER ')
+      : chalk.bgHex('#2563eb').white.bold(' MEMBER ');
+
+    console.log('');
+    console.log(chalk.cyan.bold('⚡ COLLAGILITY CLI') + chalk.gray(' v0.1.0-alpha.6'));
+    console.log(chalk.gray('─────────────────────────────────────────────────────────────'));
+    console.log(`  ${chalk.bold('Session:')}   ${chalk.yellow.bold(this.sessionId || 'active')} ${badge} ${chalk.gray(`(${this.memberCount} active)`)}`);
+    console.log(`  ${chalk.bold('Workspace:')} ${chalk.blue(this.workspacePath)}`);
+    console.log(`  ${chalk.bold('AI Engine:')} ${chalk.magenta.bold(this.aiAdapter)} ${chalk.gray('(Stream Relay Active)')}`);
+    console.log(chalk.gray('─────────────────────────────────────────────────────────────'));
+    console.log(chalk.dim('  Type ') + chalk.magenta('@agi <prompt>') + chalk.dim(' for AI, or type message to chat.'));
+    console.log(chalk.dim('  Shortcut: ') + chalk.cyan('Ctrl+O') + chalk.dim(' — Toggle AI thinking steps (expand/collapse)\n'));
   }
 
   public appendChat(line: string): void {
-    const lines = line.split('\n');
-    for (const l of lines) {
-      this.chatBuffer.push(l);
-    }
-    if (this.chatBuffer.length > this.maxChatHistory) {
-      this.chatBuffer = this.chatBuffer.slice(this.chatBuffer.length - this.maxChatHistory);
-    }
-    this.render();
+    if (!this.headerRendered) this.renderHeader();
+    console.log(line);
   }
 
   public appendPtyData(data: string): void {
-    const cleaned = data.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const lines = cleaned.split('\n');
-    for (const l of lines) {
-      this.ptyBuffer.push(l);
-    }
-    if (this.ptyBuffer.length > this.maxPtyHistory) {
-      this.ptyBuffer = this.ptyBuffer.slice(this.ptyBuffer.length - this.maxPtyHistory);
-    }
-    this.render();
+    if (!this.headerRendered) this.renderHeader();
+    process.stdout.write(data);
   }
 
-  public setInput(input: string): void {
-    this.currentInput = input;
-    this.render();
-  }
+  public setInput(_input: string): void {}
 
-  public clearPty(): void {
-    this.ptyBuffer = [];
-    this.render();
-  }
+  public clearPty(): void {}
 
-  public render(): void {
-    if (!process.stdout.isTTY) return;
-
-    const totalCols = process.stdout.columns || 120;
-    const totalRows = process.stdout.rows || 30;
-
-    const leftCols = Math.max(20, Math.floor(totalCols * this.splitRatio));
-    const rightCols = Math.max(20, totalCols - leftCols - 1);
-    const contentRows = Math.max(5, totalRows - 4); // 1 header, 1 subheader, contentRows, 1 divider, 1 footer input
-
-    // Header bar
-    const leftHeaderStr = ` ${this.chatTitle} `.padEnd(leftCols).slice(0, leftCols);
-    const rightHeaderStr = ` ${this.ptyTitle} `.padEnd(rightCols).slice(0, rightCols);
-
-    const leftHeaderFormatted =
-      this.focus === 'chat'
-        ? chalk.bgCyan.black.bold(leftHeaderStr)
-        : chalk.bgBlue.white(leftHeaderStr);
-
-    const rightHeaderFormatted =
-      this.focus === 'pty'
-        ? chalk.bgCyan.black.bold(rightHeaderStr)
-        : chalk.bgBlue.white(rightHeaderStr);
-
-    const headerLine = `${leftHeaderFormatted}│${rightHeaderFormatted}`;
-
-    // Subheader / Status Line
-    const leftFocusTag = this.focus === 'chat' ? colors.green('[ACTIVE FOCUS]') : colors.dim('[Press TAB to focus]');
-    const rightFocusTag = this.focus === 'pty' ? colors.green('[ACTIVE FOCUS]') : colors.dim('[Press TAB to focus]');
-
-    const subLeft = ` ${leftFocusTag}`.padEnd(leftCols + 10).slice(0, leftCols + 10);
-    const subRight = ` ${rightFocusTag}`.padEnd(rightCols + 10).slice(0, rightCols + 10);
-    const subheaderLine = `${subLeft}│${subRight}`;
-
-    // Prepare viewport slice
-    const visibleChat = this.chatBuffer.slice(-contentRows);
-    const visiblePty = this.ptyBuffer.slice(-contentRows);
-
-    const bodyLines: string[] = [];
-
-    for (let r = 0; r < contentRows; r++) {
-      const chatLine = visibleChat[r] ?? '';
-      const ptyLine = visiblePty[r] ?? '';
-
-      const truncatedChat = this.stripAnsiAndPad(chatLine, leftCols);
-      const truncatedPty = this.stripAnsiAndPad(ptyLine, rightCols);
-
-      bodyLines.push(`${truncatedChat}│${truncatedPty}`);
-    }
-
-    // Horizontal divider above input
-    const lineDivider = '─'.repeat(totalCols);
-
-    // Footer input bar
-    const focusHelp =
-      this.focus === 'chat'
-        ? colors.cyan('💬 Focus: Chat Input') + colors.dim(' (Press TAB for PTY)')
-        : colors.magenta('🤖 Focus: Native PTY Keypresses') + colors.dim(' (Press TAB for Chat)');
-
-    const promptText = `> ${this.currentInput}`;
-    const footerLine = `${promptText.padEnd(totalCols - 35).slice(0, totalCols - 35)} │ ${focusHelp}`;
-
-    // Frame output assembly using ANSI screen home \x1b[H
-    const frame = ['\x1b[H', headerLine, subheaderLine, ...bodyLines, lineDivider, footerLine].join('\n');
-    process.stdout.write(frame);
-  }
-
-  private stripAnsiAndPad(text: string, width: number): string {
-    const plain = text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
-    if (plain.length >= width) {
-      return text.slice(0, width);
-    }
-    return text + ' '.repeat(width - plain.length);
-  }
+  public render(): void {}
 }

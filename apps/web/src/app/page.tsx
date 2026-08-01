@@ -30,7 +30,7 @@ export default function LandingPage() {
             </div>
             <span className="font-semibold text-lg tracking-tight text-white font-mono">Collagility</span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-              v0.1.0-alpha.1
+              v0.1.0-alpha.5
             </span>
           </div>
 
@@ -171,7 +171,7 @@ export default function LandingPage() {
         <div className="space-y-6">
           <div className="p-5 rounded-lg bg-[#12141a] border border-cyan-500/30 flex items-start space-x-4">
             <span className="px-2.5 py-1 text-xs font-mono rounded bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/40">
-              v0.1.0-alpha.1
+              v0.1.0-alpha.5
             </span>
             <div className="space-y-1 flex-1">
               <h4 className="text-base font-semibold text-white">Initial Public Alpha</h4>
@@ -215,7 +215,7 @@ export default function LandingPage() {
             <span>Early Public Alpha Release Notice</span>
           </div>
           <p className="text-xs text-amber-200/70 max-w-xl mx-auto leading-relaxed">
-            Collagility is currently in early public alpha (`v0.1.0-alpha.1`). Breaking changes may occur in minor releases. Please report issues and feedback on GitHub.
+            Collagility is currently in early public alpha (`v0.1.0-alpha.5`). Breaking changes may occur in minor releases. Please report issues and feedback on GitHub.
           </p>
         </div>
       </section>

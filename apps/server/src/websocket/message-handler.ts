@@ -144,6 +144,10 @@ export class MessageHandler {
         const adapterName = payloadObj?.adapterName || 'gemini';
 
         try {
+          this.logger.info(
+            { clientId, sessionId: session.id, adapterName, prompt },
+            'Starting AI Stream session turn'
+          );
           this.streamManager.startStream({
             sessionId: session.id,
             ownerId: clientId,
@@ -152,10 +156,43 @@ export class MessageHandler {
           });
         } catch (err) {
           const messageStr = err instanceof Error ? err.message : String(err);
+          this.logger.error({ clientId, sessionId: session.id, error: messageStr }, 'Failed to start AI stream');
           this.broadcaster.sendToClient(
             clientId,
             createAIStreamErrorEvent({ error: messageStr }, session.id)
           );
+        }
+        break;
+      }
+
+      case 'ai.stream.chunk': {
+        const session = this.sessionManager.getClientSession(clientId);
+        if (session) {
+          const chunkObj = message.payload as any;
+          this.logger.debug(
+            { sessionId: session.id, streamId: chunkObj?.streamId, seq: chunkObj?.sequenceNumber, isFinal: chunkObj?.isFinal },
+            'Received AI stream chunk from client'
+          );
+          this.streamManager.handleChunk(session.id, chunkObj);
+        }
+        break;
+      }
+
+      case 'ai.stream.completed': {
+        const session = this.sessionManager.getClientSession(clientId);
+        if (session) {
+          this.logger.info({ clientId, sessionId: session.id }, 'AI Stream completed');
+          this.streamManager.completeStream(session.id);
+        }
+        break;
+      }
+
+      case 'ai.stream.failed': {
+        const session = this.sessionManager.getClientSession(clientId);
+        if (session) {
+          const errStr = (message.payload as { error?: string })?.error || 'AI execution failed';
+          this.logger.error({ clientId, sessionId: session.id, error: errStr }, 'AI Stream failed');
+          this.streamManager.failStream(session.id, errStr);
         }
         break;
       }
@@ -177,12 +214,51 @@ export class MessageHandler {
         break;
       }
 
+      case 'ai.answer':
+      case 'ai.plan.approve':
+      case 'ai.plan.reject':
+      case 'ai.selection.response':
+      case 'ai.confirmation.response':
+      case 'ai.tool.approved':
+      case 'ai.tool.rejected': {
+        const session = this.sessionManager.getClientSession(clientId);
+        if (!session) {
+          this.broadcaster.sendToClient(
+            clientId,
+            createAIStreamErrorEvent({ error: 'You must be in a session to respond to AI interactions' })
+          );
+          break;
+        }
+
+        if (session.ownerId !== clientId) {
+          this.broadcaster.sendToClient(
+            clientId,
+            createAIStreamErrorEvent({ error: 'Only the session owner can respond to AI prompts' }, session.id)
+          );
+          break;
+        }
+
+        // Broadcast owner interactive response to all participants
+        const interactiveEnvelope = {
+          version: 1,
+          type: message.type,
+          sessionId: session.id,
+          sender: { id: clientId, name: clientId.slice(0, 8), role: 'owner' as const },
+          payload: message.payload,
+          timestamp: Date.now(),
+        };
+
+        this.broadcaster.broadcastToSession(session.id, interactiveEnvelope);
+        break;
+      }
+
       default: {
         const session = this.sessionManager.getClientSession(clientId);
         const genericEvent = {
           version: 1,
           type: message.type,
           senderId: clientId,
+          sessionId: session?.id,
           payload: message.payload,
           timestamp: Date.now(),
         };

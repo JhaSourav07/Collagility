@@ -7,6 +7,8 @@ import { renderSessionHeader, TerminalRenderer } from '../terminal/renderer.js';
 import { ChatPrompt } from '../terminal/chat-prompt.js';
 import { TerminalStreamRenderer } from '../terminal/terminal-stream-renderer.js';
 import { SplitTerminalRenderer } from '../terminal/split-pane-renderer.js';
+import { PlanRenderer } from '../terminal/plan-renderer.js';
+import { InteractivePromptRenderer } from '../terminal/interactive-prompt-renderer.js';
 import { GeminiAIAdapter, GeminiHealthChecker, AdapterRegistry } from '@collagility/adapters';
 import { createStreamChunk } from '@collagility/stream';
 
@@ -45,6 +47,7 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
 
   try {
     await adapter.initialize();
+    await adapter.start();
     registry.register('gemini', adapter);
     registry.register('agy', adapter);
     registry.register('antigravity', adapter);
@@ -69,9 +72,11 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
         const sessionInfo = `Session ID: ${sessionId} | Workspace: ${activeWorkspace}`;
         
         if (splitRenderer) {
+          splitRenderer.setSessionInfo(sessionId, true, members.length, activeWorkspace);
+          splitRenderer.setAiInfo(binaryLabel, 'Claude 3.5 (via agy CLI)', 'Connected');
           splitRenderer.appendChat(sessionInfo);
           splitRenderer.appendChat('AI Workspace Ready. Waiting for collaborators...');
-          splitRenderer.appendChat('(Type @agi <prompt> for AI, or a message to chat)');
+          splitRenderer.appendChat('AI Commands: @agi <prompt> | @agy <prompt> | @gemini <prompt>');
           splitRenderer.render();
         } else {
           console.log(header);
@@ -82,6 +87,7 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
         }
 
         chatPrompt = new ChatPrompt(client, true);
+        chatPrompt.setStreamRenderer(streamRenderer);
         chatPrompt.start();
       },
 
@@ -110,9 +116,7 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
       onStreamStarted: (payload) => {
         streamRenderer.onStreamStarted(payload.streamId, payload.adapterName, payload.prompt);
         if (splitRenderer) {
-          splitRenderer.appendChat(`[AI Stream Started] Prompt: "${payload.prompt}"`);
-          splitRenderer.clearPty();
-          splitRenderer.appendPtyData(`⚡ AI Processing: ${payload.prompt}\n────────────────────────────\n`);
+          splitRenderer.appendChat(`🤖 ${payload.adapterName.toUpperCase()} Stream Started: "${payload.prompt}"`);
         }
 
         const reqName = payload.adapterName?.toLowerCase();
@@ -121,16 +125,15 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
             ? (registry.get(reqName) || registry.getActive() || adapter)
             : (registry.getActive() || adapter);
 
-        let seq = 1;
+        let seq = 0;
+        const currentSessionId = client.getSessionId() || payload.streamId;
+
         const onChunk = (content: string) => {
           if (typeof content === 'string' && content.length > 0) {
-            if (splitRenderer) {
-              splitRenderer.appendPtyData(content);
-            }
             const streamChunk = createStreamChunk({
               streamId: payload.streamId,
               sequenceNumber: seq++,
-              sessionId: payload.streamId,
+              sessionId: currentSessionId,
               sender: { id: payload.adapterName, name: payload.adapterName, role: 'ai' },
               content,
               isFinal: false,
@@ -139,24 +142,57 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
           }
         };
 
+        const onPlan = (planData: any) => {
+          client.send('ai.plan', {
+            planId: planData.planId || `plan-${Date.now()}`,
+            streamId: payload.streamId,
+            title: planData.title || 'AI Implementation Plan Proposed',
+            steps: planData.steps || [],
+            filePath: planData.filePath,
+            content: planData.content,
+            requiresApproval: true,
+          });
+        };
+
+        const onQuestion = (qData: any) => {
+          client.send('ai.question', {
+            questionId: qData.questionId || `q-${Date.now()}`,
+            streamId: payload.streamId,
+            prompt: qData.prompt || qData.content,
+            options: qData.options || ['1. Proceed with defaults', '2. Modify plan', '3. Ask follow-up question'],
+          });
+        };
+
+        const onConfirmation = (cData: any) => {
+          client.send('ai.confirmation', {
+            confirmationId: cData.confirmationId || `conf-${Date.now()}`,
+            streamId: payload.streamId,
+            prompt: cData.prompt || cData.content,
+            defaultValue: true,
+          });
+        };
+
         targetAdapter.on('chunk' as any, onChunk);
+        targetAdapter.on('plan' as any, onPlan);
+        targetAdapter.on('question' as any, onQuestion);
+        targetAdapter.on('confirmation' as any, onConfirmation);
 
         targetAdapter
           .sendPrompt(payload.prompt)
           .then((resEnvelope: any) => {
             targetAdapter.off('chunk' as any, onChunk);
+            targetAdapter.off('plan' as any, onPlan);
+            targetAdapter.off('question' as any, onQuestion);
+            targetAdapter.off('confirmation' as any, onConfirmation);
             const fullText = resEnvelope?.payload?.responseText || '';
 
-            if (seq === 1 && fullText) {
+            if (seq === 0 && fullText) {
               const chunks = fullText.match(/.{1,15}/g) || [fullText];
               for (const chunkContent of chunks) {
-                if (splitRenderer) {
-                  splitRenderer.appendPtyData(chunkContent);
-                }
                 const streamChunk = createStreamChunk({
                   streamId: payload.streamId,
                   sequenceNumber: seq++,
-                  sessionId: payload.streamId,
+                  sessionId: currentSessionId,
                   sender: { id: payload.adapterName, name: payload.adapterName, role: 'ai' },
                   content: chunkContent,
                   isFinal: false,
@@ -168,7 +204,7 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
             const finalChunk = createStreamChunk({
               streamId: payload.streamId,
               sequenceNumber: seq++,
-              sessionId: payload.streamId,
+              sessionId: currentSessionId,
               sender: { id: payload.adapterName, name: payload.adapterName, role: 'ai' },
               content: '',
               isFinal: true,
@@ -177,6 +213,9 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
           })
           .catch((err: unknown) => {
             targetAdapter.off('chunk' as any, onChunk);
+            targetAdapter.off('plan' as any, onPlan);
+            targetAdapter.off('question' as any, onQuestion);
+            targetAdapter.off('confirmation' as any, onConfirmation);
             const errorMsg = err instanceof Error ? err.message : String(err);
             logger.error('Local AI execution failed', err);
             streamRenderer.onStreamFailed(errorMsg);
@@ -192,9 +231,10 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
       },
 
       onStreamChunk: (payload) => {
-        streamRenderer.renderChunk(payload);
         if (splitRenderer) {
           splitRenderer.appendPtyData(payload.content);
+        } else {
+          streamRenderer.renderChunk(payload);
         }
       },
 
@@ -204,7 +244,7 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
           durationMs: payload.durationMs,
         });
         if (splitRenderer) {
-          splitRenderer.appendChat(`✔ AI Stream Completed (${payload.durationMs}ms)`);
+          splitRenderer.appendChat(`✔ AI Stream Completed (${payload.durationMs}ms)\n`);
         }
       },
 
@@ -226,6 +266,98 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
         logger.error(`AI Stream Error: ${payload.error}`);
         if (splitRenderer) {
           splitRenderer.appendChat(`✖ Error: ${payload.error}`);
+        }
+      },
+
+      onPlan: (payload) => {
+        const rendered = PlanRenderer.renderPlan(payload);
+        if (splitRenderer) {
+          splitRenderer.appendChat(rendered);
+        } else if (chatPrompt) {
+          chatPrompt.printAbovePrompt(rendered);
+        } else {
+          console.log(rendered);
+        }
+        if (chatPrompt) {
+          chatPrompt.setInteractiveContext({
+            type: 'plan',
+            id: payload.planId,
+            streamId: payload.streamId,
+            filePath: (payload as any).filePath,
+          });
+        }
+      },
+
+      onQuestion: (payload) => {
+        const rendered = InteractivePromptRenderer.renderQuestion(payload.prompt, payload.options);
+        if (splitRenderer) {
+          splitRenderer.appendChat(rendered);
+        } else if (chatPrompt) {
+          chatPrompt.printAbovePrompt(rendered);
+        } else {
+          console.log(rendered);
+        }
+        if (chatPrompt) {
+          chatPrompt.setInteractiveContext({ type: 'question', id: payload.questionId, streamId: payload.streamId });
+        }
+      },
+
+      onConfirmation: (payload) => {
+        const rendered = InteractivePromptRenderer.renderConfirmation(payload.prompt, payload.defaultValue);
+        if (splitRenderer) {
+          splitRenderer.appendChat(rendered);
+        } else if (chatPrompt) {
+          chatPrompt.printAbovePrompt(rendered);
+        } else {
+          console.log(rendered);
+        }
+        if (chatPrompt) {
+          chatPrompt.setInteractiveContext({ type: 'confirmation', id: payload.confirmationId, streamId: payload.streamId });
+        }
+      },
+
+      onSelection: (payload) => {
+        const rendered = InteractivePromptRenderer.renderSelectionMenu(payload.title, payload.options);
+        if (splitRenderer) {
+          splitRenderer.appendChat(rendered);
+        } else if (chatPrompt) {
+          chatPrompt.printAbovePrompt(rendered);
+        } else {
+          console.log(rendered);
+        }
+        if (chatPrompt) {
+          chatPrompt.setInteractiveContext({ type: 'selection', id: payload.selectionId, streamId: payload.streamId });
+        }
+      },
+
+      onToolRequest: (payload) => {
+        const rendered = InteractivePromptRenderer.renderToolRequest(payload.toolName, payload.args);
+        if (splitRenderer) {
+          splitRenderer.appendChat(rendered);
+        } else if (chatPrompt) {
+          chatPrompt.printAbovePrompt(rendered);
+        } else {
+          console.log(rendered);
+        }
+        if (chatPrompt) {
+          chatPrompt.setInteractiveContext({ type: 'tool', id: payload.toolId, streamId: payload.streamId });
+        }
+      },
+
+      onFrame: (frame) => {
+        if (frame.type === 'ai.plan.approve' || frame.type === 'ai.tool.approved') {
+          adapter.sendInput('y').catch(() => {});
+        } else if (frame.type === 'ai.plan.reject' || frame.type === 'ai.tool.rejected') {
+          adapter.sendInput('n').catch(() => {});
+        } else if (frame.type === 'ai.confirmation.response') {
+          const approved = (frame.payload as any)?.approved !== false;
+          adapter.sendInput(approved ? 'y' : 'n').catch(() => {});
+        } else if (frame.type === 'ai.selection.response') {
+          const key = (frame.payload as any)?.selectedKey || '1';
+          adapter.sendInput(key).catch(() => {});
+        } else if (frame.type === 'ai.answer') {
+          const ans = (frame.payload as any)?.answer || '';
+          adapter.sendInput(ans).catch(() => {});
         }
       },
 
