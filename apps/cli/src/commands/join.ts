@@ -3,15 +3,25 @@ import { establishConnection } from '../client/connection.js';
 import { CLIProgressSpinner } from '../terminal/spinner.js';
 import { CLILogger } from '../terminal/logger.js';
 import { colors } from '../terminal/colors.js';
-import { renderSessionHeader, renderMemberList, TerminalRenderer } from '../terminal/renderer.js';
+import { renderSessionHeader, renderMemberList, TerminalRenderer, type ChatRenderMessage } from '../terminal/renderer.js';
 import { ChatPrompt } from '../terminal/chat-prompt.js';
 import { TerminalStreamRenderer } from '../terminal/terminal-stream-renderer.js';
+import { SplitTerminalRenderer } from '../terminal/split-pane-renderer.js';
+import { PlanRenderer } from '../terminal/plan-renderer.js';
+import { InteractivePromptRenderer } from '../terminal/interactive-prompt-renderer.js';
+import { readPlanArtifact } from '../terminal/plan-reader.js';
+import { DocumentRenderer } from '@collagility/renderer';
 
 export async function joinCommand(targetSessionId: string, options: Partial<CLIConfig>): Promise<void> {
   const logger = new CLILogger(options.verbose);
   const streamRenderer = new TerminalStreamRenderer();
+  const isInteractive = Boolean(process.stdout.isTTY || process.stdin.isTTY || process.env.FORCE_TUI || !process.env.CI);
+  const splitRenderer = isInteractive
+    ? new SplitTerminalRenderer({ isOwner: false, sessionId: targetSessionId })
+    : null;
   const spinner = new CLIProgressSpinner(`Connecting to server to join session '${targetSessionId}'...`);
   let chatPrompt: ChatPrompt | null = null;
+  const streamAccumulator = new Map<string, string>();
 
   spinner.start();
 
@@ -19,85 +29,420 @@ export async function joinCommand(targetSessionId: string, options: Partial<CLIC
     const client = await establishConnection(options as CLIConfig, {
       onSessionJoined: (session, memberId) => {
         const sessionId = String(session['id'] || targetSessionId);
-        const ownerId = String(session['ownerId'] || '');
+        const ownerId = String(session['ownerId'] || 'Host');
         const members = Array.isArray(session['members']) ? (session['members'] as string[]) : [];
 
         spinner.stop(true, `Joined session '${sessionId}'`);
         const isOwner = ownerId === memberId;
-        console.log(renderSessionHeader(sessionId, isOwner, members.length));
-        console.log(renderMemberList(members, ownerId));
-        logger.info(colors.dim('Connected to multiplayer workspace. Observing AI stream. (Type a message and press Enter to chat)\n'));
 
-        chatPrompt = new ChatPrompt(client, isOwner);
-        chatPrompt.start();
+        if (splitRenderer) {
+          const ink = splitRenderer.getInkRenderer();
+          if (ink) {
+            ink.setSessionInfo(
+              sessionId,
+              false,
+              ownerId,
+              members.map((m) => ({ name: m, isOwner: m === ownerId, isSelf: m === memberId }))
+            );
+            ink.setAiDriverInfo('Gemini CLI', 'gemini-2.5-pro', 'Connected');
+            ink.appendMessage({
+              content: `Connected to session ${sessionId} as Visitor. Observing AI stream.`,
+              sender: 'System',
+              senderRole: 'system',
+            });
+
+            ink.setCommandHandler((input: string) => {
+              const trimmed = input.trim();
+              if (!trimmed) return;
+
+              const activePrompt = ink.getInteractivePrompt();
+
+              if (activePrompt) {
+                const lower = trimmed.toLowerCase();
+
+                if (activePrompt.type === 'plan') {
+                  if (lower === 'y' || lower === 'yes' || lower === '1' || lower === 'accept' || lower === '/approve') {
+                    client.send('ai.plan.approve', { planId: activePrompt.id, streamId: activePrompt.id });
+                    ink.popInteractivePrompt();
+                    ink.appendMessage({ sender: 'System', senderRole: 'system', content: '✓ Implementation Plan Approved' });
+                    return;
+                  }
+                  if (lower === 'r' || lower === 'read' || lower === 'view' || lower === '/read') {
+                    const result = readPlanArtifact(activePrompt.filePath, activePrompt.rawContent);
+                    const docRenderer = new DocumentRenderer({ maxWidth: 90, theme: 'dark' });
+                    const formattedContent = docRenderer.renderMarkdown(result.content);
+                    const header = result.ok
+                      ? `📖 Reading Plan Artifact (${result.filePath}):`
+                      : `📖 Plan Content:`;
+
+                    ink.appendMessage({
+                      sender: 'System',
+                      senderRole: 'system',
+                      content: `${header}\n\n${formattedContent}`,
+                    });
+                    return;
+                  }
+                  if (lower === 'n' || lower === 'no' || lower === '2' || lower === 'reject' || lower === '/reject') {
+                    client.send('ai.plan.reject', { planId: activePrompt.id, streamId: activePrompt.id, reason: 'Rejected by user' });
+                    ink.popInteractivePrompt();
+                    ink.appendMessage({ sender: 'System', senderRole: 'system', content: '✖ Implementation Plan Rejected' });
+                    return;
+                  }
+                  if (lower === '3') {
+                    client.send('ai.plan.reject', { planId: activePrompt.id, streamId: activePrompt.id, reason: 'Ask follow-up question' });
+                    ink.popInteractivePrompt();
+                    ink.appendMessage({ sender: 'System', senderRole: 'system', content: '✓ Plan Rejected for Follow-up' });
+                    return;
+                  }
+                }
+
+                if (activePrompt.type === 'question' || activePrompt.type === 'selection') {
+                  const match = activePrompt.options.find(
+                    (o) => o.key === trimmed || o.key.toLowerCase() === lower
+                  ) || activePrompt.options[parseInt(trimmed, 10) - 1];
+
+                  if (match) {
+                    client.send('ai.answer', { questionId: activePrompt.id, streamId: activePrompt.id, answer: match.label });
+                    client.send('ai.selection.response', { selectionId: activePrompt.id, streamId: activePrompt.id, selectedKey: match.key });
+                    ink.clearInteractivePrompt();
+                    ink.appendMessage({ sender: 'System', senderRole: 'system', content: `✓ Answered Question: ${match.label}` });
+                    return;
+                  } else {
+                    client.send('ai.answer', { questionId: activePrompt.id, streamId: activePrompt.id, answer: trimmed });
+                    ink.clearInteractivePrompt();
+                    ink.appendMessage({ sender: 'System', senderRole: 'system', content: `✓ Answered Question: ${trimmed}` });
+                    return;
+                  }
+                }
+
+                if (activePrompt.type === 'confirmation') {
+                  if (lower === '1' || lower === 'y' || lower === 'yes' || lower === '/yes') {
+                    client.send('ai.confirmation.response', { confirmationId: activePrompt.id, streamId: activePrompt.id, approved: true });
+                    ink.clearInteractivePrompt();
+                    ink.appendMessage({ sender: 'System', senderRole: 'system', content: '✓ Confirmed (Yes)' });
+                    return;
+                  }
+                  if (lower === '2' || lower === 'n' || lower === 'no' || lower === '/no') {
+                    client.send('ai.confirmation.response', { confirmationId: activePrompt.id, streamId: activePrompt.id, approved: false });
+                    ink.clearInteractivePrompt();
+                    ink.appendMessage({ sender: 'System', senderRole: 'system', content: '✖ Confirmed (No)' });
+                    return;
+                  }
+                }
+              }
+
+              if (trimmed.startsWith('/leave')) {
+                client.leaveSession();
+                process.exit(0);
+              } else if (
+                trimmed.startsWith('@agi') ||
+                trimmed.startsWith('@agy') ||
+                trimmed.startsWith('@gemini') ||
+                trimmed.startsWith('/gemini')
+              ) {
+                client.sendChatMessage(trimmed);
+                const reqName = trimmed.startsWith('@agi')
+                  ? 'agi'
+                  : trimmed.startsWith('@agy')
+                  ? 'agy'
+                  : 'gemini';
+                const promptText = trimmed.replace(/^(@agi|@agy|@gemini|\/gemini)\s*/, '');
+                client.sendAIPrompt(promptText || 'Hello AI', reqName);
+              } else {
+                client.sendChatMessage(trimmed);
+              }
+            });
+          }
+          splitRenderer.render();
+        } else {
+          console.log(renderSessionHeader(sessionId, isOwner, members.length));
+          console.log(renderMemberList(members, ownerId));
+          logger.info(colors.dim('Connected to multiplayer workspace. Observing AI stream. (Type a message and press Enter to chat)\n'));
+
+          chatPrompt = new ChatPrompt(client, isOwner);
+          chatPrompt.start();
+        }
       },
 
-      onChatMessage: (msg) => {
-        const rendered = TerminalRenderer.renderChatMessage(msg);
-        if (chatPrompt) {
-          chatPrompt.printAbovePrompt(rendered);
+      onChatMessage: (msg: ChatRenderMessage) => {
+        if (splitRenderer) {
+          const ink = splitRenderer.getInkRenderer();
+          if (ink) {
+            ink.appendMessage({
+              sender: msg.senderName || msg.senderId || 'User',
+              senderRole: 'user',
+              content: msg.text,
+            });
+          }
+        } else if (chatPrompt) {
+          chatPrompt.printAbovePrompt(TerminalRenderer.renderChatMessage(msg));
         } else {
-          console.log(rendered);
+          console.log(TerminalRenderer.renderChatMessage(msg));
         }
       },
 
       onChatSystem: (msg) => {
-        const rendered = TerminalRenderer.renderSystemMessage(msg);
-        if (chatPrompt) {
-          chatPrompt.printAbovePrompt(rendered);
+        if (splitRenderer) {
+          const ink = splitRenderer.getInkRenderer();
+          if (ink) {
+            ink.appendMessage({
+              sender: 'System',
+              senderRole: 'system',
+              content: msg,
+            });
+          }
+        } else if (chatPrompt) {
+          chatPrompt.printAbovePrompt(TerminalRenderer.renderSystemMessage(msg));
         } else {
-          console.log(rendered);
+          console.log(TerminalRenderer.renderSystemMessage(msg));
         }
       },
 
       onStreamStarted: (payload) => {
-        streamRenderer.onStreamStarted(payload.streamId, payload.adapterName, payload.prompt);
+        if (splitRenderer) {
+          const ink = splitRenderer.getInkRenderer();
+          if (ink) {
+            ink.startStreamMessage(payload.streamId, payload.adapterName || 'Gemini');
+          }
+        } else {
+          streamRenderer.onStreamStarted(payload.streamId, payload.adapterName, payload.prompt);
+        }
       },
 
       onStreamChunk: (payload) => {
-        streamRenderer.renderChunk(payload);
+        if (payload.content) {
+          const current = streamAccumulator.get(payload.streamId) || '';
+          streamAccumulator.set(payload.streamId, current + payload.content);
+        }
+        if (splitRenderer) {
+          const ink = splitRenderer.getInkRenderer();
+          if (ink && payload.content) {
+            ink.appendStreamChunk(payload.streamId, payload.sender?.name || 'Gemini', payload.content);
+          }
+        } else {
+          streamRenderer.renderChunk(payload);
+        }
       },
 
       onStreamCompleted: (payload) => {
-        streamRenderer.onStreamCompleted({
-          totalChunks: payload.totalChunks,
-          durationMs: payload.durationMs,
-        });
+        const fullContent = streamAccumulator.get(payload.streamId) || '';
+        streamAccumulator.delete(payload.streamId);
+
+        if (splitRenderer) {
+          const ink = splitRenderer.getInkRenderer();
+          if (ink) {
+            ink.completeStreamMessage(payload.streamId, payload.durationMs);
+
+            const lower = fullContent.toLowerCase();
+            const hasPlan = lower.includes('implementation plan') || lower.includes('plan artifact') || (lower.includes('plan') && lower.includes('.md'));
+            const hasQuestion = lower.includes('key decisions') || lower.includes('would you like') || lower.includes('1. interactive');
+
+            if (hasPlan) {
+              const fileMatch = fullContent.match(/([a-zA-Z0-9_-]+\.md)/);
+              const filePath = fileMatch ? fileMatch[1] : 'implementation_plan.md';
+
+              ink.pushInteractivePrompt({
+                id: `plan-auto-${payload.streamId}`,
+                type: 'plan',
+                title: 'Implementation Plan Proposed',
+                filePath,
+                rawContent: fullContent,
+                options: [
+                  { key: 'y', label: 'Accept & Proceed' },
+                  { key: 'r', label: 'Read Plan Details' },
+                  { key: 'n', label: 'Reject & Modify' },
+                ],
+              });
+            }
+
+            if (hasQuestion) {
+              ink.pushInteractivePrompt({
+                id: `question-auto-${payload.streamId}`,
+                type: 'question',
+                title: 'Key Decisions & Options',
+                options: [
+                  { key: '1', label: 'Proceed with defaults' },
+                  { key: '2', label: 'Modify plan' },
+                  { key: '3', label: 'Ask follow-up question' },
+                ],
+              });
+            }
+          }
+        } else {
+          streamRenderer.onStreamCompleted({
+            totalChunks: payload.totalChunks,
+            durationMs: payload.durationMs,
+          });
+        }
       },
 
       onStreamCancelled: (payload) => {
-        streamRenderer.onStreamCancelled(payload.reason);
+        if (splitRenderer) {
+          const ink = splitRenderer.getInkRenderer();
+          if (ink) {
+            ink.appendMessage({
+              sender: 'Gemini',
+              senderRole: 'ai',
+              content: `⚠️ AI Stream Cancelled: ${payload.reason}`,
+            });
+          }
+        } else {
+          streamRenderer.onStreamCancelled(payload.reason);
+        }
       },
 
       onStreamFailed: (payload) => {
-        streamRenderer.onStreamFailed(payload.error);
+        if (splitRenderer) {
+          const ink = splitRenderer.getInkRenderer();
+          if (ink) {
+            ink.appendMessage({
+              sender: 'Gemini',
+              senderRole: 'ai',
+              content: `✖ AI Stream Failed: ${payload.error}`,
+            });
+          }
+        } else {
+          streamRenderer.onStreamFailed(payload.error);
+        }
       },
 
       onStreamError: (payload) => {
         logger.error(`AI Stream Error: ${payload.error}`);
       },
 
+      onPlan: (payload) => {
+        const rendered = PlanRenderer.renderPlan(payload);
+        if (splitRenderer) {
+          const ink = splitRenderer.getInkRenderer();
+          if (ink) {
+            ink.appendMessage({ sender: 'Gemini', senderRole: 'ai', content: rendered });
+            ink.setInteractivePrompt({
+              id: payload.planId,
+              type: 'plan',
+              title: payload.title || 'Implementation Plan Proposed',
+              filePath: (payload as any).planPath || (payload as any).filePath,
+              rawContent: rendered,
+              options: [
+                { key: 'y', label: 'Accept & Proceed' },
+                { key: 'r', label: 'Read Plan Details' },
+                { key: 'n', label: 'Reject & Modify' },
+              ],
+            });
+          }
+        } else if (chatPrompt) {
+          chatPrompt.printAbovePrompt(rendered);
+        } else {
+          console.log(rendered);
+        }
+      },
+
+      onQuestion: (payload) => {
+        const rendered = InteractivePromptRenderer.renderQuestion(payload.prompt, payload.options);
+        if (splitRenderer) {
+          const ink = splitRenderer.getInkRenderer();
+          if (ink) {
+            ink.appendMessage({ sender: 'Gemini', senderRole: 'ai', content: rendered });
+            const opts = (payload.options || []).map((opt: string, i: number) => ({
+              key: String(i + 1),
+              label: opt,
+            }));
+            ink.setInteractivePrompt({
+              id: payload.questionId,
+              type: 'question',
+              title: payload.prompt,
+              options: opts.length > 0 ? opts : [{ key: '1', label: 'Proceed with defaults' }],
+            });
+          }
+        } else if (chatPrompt) {
+          chatPrompt.printAbovePrompt(rendered);
+        } else {
+          console.log(rendered);
+        }
+      },
+
+      onConfirmation: (payload) => {
+        const rendered = InteractivePromptRenderer.renderConfirmation(payload.prompt, payload.defaultValue);
+        if (splitRenderer) {
+          const ink = splitRenderer.getInkRenderer();
+          if (ink) {
+            ink.appendMessage({ sender: 'Gemini', senderRole: 'ai', content: rendered });
+            ink.setInteractivePrompt({
+              id: payload.confirmationId,
+              type: 'confirmation',
+              title: payload.prompt,
+              options: [
+                { key: '1', label: 'Yes (type 1 or y)' },
+                { key: '2', label: 'No (type 2 or n)' },
+              ],
+            });
+          }
+        } else if (chatPrompt) {
+          chatPrompt.printAbovePrompt(rendered);
+        } else {
+          console.log(rendered);
+        }
+      },
+
+      onSelection: (payload) => {
+        const rendered = InteractivePromptRenderer.renderSelectionMenu(payload.title, payload.options);
+        if (splitRenderer) {
+          const ink = splitRenderer.getInkRenderer();
+          if (ink) {
+            ink.appendMessage({ sender: 'Gemini', senderRole: 'ai', content: rendered });
+            const opts = (payload.options || []).map((opt: any) => ({
+              key: opt.key,
+              label: opt.label,
+            }));
+            ink.setInteractivePrompt({
+              id: payload.selectionId,
+              type: 'selection',
+              title: payload.title,
+              options: opts,
+            });
+          }
+        } else if (chatPrompt) {
+          chatPrompt.printAbovePrompt(rendered);
+        } else {
+          console.log(rendered);
+        }
+      },
+
       onMemberJoined: (_sessionId, newMemberId) => {
-        const notice = TerminalRenderer.renderSystemMessage(`Member ${newMemberId} joined the session`);
-        if (chatPrompt) {
-          chatPrompt.printAbovePrompt(notice);
+        if (splitRenderer) {
+          const ink = splitRenderer.getInkRenderer();
+          if (ink) {
+            ink.appendActivity(`${newMemberId} joined`, 'join');
+            ink.addUser({ name: newMemberId });
+          }
+        } else if (chatPrompt) {
+          chatPrompt.printAbovePrompt(TerminalRenderer.renderSystemMessage(`Member ${newMemberId} joined the session`));
         } else {
           logger.success(`Member ${colors.cyan(newMemberId)} joined the session`);
         }
       },
 
       onMemberLeft: (_sessionId, leftMemberId, isOwner) => {
-        const ownerNotice = isOwner ? ' (Owner)' : '';
-        const notice = TerminalRenderer.renderSystemMessage(`Member ${leftMemberId}${ownerNotice} left the session`);
-        if (chatPrompt) {
-          chatPrompt.printAbovePrompt(notice);
+        if (splitRenderer) {
+          const ink = splitRenderer.getInkRenderer();
+          if (ink) {
+            ink.appendActivity(`${leftMemberId} left`, 'leave');
+            ink.removeUser(leftMemberId);
+          }
+        } else if (chatPrompt) {
+          const ownerNotice = isOwner ? ' (Owner)' : '';
+          chatPrompt.printAbovePrompt(TerminalRenderer.renderSystemMessage(`Member ${leftMemberId}${ownerNotice} left the session`));
         } else {
+          const ownerNotice = isOwner ? ' (Owner)' : '';
           logger.info(`Member ${colors.cyan(leftMemberId)}${ownerNotice} left the session`);
         }
       },
 
       onSessionClosed: (_sessionId, reason) => {
         if (chatPrompt) chatPrompt.close();
+        if (splitRenderer) {
+          const ink = splitRenderer.getInkRenderer();
+          if (ink) ink.unmount();
+        }
         logger.warn(`Session was closed: ${reason}`);
         client.disconnect();
         process.exit(0);
@@ -119,6 +464,10 @@ export async function joinCommand(targetSessionId: string, options: Partial<CLIC
 
     const handleExit = () => {
       if (chatPrompt) chatPrompt.close();
+      if (splitRenderer) {
+        const ink = splitRenderer.getInkRenderer();
+        if (ink) ink.unmount();
+      }
       logger.info('Leaving session and disconnecting...');
       client.leaveSession();
       client.disconnect();
@@ -129,10 +478,6 @@ export async function joinCommand(targetSessionId: string, options: Partial<CLIC
     process.on('SIGTERM', handleExit);
   } catch (error) {
     logger.error('Failed to join session', error);
-    console.log(colors.dim('\nTip: Is the Collagility server running?'));
-    console.log(colors.cyan('  Start the server in another terminal:'));
-    console.log(colors.bold('  $ collagility server start'));
-    console.log(colors.dim('  or: pnpm --filter @collagility/server start\n'));
     process.exit(1);
   }
 }

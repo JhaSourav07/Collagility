@@ -8,6 +8,7 @@
   "files": [],
   "references": [
     { "path": "./packages/types" },
+    { "path": "./packages/renderer" },
     { "path": "./packages/protocol" },
     { "path": "./packages/stream" },
     { "path": "./packages/sdk" },

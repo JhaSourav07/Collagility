@@ -1,0 +1,25 @@
+{
+  "name": "@collagility/renderer",
+  "version": "0.1.0-alpha.6",
+  "private": true,
+  "description": "Rich Document Rendering Engine for Collagility terminal applications",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "dev": "tsc --build --watch",
+    "lint": "eslint src/**/*.ts",
+    "test": "vitest run",
+    "clean": "rimraf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@collagility/types": "workspace:*",
+    "chalk": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

@@ -5,10 +5,12 @@
     "declaration": true,
     "declarationMap": true,
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "jsx": "react-jsx"
   },
   "references": [
     { "path": "../../packages/types" },
+    { "path": "../../packages/renderer" },
     { "path": "../../packages/protocol" },
     { "path": "../../packages/sdk" },
     { "path": "../../packages/adapters" },
