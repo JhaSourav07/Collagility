@@ -2,7 +2,7 @@
 
 > **The Multiplayer Terminal for AI Coding Agents**
 
-[![Release](https://img.shields.io/badge/version-v0.1.0--alpha.6-cyan.svg)](https://github.com/JhaSourav07/Collagility/releases)
+[![Release](https://img.shields.io/badge/version-0.1.0beta-cyan.svg)](https://github.com/JhaSourav07/Collagility/releases/tag/0.1.0beta)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 
@@ -99,7 +99,11 @@ collagility server start
 ### 2. Create a Session (Session Owner) (done)
 
 ```bash
-collagility start
+# Start & host a session
+collagility host
+
+# Or in mock/demo mode (no AI binary required)
+collagility host --mock
 ```
 
 ### 3. Join a Session (Participant) (done)
@@ -122,12 +126,13 @@ Inside an active session terminal:
 
 ## 🗺️ Roadmap
 
-- [x] **v0.1.0-alpha.1 (done)**: Multiplayer WebSocket relay, AI stream chunking, `agy`/`gemini` CLI adapter, workspace execution, terminal renderer.
-- [x] **v0.1.0-alpha.2 (done)**: Multi-provider adapters (`claude`, `codex`, `aider`, `goose`), permissions guard, binary packager, and release CI workflow.
-- [x] **v0.1.0-alpha.6 (done)**: Professional terminal UI overhaul — collapsible AI thinking steps (`Ctrl+O`), inline code badges, rich tool-call formatting, agy banner suppression, no-emoji clean output.
-- [ ] **v0.2.0 (future)**: IDE extension integration (VS Code & Antigravity IDE plugin).
-- [ ] **v0.3.0 (future)**: Interactive co-driver permission approvals (peer code review for agent tool calls).
-- [ ] **v0.4.0 (future)**: Multi-agent consensus swarm routing and Redis cluster scaling.
+- [x] **v0.1.0-alpha.1**: Multiplayer WebSocket relay, AI stream chunking, `agy`/`gemini` CLI adapter, workspace execution, terminal renderer.
+- [x] **v0.1.0-alpha.2**: Multi-provider adapters (`claude`, `codex`, `aider`, `goose`), permissions guard, binary packager, and release CI workflow.
+- [x] **v0.1.0-alpha.6**: Professional terminal UI overhaul — AGY tool timeline, incremental stream rendering, fixed layout engine, non-blocking animations, 13 terminal components.
+- [x] **v0.1.0beta** *(current)*: Official first public beta. Premium interactive installer (`install.sh`), `collagility host` alias, cross-platform test suite (28 tests), GitHub release `0.1.0beta`.
+- [ ] **v0.2.0** *(planned)*: `collagility upgrade` self-updater, WebAssembly diffing engine, OSC 8 hyperlinks, multi-agent relay swarm.
+- [ ] **v0.3.0** *(planned)*: Interactive co-driver approvals — peer code review for agent tool calls in real time.
+- [ ] **v0.4.0** *(planned)*: Web dashboard, multi-agent consensus swarm routing, Redis cluster scaling.
 
 ---
 

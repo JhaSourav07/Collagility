@@ -1,8 +1,9 @@
-# Official Release Notes - Collagility `0.1.0beta`
+# Official Release Notes — Collagility `0.1.0beta`
 
-Tag: **`0.1.0beta`**  
-Release Name: **Collagility `0.1.0beta` — First Public Beta Release**  
-Repository: **https://github.com/JhaSourav07/collagility**
+**Tag:** `0.1.0beta`  
+**Release Name:** Collagility `0.1.0beta` — First Public Beta  
+**Repository:** https://github.com/JhaSourav07/Collagility  
+**Release Page:** https://github.com/JhaSourav07/Collagility/releases/tag/0.1.0beta
 
 ---
 
@@ -10,63 +11,88 @@ Repository: **https://github.com/JhaSourav07/collagility**
 
 Collagility is an open-source collaborative terminal workspace for AI coding agents.
 
-- **AGY Style Tool Timeline**: `● Read(file)`, `● Search()`, `● Edit()`, `● Write()`, `● Delete()`, `✓ Complete`, `▸ Thought for 1.4s`.
-- **AGY Fixed Terminal Layout**: Fixed header top, scrollable timeline stream, fixed bottom input prompt (**NEVER moves**), fixed status bar, and toast notification overlays.
-- **Incremental Stream Rendering**: High-performance cell-diff engine emitting minimal ANSI escape updates with sub-1.2ms chunk latency and 0 full-screen redraws.
-- **13 Component Terminal Suite**: High-resolution ANSI terminal component library (`Heading`, `Paragraph`, `CodeBlock`, `TaskList`, `Quote`, `Divider`, `Table`, `Callout`, `Badge`, `Status`, `File`, `Link`, `Image`).
-- **Official Interactive Installer**: `curl -fsSL https://install.collagility.dev | sh` for Linux & macOS and `install.ps1` for Windows.
+- **`collagility host` command** — Start a multiplayer AI session instantly (`host` alias for `start`).
+- **AGY Style Tool Timeline** — `● Read(file)`, `● Search()`, `● Edit()`, `● Write()`, `● Delete()`, `✓ Complete`, `▸ Thought for 1.4s`.
+- **AGY Fixed Terminal Layout** — Fixed header, scrollable timeline stream, fixed bottom input prompt (**NEVER moves**), fixed status bar, toast notification overlays.
+- **Incremental Stream Rendering** — High-performance cell-diff engine with sub-1.2ms chunk latency, 0 full-screen redraws.
+- **13 Component Terminal Suite** — `Heading`, `Paragraph`, `CodeBlock`, `TaskList`, `Quote`, `Divider`, `Table`, `Callout`, `Badge`, `Status`, `File`, `Link`.
+- **Official Interactive Installer** — `curl -fsSL https://raw.githubusercontent.com/JhaSourav07/Collagility/main/install.sh | bash`.
+- **28-Test Installer Suite** — Automated verification of integrity, PATH config, version consistency, and cleanup.
 
 ---
 
-## 📦 Installation Instructions
+## 📦 Installation
 
-### POSIX Shell (Linux & macOS)
+### Linux & macOS
 ```bash
-curl -fsSL https://install.collagility.dev | sh
+curl -fsSL https://raw.githubusercontent.com/JhaSourav07/Collagility/main/install.sh | bash
 ```
 
 ### Windows (PowerShell)
 ```powershell
-iwr -useb https://install.collagility.dev/ps1 | iex
+iwr -useb https://raw.githubusercontent.com/JhaSourav07/Collagility/main/install.ps1 | iex
 ```
 
-### Quick Run
-
-Start & host a multiplayer AI workspace session:
+### Manual (from source)
 ```bash
-collagility start
-# or alias:
+git clone https://github.com/JhaSourav07/Collagility.git
+cd Collagility
+pnpm install
+pnpm --filter @collagility/renderer build
+pnpm --filter @collagility/cli build
+node apps/cli/dist/index.js --help
+```
+
+---
+
+## 🚀 Quick Start
+
+```bash
+# Start a hosted session
 collagility host
-```
-Run instantly in mock mode:
-```bash
+
+# Demo mode — no AI binary required
 collagility host --mock
+
+# Join an active team session
+collagility join <session-id>
+
+# List all commands
+collagility --help
 ```
 
 ---
 
 ## 🔄 Upgrade Guide
 
-If upgrading from an earlier preview:
+From an earlier preview, rerun the installer:
 ```bash
-collagility upgrade
+curl -fsSL https://raw.githubusercontent.com/JhaSourav07/Collagility/main/install.sh | bash
 ```
-Or rerun the installer:
+
+---
+
+## 🗑️ Uninstall
+
 ```bash
-curl -fsSL https://install.collagility.dev | sh
+curl -fsSL https://raw.githubusercontent.com/JhaSourav07/Collagility/main/uninstall.sh | bash
 ```
 
 ---
 
 ## 🐛 Known Issues
 
-1. **Non-TTY Environments**: In non-interactive subshell environments, the CLI automatically falls back to clean line log mode. Force TUI mode via `FORCE_TUI=1 collagility start`.
-2. **Windows Legacy ConHost**: For optimal TrueColor experience on Windows, use **Windows Terminal** or **VSCode Terminal**.
+1. **`collagility host` not found after install** — Reload your shell: `source ~/.zshrc` or `source ~/.bashrc`.
+2. **Non-TTY environments** — CLI auto-falls back to line log mode. Force TUI via `FORCE_TUI=1 collagility start`.
+3. **Windows Legacy ConHost** — Use **Windows Terminal** or **VSCode Terminal** for optimal TrueColor rendering.
+4. **Node.js < 22** — Collagility requires Node.js ≥ 22. Install via [nodejs.org](https://nodejs.org) or `nvm install 22`.
 
 ---
 
 ## 🗺️ Roadmap to `v0.2.0`
 
-1. **WebAssembly Diffing Engine**: Zero-copy WASM grid matrix comparison for > 1MB/s streaming payloads.
-2. **OSC 8 Hyperlink Native Protocol**: Native click-to-open file hyperlinks in Ghostty, Warp, and iTerm2.
-3. **Multi-Agent Relay Swarm**: Concurrent execution timeline for multiple AI agents (`agy`, `gemini`, `claude`, `codex`) in a unified session workspace.
+1. **`collagility upgrade` command** — In-place self-updater.
+2. **WebAssembly Diffing Engine** — Zero-copy WASM cell matrix comparison for >1MB/s streaming.
+3. **OSC 8 Hyperlink Protocol** — Native clickable file links in Ghostty, Warp, and iTerm2.
+4. **Multi-Agent Relay Swarm** — Concurrent timeline for `agy`, `gemini`, `claude`, `codex` in one session.
+5. **Web Dashboard** — Real-time session monitoring and agent control from the browser.
