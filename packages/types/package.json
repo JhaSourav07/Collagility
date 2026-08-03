@@ -1,6 +1,6 @@
 {
   "name": "@collagility/types",
-  "version": "0.1.0-alpha.6",
+  "version": "0.1.0beta",
   "private": true,
   "description": "Shared domain types and core models for Collagility",
   "type": "module",

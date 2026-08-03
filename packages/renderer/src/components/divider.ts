@@ -9,3 +9,6 @@ export class HorizontalRuleComponent implements RenderComponent<HorizontalRuleNo
     return formatter.border(char.repeat(maxWidth));
   }
 }
+
+export { HorizontalRuleComponent as DividerComponent };
+

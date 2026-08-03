@@ -22,6 +22,7 @@ export function createProgram(): Command {
 
   program
     .command('start')
+    .alias('host')
     .description('Create and host a new realtime collaboration session')
     .option('-c, --cli <binary>', 'Specify AI CLI executable name or path (e.g., antigravity, gemini)')
     .option('--cli-version <ver>', 'Specify or override AI CLI version')

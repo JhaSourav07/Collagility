@@ -9,7 +9,10 @@ export class QuoteComponent implements RenderComponent<BlockQuoteNode> {
     const lines: string[] = [];
 
     for (const child of node.children) {
-      const rawText = (child as any).text || (child as any).content || '';
+      let rawText = (child as any).text || (child as any).content || '';
+      if (!rawText && (child as any).children && Array.isArray((child as any).children)) {
+        rawText = (child as any).children.map((c: any) => c.text || '').join('');
+      }
       const wrapped = wrapText(rawText, maxWidth - 4);
       for (const line of wrapped) {
         lines.push(`${borderChar}${formatter.italic(line)}`);

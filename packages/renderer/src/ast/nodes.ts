@@ -11,7 +11,54 @@ export type NodeType =
   | 'horizontal_rule'
   | 'table'
   | 'link'
-  | 'image';
+  | 'image'
+  | 'callout'
+  | 'badge'
+  | 'status'
+  | 'file'
+  | 'tool_action'
+  | 'thought';
+
+export interface ToolActionNode extends BaseNode {
+  type: 'tool_action';
+  name: 'Read' | 'Search' | 'Edit' | 'Write' | 'Delete' | 'Grep' | 'Create' | 'Rename' | string;
+  target?: string;
+  state: 'pending' | 'running' | 'success' | 'error' | 'skipped';
+  outputSummary?: string;
+}
+
+export interface ThoughtNode extends BaseNode {
+  type: 'thought';
+  durationSeconds?: number;
+  summaryText: string;
+}
+
+
+
+export interface CalloutNode extends BaseNode {
+  type: 'callout';
+  calloutType: 'note' | 'tip' | 'important' | 'warning' | 'caution';
+  text: string;
+}
+
+export interface BadgeNode extends BaseNode {
+  type: 'badge';
+  label: string;
+  variant?: 'owner' | 'visitor' | 'model' | 'status' | 'info';
+}
+
+export interface StatusNode extends BaseNode {
+  type: 'status';
+  state: 'connected' | 'disconnected' | 'syncing' | 'error';
+  message: string;
+}
+
+export interface FileNode extends BaseNode {
+  type: 'file';
+  fileName: string;
+  filePath?: string;
+  lineRange?: string;
+}
 
 export interface BaseNode {
   type: NodeType;
@@ -120,4 +167,10 @@ export type ASTNode =
   | HorizontalRuleNode
   | TableNode
   | LinkNode
-  | ImageNode;
+  | ImageNode
+  | CalloutNode
+  | BadgeNode
+  | StatusNode
+  | FileNode
+  | ToolActionNode
+  | ThoughtNode;

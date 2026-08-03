@@ -106,7 +106,7 @@ export class SplitTerminalRenderer {
       : chalk.bgHex('#2563eb').white.bold(' VISITOR ');
 
     console.log('');
-    console.log(chalk.cyan.bold('⚡ COLLAGILITY CLI') + chalk.gray(' v0.1.0-alpha.6'));
+    console.log(chalk.cyan.bold('⚡ COLLAGILITY CLI') + chalk.gray(' v0.1.0beta'));
     console.log(chalk.gray('─────────────────────────────────────────────────────────────'));
     console.log(
       `  ${chalk.bold('Session:')}   ${chalk.yellow.bold(this.sessionId || 'active')} ${badge} ${chalk.gray(`(${this.memberCount} active)`)}`

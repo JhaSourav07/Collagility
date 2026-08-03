@@ -22,6 +22,12 @@ export * from './components/quote.js';
 export * from './components/divider.js';
 export * from './components/table.js';
 export * from './components/link.js';
+export * from './components/callout.js';
+export * from './components/badge.js';
+export * from './components/status.js';
+export * from './components/file-ref.js';
+export * from './components/tool-action.js';
+export * from './components/thought.js';
 
 // Renderer Layer
 export * from './renderer/document-renderer.js';
@@ -30,3 +36,13 @@ export * from './renderer/stream-renderer.js';
 // Utilities
 export * from './utils/word-wrap.js';
 export * from './utils/file-detector.js';
+
+// Virtual Screen & ANSI Engine Layer
+export * from './screen/virtual-screen.js';
+export * from './layout/region-manager.js';
+export * from './layout/terminal-layout-engine.js';
+export * from './cursor/cursor-controller.js';
+export * from './diff/screen-diff.js';
+export * from './engine/ansi-engine.js';
+export * from './engine/incremental-stream-engine.js';
+export * from './animation/animation-engine.js';
