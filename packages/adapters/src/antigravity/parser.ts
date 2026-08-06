@@ -1,4 +1,20 @@
-export type InternalEventType = 'THOUGHT' | 'TOOL_CALL' | 'FILE_CHANGE' | 'ERROR';
+export type InternalEventType =
+  | 'THOUGHT'
+  | 'TOOL_CALL'
+  | 'FILE_CHANGE'
+  | 'ERROR'
+  | 'SUBAGENT_SPAWNED'
+  | 'SUBAGENT_PROGRESS'
+  | 'SUBAGENT_COMPLETED';
+
+export interface SubagentWorkerState {
+  id: string;
+  taskDescription: string;
+  status: 'running' | 'completed' | 'failed' | 'idle';
+  activeTool?: string;
+  progress?: number;
+  outputLogs: string[];
+}
 
 export interface AntigravityParsedEvent {
   type: InternalEventType | 'TEXT' | 'COMPLETION';
@@ -9,12 +25,27 @@ export interface AntigravityParsedEvent {
     filePath?: string;
     changeType?: 'created' | 'modified' | 'deleted';
     errorCode?: string;
+    subagentId?: string;
+    taskDescription?: string;
+    activeTool?: string;
+    status?: 'running' | 'completed' | 'failed' | 'idle';
+    progress?: number;
+    outputLogs?: string[];
     raw?: unknown;
   };
 }
 
 export class AntigravityOutputParser {
   private buffer = '';
+  private subagentsMap = new Map<string, SubagentWorkerState>();
+
+  public getSubagents(): SubagentWorkerState[] {
+    return Array.from(this.subagentsMap.values());
+  }
+
+  public getSubagent(id: string): SubagentWorkerState | undefined {
+    return this.subagentsMap.get(id);
+  }
 
   /**
    * Parse a single line from stdout or stderr.
@@ -32,6 +63,119 @@ export class AntigravityOutputParser {
         const eventTypeStr = String(
           json.type || json.event || json.kind || json.action || json.status || ''
         ).toLowerCase();
+
+        // SUBAGENT_SPAWNED
+        if (
+          eventTypeStr === 'subagent_spawned' ||
+          eventTypeStr === 'subagent_spawn' ||
+          eventTypeStr === 'subagent_start' ||
+          (json.subagentId && (json.action === 'spawn' || json.action === 'start' || json.event === 'spawned'))
+        ) {
+          const subagentId = json.subagentId || json.subagent_id || json.id || `subagent-${Date.now()}`;
+          const taskDescription = json.taskDescription || json.task || json.description || json.message || 'Background reasoning task';
+          const activeTool = json.activeTool || json.toolName || json.tool;
+
+          const workerState: SubagentWorkerState = {
+            id: subagentId,
+            taskDescription,
+            status: 'running',
+            activeTool,
+            progress: json.progress || 0,
+            outputLogs: [json.message || `Subagent ${subagentId} spawned for task: ${taskDescription}`],
+          };
+          this.subagentsMap.set(subagentId, workerState);
+
+          return {
+            type: 'SUBAGENT_SPAWNED',
+            content: `🤖 [Subagent ${subagentId}] Spawned: ${taskDescription}`,
+            metadata: {
+              subagentId,
+              taskDescription,
+              activeTool,
+              status: 'running',
+              progress: workerState.progress,
+              outputLogs: workerState.outputLogs,
+              raw: json,
+            },
+          };
+        }
+
+        // SUBAGENT_PROGRESS
+        if (
+          eventTypeStr === 'subagent_progress' ||
+          eventTypeStr === 'subagent_update' ||
+          (json.subagentId && (json.progress !== undefined || json.activeTool || json.log))
+        ) {
+          const subagentId = json.subagentId || json.subagent_id || json.id;
+          const existing: SubagentWorkerState = this.subagentsMap.get(subagentId) || {
+            id: subagentId,
+            taskDescription: json.taskDescription || json.task || 'Background task',
+            status: 'running',
+            outputLogs: [],
+          };
+
+          if (json.activeTool || json.toolName || json.tool) {
+            existing.activeTool = json.activeTool || json.toolName || json.tool;
+          }
+          if (json.progress !== undefined) {
+            existing.progress = json.progress;
+          }
+          if (json.log || json.message || json.output) {
+            existing.outputLogs.push(json.log || json.message || json.output);
+          }
+          existing.status = json.status || existing.status;
+          this.subagentsMap.set(subagentId, existing);
+
+          return {
+            type: 'SUBAGENT_PROGRESS',
+            content: `🤖 [Subagent ${subagentId}] ${existing.activeTool ? `Tool: ${existing.activeTool}` : 'Progressing...'}`,
+            metadata: {
+              subagentId,
+              taskDescription: existing.taskDescription,
+              activeTool: existing.activeTool,
+              status: existing.status,
+              progress: existing.progress,
+              outputLogs: existing.outputLogs,
+              raw: json,
+            },
+          };
+        }
+
+        // SUBAGENT_COMPLETED
+        if (
+          eventTypeStr === 'subagent_completed' ||
+          eventTypeStr === 'subagent_done' ||
+          eventTypeStr === 'subagent_finish' ||
+          (json.subagentId && (json.action === 'complete' || json.action === 'done' || json.status === 'completed'))
+        ) {
+          const subagentId = json.subagentId || json.subagent_id || json.id;
+          const existing: SubagentWorkerState = this.subagentsMap.get(subagentId) || {
+            id: subagentId,
+            taskDescription: json.taskDescription || json.task || 'Background task',
+            status: 'completed',
+            outputLogs: [],
+          };
+
+          existing.status = json.status === 'failed' ? 'failed' : 'completed';
+          existing.progress = 100;
+          if (json.result || json.message) {
+            existing.outputLogs.push(json.result || json.message);
+          }
+          this.subagentsMap.set(subagentId, existing);
+
+          return {
+            type: 'SUBAGENT_COMPLETED',
+            content: `✓ [Subagent ${subagentId}] Completed task: ${existing.taskDescription}`,
+            metadata: {
+              subagentId,
+              taskDescription: existing.taskDescription,
+              status: existing.status,
+              progress: 100,
+              outputLogs: existing.outputLogs,
+              raw: json,
+            },
+          };
+        }
 
         // THOUGHT
         if (
@@ -125,6 +269,74 @@ export class AntigravityOutputParser {
 
     // 2. Plain Text / Stream Line parsing
 
+    // SUBAGENT_SPAWNED plain text pattern
+    if (trimmed.startsWith('[SUBAGENT_SPAWNED]') || trimmed.toLowerCase().startsWith('subagent spawned:')) {
+      const clean = trimmed.replace(/^\[SUBAGENT_SPAWNED\]\s*/i, '').replace(/^subagent spawned:\s*/i, '');
+      const parts = clean.split(/\s+-\s+/);
+      const subagentId = parts[0]?.trim() || `subagent-${Date.now()}`;
+      const taskDescription = parts[1]?.trim() || parts[0]?.trim() || 'Background worker task';
+
+      const workerState: SubagentWorkerState = {
+        id: subagentId,
+        taskDescription,
+        status: 'running',
+        progress: 0,
+        outputLogs: [trimmed],
+      };
+      this.subagentsMap.set(subagentId, workerState);
+
+      return {
+        type: 'SUBAGENT_SPAWNED',
+        content: `🤖 [Subagent ${subagentId}] Spawned: ${taskDescription}`,
+        metadata: { subagentId, taskDescription, status: 'running', outputLogs: workerState.outputLogs },
+      };
+    }
+
+    // SUBAGENT_PROGRESS plain text pattern
+    if (trimmed.startsWith('[SUBAGENT_PROGRESS]') || trimmed.toLowerCase().startsWith('subagent progress:')) {
+      const clean = trimmed.replace(/^\[SUBAGENT_PROGRESS\]\s*/i, '').replace(/^subagent progress:\s*/i, '');
+      const match = clean.match(/^([a-zA-Z0-9_-]+)\s+(.+)$/);
+      const subagentId = match ? match[1] : 'subagent-1';
+      const logText = match ? match[2] : clean;
+
+      const existing: SubagentWorkerState = this.subagentsMap.get(subagentId) || {
+        id: subagentId,
+        taskDescription: 'Background worker task',
+        status: 'running',
+        outputLogs: [],
+      };
+      existing.outputLogs.push(logText);
+      this.subagentsMap.set(subagentId, existing);
+
+      return {
+        type: 'SUBAGENT_PROGRESS',
+        content: `🤖 [Subagent ${subagentId}] ${logText}`,
+        metadata: { subagentId, taskDescription: existing.taskDescription, status: existing.status, outputLogs: existing.outputLogs },
+      };
+    }
+
+    // SUBAGENT_COMPLETED plain text pattern
+    if (trimmed.startsWith('[SUBAGENT_COMPLETED]') || trimmed.toLowerCase().startsWith('subagent completed:')) {
+      const clean = trimmed.replace(/^\[SUBAGENT_COMPLETED\]\s*/i, '').replace(/^subagent completed:\s*/i, '');
+      const subagentId = clean.trim().split(/\s+/)[0] || 'subagent-1';
+
+      const existing: SubagentWorkerState = this.subagentsMap.get(subagentId) || {
+        id: subagentId,
+        taskDescription: 'Background worker task',
+        status: 'completed',
+        outputLogs: [],
+      };
+      existing.status = 'completed';
+      existing.progress = 100;
+      this.subagentsMap.set(subagentId, existing);
+
+      return {
+        type: 'SUBAGENT_COMPLETED',
+        content: `✓ [Subagent ${subagentId}] Completed`,
+        metadata: { subagentId, taskDescription: existing.taskDescription, status: 'completed', progress: 100 },
+      };
+    }
+
     // THOUGHT patterns
     if (
       trimmed.startsWith('[THOUGHT]') ||
@@ -159,7 +371,6 @@ export class AntigravityOutputParser {
         metadata: { toolName },
       };
     }
-
 
     // FILE_CHANGE patterns
     if (
@@ -233,5 +444,6 @@ export class AntigravityOutputParser {
 
   public reset(): void {
     this.buffer = '';
+    this.subagentsMap.clear();
   }
 }

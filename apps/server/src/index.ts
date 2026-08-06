@@ -5,6 +5,20 @@ import { logger } from './logger/logger.js';
 export { buildServer, type ServerInstance };
 
 
+import os from 'node:os';
+
+export function getLocalIpAddress(): string {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
+
 async function main() {
   const server = buildServer();
   const PORT = Number(process.env['PORT'] || 8080);
@@ -36,6 +50,12 @@ async function main() {
 
   try {
     await server.listen(PORT, HOST);
+    const lanIp = getLocalIpAddress();
+    console.log(`\n🚀 Collagility Realtime Server Listening`);
+    console.log(`   Local:   http://localhost:${PORT}`);
+    console.log(`   Network: http://${lanIp}:${PORT}`);
+    console.log(`\n💡 Team Members can join sessions using:`);
+    console.log(`   collagility join <sessionId>@${lanIp}\n`);
   } catch (err) {
     logger.fatal({ error: err }, 'Failed to start Collagility server');
     process.exit(1);

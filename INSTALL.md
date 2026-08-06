@@ -1,158 +1,123 @@
-# Installing Collagility (`0.1.0beta`)
+# Collagility Installation & Setup Guide
 
-**Collagility** is an open-source collaborative terminal workspace for AI coding agents.
+This guide provides instructions for installing, building, and configuring Collagility for local pair programming and multi-device LAN collaboration.
 
 ---
 
-## Quick Install
+## 📋 Prerequisites
 
-### Linux & macOS
+### Required Runtimes
+- **Node.js**: `>=18.0.0` (LTS recommended)
+- **pnpm**: `>=8.0.0` (`corepack enable` or `npm install -g pnpm`)
+
+### Optional AI Agent Executables
+Collagility includes a built-in mock mode (`--mock`), but for live AI pair programming you should have at least one AI CLI tool installed and accessible in your system `PATH`:
+- **Google Antigravity CLI**: `agy` (v2.0+)
+- **Google Gemini CLI**: `gemini`
+- **Anthropic Claude Code**: `claude`
+- **Aider**: `aider`
+
+## ⚡ Quick Installation (Production / Global CLI)
+
+### 1. macOS & Linux (`curl | bash`)
 ```bash
 curl -fsSL https://raw.githubusercontent.com/JhaSourav07/Collagility/main/install.sh | bash
 ```
 
-Or run `install.sh` directly after cloning:
-```bash
-./install.sh
-```
-
-### Windows (PowerShell)
+### 2. Windows PowerShell (`iwr`)
 ```powershell
 iwr -useb https://raw.githubusercontent.com/JhaSourav07/Collagility/main/install.ps1 | iex
 ```
 
-Or run `install.ps1` directly:
-```powershell
-.\install.ps1
+### 3. NPM Global Install / NPX
+```bash
+# Global install
+npm install -g collagility@0.1.1-beta.1
+
+# Run without installing
+npx collagility@beta start
 ```
 
 ---
 
-## What the installer does
-
-1. **Detects** your OS, architecture, and shell (`bash` / `zsh` / `fish`)
-2. **Checks** Node.js (≥ 22 required), npm, git, and internet connectivity
-3. **Installs** the `collagility` binary to `~/.collagility/bin/`
-4. **Configures** your shell `PATH` automatically (`.zshrc`, `.bashrc`, `config.fish`)
-5. **Prompts** optionally to install Tailscale for secure peer-to-peer connections
-6. **Verifies** SHA-256 integrity of downloaded assets
-
----
-
-## Requirements
-
-| Dependency | Minimum Version | Required |
-| :--- | :--- | :--- |
-| Node.js | v22.0.0 | **Yes** |
-| npm | v10.0.0 | **Yes** |
-| Git | v2.x | Optional |
-| Tailscale | Any | Optional |
-
----
-
-## Verifying Installation
-
-After installation, reload your shell:
-```bash
-# bash
-source ~/.bashrc
-
-# zsh
-source ~/.zshrc
-
-# fish
-source ~/.config/fish/config.fish
-```
-
-Then verify:
-```bash
-collagility version
-```
-
-Expected output:
-```text
-  Collagility 0.1.0beta
-  Node.js v22.x
-  Platform linux/x86_64
-```
-
----
-
-## Getting Started Commands
-
-| Task | Command |
-| :--- | :--- |
-| **Start a session** | `collagility start` or `collagility host` |
-| **Demo mode** | `collagility host --mock` |
-| **Join a session** | `collagility join <session-id>` |
-| **Leave a session** | `collagility leave` |
-| **Server status** | `collagility server status` |
-| **List sessions** | `collagility sessions` |
-| **Version info** | `collagility version` |
-| **All commands** | `collagility --help` |
-
----
-
-## Uninstallation
-
-To completely remove Collagility:
-```bash
-./uninstall.sh
-```
-
-Or via curl:
-```bash
-curl -fsSL https://raw.githubusercontent.com/JhaSourav07/Collagility/main/uninstall.sh | bash
-```
-
-The uninstaller will:
-- Remove `~/.collagility/` directory
-- Clean PATH entries from `.bashrc`, `.zshrc`, `.bash_profile`, `.profile`, and `config.fish`
-
----
-
-## Troubleshooting
-
-### `collagility: command not found`
-The binary is installed but your PATH hasn't been reloaded. Run:
-```bash
-source ~/.bashrc   # or ~/.zshrc
-```
-Or add manually:
-```bash
-export PATH="$HOME/.collagility/bin:$PATH"
-```
-
-### Node.js version too old
-Collagility requires Node.js ≥ 22. Install via:
-- **[nvm](https://github.com/nvm-sh/nvm)**: `nvm install 22 && nvm use 22`
-- **[fnm](https://github.com/Schniz/fnm)**: `fnm install 22`
-- **Official installer**: https://nodejs.org
-
-### Permission denied
-The installer writes to `~/.collagility` in your home directory — no `sudo` required.
-
-### Installation fails with network error
-Check your internet connection, then retry:
-```bash
-curl -fsSL https://install.collagility.dev | sh
-```
-
----
-
-## Manual Installation (from source)
+## 🛠️ Local Development & Building from Source
 
 ```bash
+# 1. Clone the repository
 git clone https://github.com/JhaSourav07/Collagility.git
 cd Collagility
+
+# 2. Install workspace dependencies
 pnpm install
-pnpm --filter @collagility/renderer build
-pnpm --filter @collagility/cli build
-node apps/cli/dist/index.js --help
+
+# 3. Build all workspace packages
+pnpm build
 ```
 
 ---
 
-## GitHub Repository
+## 💻 Running Local Sessions
 
-**https://github.com/JhaSourav07/Collagility**
+### 1. Start the Realtime Collaboration Server
+```bash
+pnpm --filter @collagility/server start
+```
+By default, the server listens on `ws://127.0.0.1:8080/ws` (HTTP health check at `http://127.0.0.1:8080/health`).
+
+### 2. Host a Session (Session Owner)
+In a new terminal window:
+```bash
+# Host using Google Antigravity CLI (agy)
+pnpm --filter @collagility/cli start --cli agy
+
+# Host using mock mode (for offline testing without real AI API keys)
+pnpm --filter @collagility/cli start --mock
+```
+
+### 3. Join a Session (Collaborator)
+From another terminal window or remote machine:
+```bash
+pnpm --filter @collagility/cli join <sessionId>
+```
+
+---
+
+## 🌐 Network & Firewall Configuration (Multi-Device / LAN)
+
+To allow team members on the same local Wi-Fi / LAN network to join your pair programming session, bind the server to `0.0.0.0` and configure firewall port forwarding for port `8080`.
+
+### Server Binding
+Set the `HOST` environment variable when launching `@collagility/server`:
+```bash
+HOST=0.0.0.0 PORT=8080 pnpm --filter @collagility/server start
+```
+
+### Firewall Rules
+
+#### Linux (`ufw` - Ubuntu/Debian)
+```bash
+sudo ufw allow 8080/tcp comment 'Collagility Realtime Server'
+```
+
+#### Linux (`firewalld` - Fedora/RHEL/CentOS)
+```bash
+sudo firewall-cmd --zone=public --add-port=8080/tcp --permanent
+sudo firewall-cmd --reload
+```
+
+#### Windows Firewall (PowerShell as Administrator)
+```powershell
+New-NetFirewallRule -DisplayName "Collagility Server" -Direction Inbound -LocalPort 8080 -Protocol TCP -Action Allow
+```
+
+#### Connecting Remote Participants
+Option A: Use composite join target `session@host` (No `--server` flag needed!):
+```bash
+collagility join <sessionId>@192.168.1.50
+```
+
+Option B: Set default server IP once:
+```bash
+collagility config set server 192.168.1.50
+collagility join <sessionId>
+```

@@ -6,8 +6,9 @@ import { InputBar } from './InputBar.js';
 import { Footer } from './Footer.js';
 import { ConfigOverlay } from './overlays/ConfigOverlay.js';
 import { PermissionsOverlay } from './overlays/PermissionsOverlay.js';
-import { AgentsOverlay } from './overlays/AgentsOverlay.js';
+import { SubagentDrawer } from './SubagentDrawer.js';
 import { ResumeOverlay } from './overlays/ResumeOverlay.js';
+import { MCPOverlay } from './overlays/MCPOverlay.js';
 import type {
   SessionInfoState,
   AIDriverState,
@@ -108,7 +109,7 @@ export const App: React.FC<AppProps> = ({
       {/* Header Info Banner */}
       <Header session={session} aiDriver={aiDriver} subagents={subagents} />
 
-      {/* Active Overlay Modal Drawer (if triggered via slash commands or shortcuts) */}
+      {/* Active Overlay Modal / Subagent Drawer (if triggered via slash commands or shortcuts) */}
       {activeOverlay === 'config' && (
         <ConfigOverlay onClose={() => setActiveOverlay('none')} />
       )}
@@ -116,10 +117,13 @@ export const App: React.FC<AppProps> = ({
         <PermissionsOverlay onClose={() => setActiveOverlay('none')} />
       )}
       {activeOverlay === 'agents' && (
-        <AgentsOverlay tasks={subagents} onClose={() => setActiveOverlay('none')} />
+        <SubagentDrawer tasks={subagents} onClose={() => setActiveOverlay('none')} />
       )}
       {activeOverlay === 'resume' && (
         <ResumeOverlay onClose={() => setActiveOverlay('none')} />
+      )}
+      {activeOverlay === 'mcp' && (
+        <MCPOverlay onClose={() => setActiveOverlay('none')} />
       )}
 
       {/* Single Continuous Terminal Timeline Stream */}

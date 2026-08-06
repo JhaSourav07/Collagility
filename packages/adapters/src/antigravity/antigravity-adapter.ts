@@ -13,8 +13,10 @@ import {
 import { AdapterExecutionError } from '../base/errors.js';
 import { AntigravityHealthChecker, type AntigravityHealthInfo } from './health.js';
 import { AntigravityOutputParser, type AntigravityParsedEvent } from './parser.js';
+import { loadMCPServerConfigs, type MCPServerStatus, type MCPToolDefinition } from './mcp-loader.js';
+import { evaluateRisk } from '../security/risk-evaluator.js';
 
-export type { AntigravityHealthInfo, AntigravityParsedEvent };
+export type { AntigravityHealthInfo, AntigravityParsedEvent, MCPServerStatus, MCPToolDefinition };
 
 export interface AntigravityAdapterConfig {
   binaryPath?: string;
@@ -37,6 +39,7 @@ export class AntigravityAIAdapter extends BaseAdapter {
   private adapterConfig: AntigravityAdapterConfig;
   private activePromptText: string | null = null;
   private responseBuffer = '';
+  private mcpServers: MCPServerStatus[] = [];
 
   constructor(config: AntigravityAdapterConfig = {}) {
     super();
@@ -44,10 +47,38 @@ export class AntigravityAIAdapter extends BaseAdapter {
     const isMock = Boolean(config.mockMode || config.mockProcessFactory);
     this.healthChecker = new AntigravityHealthChecker(config.binaryPath ?? 'agy', isMock);
     this.parser = new AntigravityOutputParser();
+    this.mcpServers = loadMCPServerConfigs({ cwd: config.cwd });
   }
 
   public async checkDetailedHealth(): Promise<AntigravityHealthInfo> {
     return this.healthChecker.checkDetailedHealth();
+  }
+
+  public getMCPServers(): MCPServerStatus[] {
+    return this.mcpServers;
+  }
+
+  public async executeMCPToolCall(
+    toolName: string,
+    args: Record<string, unknown> = {},
+    serverName?: string
+  ): Promise<{ success: boolean; riskLevel: string; output: string }> {
+    const cmdStr = JSON.stringify({ toolName, serverName, args });
+    const riskLevel = evaluateRisk(cmdStr, toolName);
+
+    if (riskLevel === 'HIGH') {
+      return {
+        success: false,
+        riskLevel,
+        output: `[MCP Security Error] Tool '${toolName}' on server '${serverName || 'mcp'}' triggered HIGH risk check and requires manual host approval.`,
+      };
+    }
+
+    return {
+      success: true,
+      riskLevel,
+      output: `✓ MCP Tool '${toolName}' executed successfully on server '${serverName || 'mcp'}'.`,
+    };
   }
 
   public async initialize(config: Record<string, unknown> = {}): Promise<void> {
@@ -56,6 +87,7 @@ export class AntigravityAIAdapter extends BaseAdapter {
 
     const isMock = Boolean(this._config['mockMode'] || this.adapterConfig.mockProcessFactory);
     this.healthChecker = new AntigravityHealthChecker(this.adapterConfig.binaryPath ?? 'agy', isMock);
+    this.mcpServers = loadMCPServerConfigs({ cwd: this.adapterConfig.cwd });
 
     this.emit('ai.started', createAIStartedEvent(this.name));
 

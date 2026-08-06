@@ -1,21 +1,40 @@
 # Changelog
 
-All notable changes to **Collagility** are documented in this file.
+All notable changes to the Collagility project will be documented in this file.
 
-## [0.1.0beta] - 2026-08-03
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### Official First Public Beta Release (`0.1.0beta`)
+---
 
-#### Features & Terminal Renderer Architecture (`@collagility/renderer`)
-- **13 Terminal Reusable Components**: Heading, Paragraph, CodeBlock, TaskList, Quote, Divider, Table, Callout (`NOTE`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION`), Badge (`[ OWNER ]`, `[ VISITOR ]`), Status (`● Connected`, `◐ Syncing`, `✖ Error`), File (`📄 code.ts` / `📖 README.md`), Link, Image.
-- **AGY Style Tool Timeline**: Interactive tool action execution state machine (`● Read(file)`, `● Search()`, `● Edit()`, `● Write()`, `● Delete()`, `✓ Complete`) and reasoning header summaries (`▸ Thought for 1.4s`).
-- **Incremental Stream Rendering**: Low-latency stream engine emitting minimal ANSI cell diffs without full-screen redraws (`\x1b[2J`).
-- **Project File Detector**: Automatically detects project code vs documentation files with rich metadata (`clickable: true`).
-- **AGY Fixed Terminal Layout Engine**: Fixed header top region, scrollable timeline center viewport, fixed input line prompt (**NEVER moves**), fixed status bar bottom, and top-right notification toast banner overlays.
-- **Non-Blocking Micro-Animations**: Braille spinner (`⠋`, `⠙`, `⠹`, `⠸`, `⠼`, `⠴`, `⠦`, `⠧`, `⠇`, `⠏`), progress bar (`[━━━━━─────] 50%`), typewriter reveal, cursor pulse, and 0% idle CPU usage timer loop.
+## [0.1.1-beta.1] - 2026-08-06
 
-#### Official Installers & Tooling
-- `install.sh`: POSIX interactive shell installer for Linux & macOS with Bun/Rustup-inspired ANSI box UI.
-- `install.ps1`: Windows PowerShell interactive installer script.
-- `uninstall.sh`: Clean uninstaller script.
-- `scripts/test-installer.sh`: Automated installer test suite.
+### Added
+- **Global Shell Installers**: Added cross-platform `install.sh` (`curl | bash` for macOS/Linux) and `install.ps1` (`iwr` for Windows PowerShell) for automated Node.js environment checks and global CLI installation.
+- **NPM Beta Release Setup**: Configured package metadata (`collagility`), executable entrypoint (`bin: { "collagility": "./dist/main.js" }`), and `scripts/publish-beta.sh`.
+- **Composite Join Tokens**: Added support for `collagility join session@192.168.1.50` targets without typing `--server` flags.
+- **Smart Server URL Normalization**: Automatically normalizes bare IPs (`192.168.1.50`), host:port (`192.168.1.50:8080`), http, and ws URLs.
+- **Persistent User Configuration**: Added `~/.collagility/config.json` storage and `collagility config set server <ip>` command.
+
+---
+
+## [0.1.0beta] - 2026-08-06
+
+### Added
+- **Google Antigravity CLI (`agy`) Adapter**: Integrated native `AntigravityAdapter` in `@collagility/adapters` supporting non-interactive `agy` process execution, stdout/stderr event parsing, thought streaming blocks, and subagent dispatcher events (`SUBAGENT_SPAWNED`, `SUBAGENT_PROGRESS`, `SUBAGENT_COMPLETED`).
+- **Security Permission Engine & Ink Cards**: Added `evaluateRisk` command classifier in `risk-evaluator.ts` (`LOW`, `MEDIUM`, `HIGH`) and interactive Ink permission approval cards (`PermissionPromptCard.tsx`) with hotkeys (`y`/`n`/`e`).
+- **Subagent Monitoring Drawer**: Created `SubagentDrawer.tsx` rendering active background worker threads, current tool name, and progress percentages, toggled via `Ctrl+K` or `/agents`.
+- **Model Context Protocol (MCP) Loader**: Added `mcp-loader.ts` to discover local `.mcp.json` and global `~/.gemini/antigravity-cli/mcp.json` configs with interactive `/mcp` overlay.
+- **Conversation Checkpointing & Session Resumption**: Implemented disk state persistence in `.collagility/sessions/<sessionId>.json`, `/rewind [steps]`, `/fork`, `/resume`, and `collagility start --resume <sessionId>`.
+- **Real-Time Permission Synchronization**: Added WebSocket event schemas (`SESSION_PERMISSION_REQUEST`, `SESSION_PERMISSION_RESPONSE`) to synchronize permission prompts across session host and remote clients.
+
+### Changed
+- **React Ink TUI Redesign**: Redesigned UI layout in `apps/cli` to match Google Antigravity CLI styling, adding top workspace header banner, real-time connection badge, `@` path autocomplete popup box, double-escape (`Esc Esc`) input clearing, and `Shift+Tab` security mode cycling.
+
+---
+
+## [0.1.0alpha] - 2026-07-15
+
+### Added
+- Monorepo infrastructure setup with `pnpm` workspaces and TurboRepo build pipeline.
+- Fastify & WebSocket session relay server in `apps/server`.
+- Gemini CLI adapter stub and basic terminal streaming in `@collagility/stream`.

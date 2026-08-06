@@ -12,21 +12,37 @@ import { InteractivePromptRenderer } from '../terminal/interactive-prompt-render
 import { readPlanArtifact } from '../terminal/plan-reader.js';
 import { DocumentRenderer } from '@collagility/renderer';
 
-export async function joinCommand(targetSessionId: string, options: Partial<CLIConfig>): Promise<void> {
-  const logger = new CLILogger(options.verbose);
+import { createConfig } from '../config/config.js';
+
+export async function joinCommand(rawTarget: string, options: Partial<CLIConfig> = {}): Promise<void> {
+  let targetSessionId = rawTarget.trim();
+  let serverOverride = options.serverUrl;
+
+  // Support composite join target (e.g. session@192.168.1.50 or session@192.168.1.50:8080)
+  if (rawTarget.includes('@')) {
+    const parts = rawTarget.split('@');
+    targetSessionId = parts[0].trim();
+    if (!options.serverUrl && parts[1]?.trim()) {
+      serverOverride = parts[1].trim();
+    }
+  }
+
+  const config = createConfig({ ...options, serverUrl: serverOverride });
+
+  const logger = new CLILogger(config.verbose);
   const streamRenderer = new TerminalStreamRenderer();
   const isInteractive = Boolean(process.stdout.isTTY || process.stdin.isTTY || process.env.FORCE_TUI || !process.env.CI);
   const splitRenderer = isInteractive
     ? new SplitTerminalRenderer({ isOwner: false, sessionId: targetSessionId })
     : null;
-  const spinner = new CLIProgressSpinner(`Connecting to server to join session '${targetSessionId}'...`);
+  const spinner = new CLIProgressSpinner(`Connecting to ${config.serverUrl} to join session '${targetSessionId}'...`);
   let chatPrompt: ChatPrompt | null = null;
   const streamAccumulator = new Map<string, string>();
 
   spinner.start();
 
   try {
-    const client = await establishConnection(options as CLIConfig, {
+    const client = await establishConnection(config, {
       onSessionJoined: (session, memberId) => {
         const sessionId = String(session['id'] || targetSessionId);
         const ownerId = String(session['ownerId'] || 'Host');

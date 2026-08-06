@@ -1,54 +1,36 @@
-# Official Windows PowerShell Interactive Installer for Collagility (v0.1.0beta)
+# Collagility Installer for Windows PowerShell
+# Target Release: 0.1.1-beta.1
+
 $ErrorActionPreference = "Stop"
 
-$Version = "0.1.0beta"
-$InstallDir = Join-Path $HOME ".collagility"
-$BinDir = Join-Path $InstallDir "bin"
-$RepoUrl = "https://github.com/JhaSourav07/collagility"
-
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-Write-Host "                    Collagility" -ForegroundColor Magenta
-Write-Host "        Multiplayer Workspace for AI Coding Agents" -ForegroundColor DarkGray
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Preparing your environment ($Version)..." -ForegroundColor Bold
+Write-Host "  ⚡ Collagility 0.1.1-beta.1 Installer" -ForegroundColor Cyan
+Write-Host "  The Realtime Agentic Terminal for Collaborative AI Pair Programming" -ForegroundColor Cyan
 Write-Host ""
 
-Write-Host "  ✓ Operating System      Windows" -ForegroundColor Green
-Write-Host "  ✓ Architecture          x64 / arm64" -ForegroundColor Green
-Write-Host "  ✓ Shell Environment     PowerShell" -ForegroundColor Green
-Write-Host "  ✓ Internet Connection   Verified (install.collagility.dev)" -ForegroundColor Green
-Write-Host "  ✓ Binary Security       SHA-256 Checksum Verified" -ForegroundColor Green
-Write-Host ""
-
-Write-Host "Installing Collagility $Version..." -ForegroundColor Bold
-Write-Host ""
-Write-Host "  Downloading...    [████████████████████████] 100%" -ForegroundColor Green
-Write-Host "  Extracting...     Complete" -ForegroundColor Green
-
-if (!(Test-Path $BinDir)) {
-    New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
+# 1. Check Node.js runtime
+$nodeInstalled = Get-Command node -ErrorAction SilentlyContinue
+if (-not $nodeInstalled) {
+    Write-Host "✖ Error: Node.js is not installed." -ForegroundColor Red
+    Write-Host "Please install Node.js (v18.0.0 or higher) from https://nodejs.org/ before running this installer."
+    exit 1
 }
 
-# Update User PATH environment variable
-$UserPath = [Environment]::GetEnvironmentVariable("Path", "User")
-if ($UserPath -notlike "*$BinDir*") {
-    [Environment]::SetEnvironmentVariable("Path", "$UserPath;$BinDir", "User")
-    Write-Host "  Configuring...    PATH updated in User Environment" -ForegroundColor Green
-}
+$nodeVerString = node -v
+Write-Host "✓ Node.js $nodeVerString detected" -ForegroundColor Green
 
+# 2. Install collagility globally via NPM
 Write-Host ""
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-Write-Host "                ✓ Installation Complete" -ForegroundColor Green
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-Write-Host "  Version:     $Version"
-Write-Host "  Location:    $BinDir\collagility.cmd"
+Write-Host "Installing collagility@0.1.1-beta.1 globally via NPM..." -ForegroundColor Yellow
+npm install -g collagility@0.1.1-beta.1
+
+# 3. Verify installation
 Write-Host ""
-Write-Host "  Next Steps:" -ForegroundColor Bold
-Write-Host "    collagility host" -ForegroundColor Cyan
-Write-Host "    collagility host --mock" -ForegroundColor Cyan
-Write-Host "    collagility --help" -ForegroundColor Cyan
+Write-Host "✓ Installation Complete!" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Documentation: https://docs.collagility.dev"
-Write-Host "  GitHub:        $RepoUrl"
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+Write-Host "To start a pair programming session, run:" -ForegroundColor White
+Write-Host "  collagility start" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "To join an existing session, run:" -ForegroundColor White
+Write-Host "  collagility join <sessionId>@<host-ip>" -ForegroundColor Cyan
+Write-Host ""

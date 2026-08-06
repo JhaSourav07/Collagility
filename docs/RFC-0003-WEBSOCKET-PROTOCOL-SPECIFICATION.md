@@ -97,7 +97,53 @@ Every message transmitted across the Collagility protocol MUST conform to the st
 | `type` | `enum` | **Yes** | Message archetype: `"REQUEST"`, `"RESPONSE"`, `"EVENT"`, `"ERROR"`. |
 | `seq` | `uint64` | **Yes** | Monotonic sequence number scoped to the session stream. |
 | `timestamp` | `int64` | **Yes** | UTC Unix timestamp in milliseconds. |
-| `correlation_id` | `string` | No | ID linking multiple events in a single async workflow. |
+### Security & Subagent Event Schemas
+
+#### 1. `SESSION_PERMISSION_REQUEST` (`session.permission.request`)
+Emitted when an AI tool call requires host permission confirmation before proceeding:
+```json
+{
+  "event": "session.permission.request",
+  "type": "REQUEST",
+  "payload": {
+    "requestId": "perm-101",
+    "toolName": "run_command",
+    "command": "npm test",
+    "riskLevel": "MEDIUM",
+    "requestedBy": "agy"
+  }
+}
+```
+
+#### 2. `SESSION_PERMISSION_RESPONSE` (`session.permission.response`)
+Emitted by the session host when approving or denying a permission request:
+```json
+{
+  "event": "session.permission.response",
+  "type": "RESPONSE",
+  "payload": {
+    "requestId": "perm-101",
+    "approved": true,
+    "userDecision": "approved"
+  }
+}
+```
+
+#### 3. `SUBAGENT_SPAWNED` / `SUBAGENT_PROGRESS` / `SUBAGENT_COMPLETED`
+Emitted by the Antigravity adapter when background worker agent threads are spawned, updated, or finished:
+```json
+{
+  "event": "subagent.progress",
+  "type": "EVENT",
+  "payload": {
+    "subagentId": "worker-1",
+    "taskDescription": "Running unit tests",
+    "status": "RUNNING",
+    "activeTool": "Vitest",
+    "progress": 65
+  }
+}
+```
 | `request_id` | `string` | No | RPC request ID matching a client request to server response. |
 | `session_id` | `string` | **Yes** | Scoped session identifier UUIDv4. |
 | `workspace_id` | `string` | **Yes** | Scoped workspace identifier UUIDv4. |

@@ -40,7 +40,7 @@ export interface SubagentTask {
   progress?: number;
 }
 
-export type OverlayType = 'none' | 'config' | 'permissions' | 'agents' | 'resume';
+export type OverlayType = 'none' | 'config' | 'permissions' | 'agents' | 'resume' | 'mcp';
 
 export interface ToolExecutionCard {
   toolName: string;

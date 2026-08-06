@@ -4,8 +4,8 @@ import type { OverlayType } from './ink/types.js';
 export type ParsedCLIInput =
   | { type: 'ai'; prompt: string; adapterName: string }
   | { type: 'mode'; targetMode?: SecurityMode }
-  | { type: 'overlay'; target: OverlayType }
-  | { type: 'action'; action: 'clear' | 'rewind' | 'help' | 'leave' }
+  | { type: 'overlay'; target: OverlayType; sessionId?: string }
+  | { type: 'action'; action: 'clear' | 'rewind' | 'fork' | 'help' | 'leave'; steps?: number }
   | { type: 'chat'; text: string };
 
 export function parseCLIInput(rawInput: string): ParsedCLIInput {
@@ -26,14 +26,29 @@ export function parseCLIInput(rawInput: string): ParsedCLIInput {
     return { type: 'overlay', target: 'agents' };
   }
 
-  // Match /resume
-  if (trimmed === '/resume') {
-    return { type: 'overlay', target: 'resume' };
+  // Match /resume [sessionId]
+  if (trimmed.startsWith('/resume')) {
+    const parts = trimmed.split(/\s+/);
+    const sessionId = parts[1];
+    return { type: 'overlay', target: 'resume', sessionId };
   }
 
-  // Match /rewind or /undo
-  if (trimmed === '/rewind' || trimmed === '/undo') {
-    return { type: 'action', action: 'rewind' };
+  // Match /mcp
+  if (trimmed === '/mcp') {
+    return { type: 'overlay', target: 'mcp' };
+  }
+
+  // Match /fork
+  if (trimmed === '/fork') {
+    return { type: 'action', action: 'fork' };
+  }
+
+  // Match /rewind [steps] or /undo [steps]
+  if (trimmed.startsWith('/rewind') || trimmed.startsWith('/undo')) {
+    const parts = trimmed.split(/\s+/);
+    const num = parseInt(parts[1], 10);
+    const steps = isNaN(num) || num < 1 ? 1 : num;
+    return { type: 'action', action: 'rewind', steps };
   }
 
   // Match /clear

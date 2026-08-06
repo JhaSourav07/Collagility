@@ -44,17 +44,21 @@ describe('parseCLIInput', () => {
     expect(parseCLIInput('/mode accept')).toEqual({ type: 'mode', targetMode: 'accept-edits' });
   });
 
-  it('should parse overlay slash commands (/config, /settings, /permissions, /agents, /resume)', () => {
+  it('should parse overlay slash commands (/config, /settings, /permissions, /agents, /resume, /mcp)', () => {
     expect(parseCLIInput('/config')).toEqual({ type: 'overlay', target: 'config' });
     expect(parseCLIInput('/settings')).toEqual({ type: 'overlay', target: 'config' });
     expect(parseCLIInput('/permissions')).toEqual({ type: 'overlay', target: 'permissions' });
     expect(parseCLIInput('/agents')).toEqual({ type: 'overlay', target: 'agents' });
-    expect(parseCLIInput('/resume')).toEqual({ type: 'overlay', target: 'resume' });
+    expect(parseCLIInput('/resume')).toEqual({ type: 'overlay', target: 'resume', sessionId: undefined });
+    expect(parseCLIInput('/resume sess-42')).toEqual({ type: 'overlay', target: 'resume', sessionId: 'sess-42' });
+    expect(parseCLIInput('/mcp')).toEqual({ type: 'overlay', target: 'mcp' });
   });
 
-  it('should parse action slash commands (/rewind, /undo, /clear, /help)', () => {
-    expect(parseCLIInput('/rewind')).toEqual({ type: 'action', action: 'rewind' });
-    expect(parseCLIInput('/undo')).toEqual({ type: 'action', action: 'rewind' });
+  it('should parse action slash commands (/rewind, /undo, /fork, /clear, /help)', () => {
+    expect(parseCLIInput('/rewind')).toEqual({ type: 'action', action: 'rewind', steps: 1 });
+    expect(parseCLIInput('/rewind 3')).toEqual({ type: 'action', action: 'rewind', steps: 3 });
+    expect(parseCLIInput('/undo')).toEqual({ type: 'action', action: 'rewind', steps: 1 });
+    expect(parseCLIInput('/fork')).toEqual({ type: 'action', action: 'fork' });
     expect(parseCLIInput('/clear')).toEqual({ type: 'action', action: 'clear' });
     expect(parseCLIInput('/help')).toEqual({ type: 'action', action: 'help' });
   });

@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { Command } from 'commander';
 import { CLI_VERSION } from './config/constants.js';
 import { createConfig } from './config/config.js';
@@ -8,6 +9,7 @@ import { leaveCommand } from './commands/leave.js';
 import { serverCommand } from './commands/server.js';
 import { sessionsCommand } from './commands/sessions.js';
 import { versionCommand } from './commands/version.js';
+import { handleConfigCommand, handleConfigSetCommand } from './commands/config.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -26,6 +28,7 @@ export function createProgram(): Command {
     .description('Create and host a new realtime collaboration session')
     .option('-c, --cli <binary>', 'Specify AI CLI executable name or path (e.g., antigravity, gemini)')
     .option('--cli-version <ver>', 'Specify or override AI CLI version')
+    .option('-r, --resume <session>', 'Resume an existing collaboration session from disk checkpoint')
     .option('-m, --mock', 'Run in mock AI mode without spawning real CLI process')
     .action(async (cmdOpts) => {
       const opts = program.opts();
@@ -35,6 +38,7 @@ export function createProgram(): Command {
         autoReconnect: opts.reconnect,
         cliBinary: cmdOpts.cli,
         cliVersion: cmdOpts.cliVersion,
+        resumeSessionId: cmdOpts.resume,
         mockMode: cmdOpts.mock,
       });
       await startCommand(config);
@@ -94,6 +98,22 @@ export function createProgram(): Command {
       versionCommand();
     });
 
+  const configCmd = program.command('config').description('Manage persistent Collagility user configuration');
+
+  configCmd
+    .command('get [key]')
+    .description('Display saved configuration settings')
+    .action((key?: string) => {
+      handleConfigCommand('get', key);
+    });
+
+  configCmd
+    .command('set <key> <value>')
+    .description('Save default configuration setting (key: server | cli)')
+    .action((key: string, value: string) => {
+      handleConfigSetCommand(key, value);
+    });
+
   program.addHelpText('before', renderBanner());
 
   return program;
@@ -103,3 +123,16 @@ export function main(): void {
   const program = createProgram();
   program.parse(process.argv);
 }
+
+if (process.env['NODE_ENV'] !== 'test') {
+  const isDirectRun = Boolean(
+    process.argv[1] &&
+      (process.argv[1].endsWith('main.js') ||
+        process.argv[1].endsWith('index.js') ||
+        process.argv[1].includes('collagility'))
+  );
+  if (isDirectRun) {
+    main();
+  }
+}
+

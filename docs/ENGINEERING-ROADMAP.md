@@ -2,12 +2,20 @@
 
 **Author:** Engineering Manager & Principal Architect  
 **Status:** Approved for Execution  
-**Target Goal:** Production MVP Release (v0.1.0) $\rightarrow$ Star-Velocity Open Source Launch (v1.0.0)  
-**Target Stack:** TypeScript, pnpm Workspaces, TurboRepo, Fastify, WebSockets, Commander.js, Ink TUI, Docker  
+**Target Goal:** Production MVP Release (v0.1.0beta Completed) $\rightarrow$ Star-Velocity Open Source Launch (v1.0.0)  
+**Target Stack:** TypeScript, pnpm Workspaces, TurboRepo, Fastify, WebSockets, Commander.js, Ink TUI, Docker, Antigravity (`agy`)  
 
 ---
 
-## Executive Overview
+## Completed Feature Milestones (v0.1.0beta)
+
+- ✅ **Google Antigravity CLI (`agy`) Adapter**: Non-interactive process execution, streaming parser, and multi-step thought process blocks.
+- ✅ **Security Permission Engine**: 4 Security Modes (`manual`, `accept-edits`, `plan-only`, `auto`) and automated command risk evaluator (`LOW`, `MEDIUM`, `HIGH`).
+- ✅ **React Ink TUI Redesign**: Antigravity styling, path autocomplete (`@`), permission prompt cards (`y`/`n`/`e`), and status bar token metrics.
+- ✅ **Subagent Monitoring Drawer (`/agents`, `Ctrl+K`)**: Live background worker thread tracker with active tool and progress bar displays.
+- ✅ **Model Context Protocol (MCP) Loader (`/mcp`)**: Local `.mcp.json` and global discovery for stdio/sse MCP tools with risk checks.
+- ✅ **Conversation Checkpointing & Session Resumption**: Local JSON checkpoints (`.collagility/sessions/`), `/rewind`, `/fork`, `/resume`, and `--resume <sessionId>` CLI recovery.
+- ✅ **Multi-User WebSocket Synchronization**: Real-time broadcast of permission requests, stream tokens, and subagent events to remote clients.
 
 This document provides the step-by-step engineering execution roadmap for building **Collagility**. Designed for high velocity, software quality, and viral developer adoption, the roadmap spans 10 distinct, sequential milestones.
 

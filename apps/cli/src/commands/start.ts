@@ -167,6 +167,7 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
 
               if (trimmed.startsWith('/leave')) {
                 client.leaveSession();
+                console.log(`\n💡 Session checkpoint saved. To resume, run: collagility start --resume ${sessionId}`);
                 process.exit(0);
               } else if (trimmed.startsWith('/clear')) {
                 ink.clearInteractivePrompt();

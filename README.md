@@ -1,164 +1,156 @@
 # Collagility
 
-> **The Multiplayer Terminal for AI Coding Agents**
+> **The Real-Time Agentic Terminal for Collaborative AI Pair Programming**
 
-[![Release](https://img.shields.io/badge/version-0.1.0beta-cyan.svg)](https://github.com/JhaSourav07/Collagility/releases/tag/0.1.0beta)
+[![Release](https://img.shields.io/badge/version-0.1.1--beta.1-cyan.svg)](https://github.com/JhaSourav07/Collagility/releases/tag/v0.1.1-beta.1)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 
-Collagility is an open-source multiplayer workspace that turns local AI coding agents into real-time collaborative pair programming sessions. Connect your local CLI tools (`agy`, `gemini`, `claude`) with collaborators and stream AI execution output token-by-token across every participant's terminal simultaneously.
+Collagility is an open-source multiplayer terminal workspace that turns local AI coding agents into real-time collaborative pair programming sessions. Connect your local CLI tools (`agy`, `gemini`, `claude`, `aider`, `goose`, `codex`) with remote collaborators, stream multi-step AI execution output token-by-token across every participant's terminal simultaneously, and manage security permissions with a built-in risk evaluation engine.
 
 ---
 
-### ⚡ Key Features
+## ⚡ Quick Installation
 
-- **Multiplayer AI Streaming (done)**: Every session member observes the exact same real-time token output and progress logs from the session owner's local AI agent.
-- **Provider-Agnostic Adapter Registry (done)**: Seamlessly route prompts to Antigravity (`agy`), Gemini (`gemini`), Claude (`claude`), Codex (`codex`), Aider (`aider`), or Goose (`goose`). Dynamic `@agi` tag automatically targets the active adapter.
-- **Project Workspace Integration (done)**: AI agents execute commands and file modifications directly within the owner's project root workspace directory.
-- **Permission Controls (done)**: Session owner maintains strict control over AI execution triggers while participants collaborate via live session chat.
-- **Zero-Latency Event Protocol (done)**: Lightweight Fastify & WebSocket event plane architecture built with TypeScript.
-- **IDE Extension Integration (future)**: VS Code & Antigravity IDE plugin integration for GUI-based pairing.
-- **Interactive Co-Driver Approvals (future)**: Peer code review for agent tool calls in real time.
+### Option 1: macOS / Linux (`curl | bash`)
+```bash
+curl -fsSL https://raw.githubusercontent.com/JhaSourav07/Collagility/main/install.sh | bash
+```
+
+### Option 2: Windows PowerShell (`iwr`)
+```powershell
+iwr -useb https://raw.githubusercontent.com/JhaSourav07/Collagility/main/install.ps1 | iex
+```
+
+### Option 3: Global NPM or NPX
+```bash
+# Global Install
+npm install -g collagility@beta
+
+# Run without installing
+npx collagility@beta start
+```
 
 ---
 
-## 📽️ Demo
+## 🏗️ System Architecture
+
+Collagility is structured as a TypeScript monorepo powered by `pnpm` workspaces and `turbo`:
 
 ```text
-[Owner Terminal]                                     [Collaborator Terminal]
-> @agi create index.ts                              
-                                                     🤖 ANTIGRAVITY AI Stream Started (agi)
-🤖 ANTIGRAVITY AI Stream Started (agi)              Prompt: "create index.ts"
-Prompt: "create index.ts"                           ────────────────────────────────────────────
-────────────────────────────────────────────        ⚡ Thinking...
-⚡ Thinking...                                       ⚡ Creating index.ts in project root...
-⚡ Creating index.ts in project root...             ✓ File created successfully
-✓ File created successfully
+Collagility Monorepo Architecture
+├── apps/
+│   ├── cli/             # React Ink Terminal User Interface (TUI) application
+│   ├── server/          # Fastify & WebSocket session gateway & event broadcaster
+│   └── web/             # Next.js web application for browser participants
+└── packages/
+    ├── adapters/        # AI Adapter Registry, Antigravity/Gemini adapters & Security Risk Engine
+    ├── renderer/        # Virtual screen diffing, terminal AST parser, ANSI formatter
+    ├── stream/          # Zero-latency stream buffer, chunking, and sequence assembler
+    ├── protocol/        # Versioned Zod validation schemas & WebSocket packet definitions
+    ├── sdk/             # Client SDK for programmatic session embedding
+    └── types/           # Core domain entity types & interfaces
 ```
 
 ---
 
-## 📦 Installation
+## 🛡️ Security & Permissions
 
-### Single-Command Quick Install (Zero Dependencies Required) (done)
+Collagility provides granular control over AI command execution through 4 **Security Modes**:
 
-No Node.js, pnpm, or repository cloning is required. Run the automated installer in your terminal:
+| Mode | Short Name | Description |
+| :--- | :--- | :--- |
+| `manual` | `manual` | Prompts for manual user confirmation before executing **any** tool or command. |
+| `accept-edits` | `accept` | Automatically accepts safe read/write file edits, prompting only for shell commands. |
+| `plan-only` | `plan` | Restricts AI execution strictly to read-only research and implementation plan generation. |
+| `auto` | `auto` | Automatically approves `LOW` and `MEDIUM` risk actions; prompts host only for `HIGH` risk actions. |
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/JhaSourav07/Collagility/main/install.sh | bash
-```
-
-> **Note**: The automated installer fetches published release binaries from GitHub Releases. If installing prior to a published release or on private repos, use the [Source Build](#-installing-from-source-contributors) option below.
-
-The installer detects your OS and architecture, downloads the latest standalone release binary, and installs it into `~/.local/bin/collagility`.
-
----
-
-### 💻 Supported Platforms
-
-| Platform | Architecture | Binary Archive | Status |
-| -------- | ------------ | -------------- | ------ |
-| Linux | x64 (AMD64) | `collagility-linux-x64.tar.gz` | **(done)** |
-| Linux | arm64 (AArch64) | `collagility-linux-arm64.tar.gz` | **(done)** |
-| macOS | Intel (x64) | `collagility-macos-x64.tar.gz` | **(done)** |
-| macOS | Apple Silicon (M1/M2/M3) | `collagility-macos-arm64.tar.gz` | **(done)** |
-| Windows | x64 | `collagility-windows-x64.zip` | **(future)** |
+### Command Risk Classification (`evaluateRisk`)
+The Security Engine automatically categorizes tool calls and terminal commands into risk levels:
+- `LOW`: Safe read-only operations (`ls`, `cat`, `grep`, `git status`, `view_file`, `search_web`).
+- `MEDIUM`: Standard project modifications (`write_to_file`, `mkdir`, `npm install`, `git commit`).
+- `HIGH`: Destructive or sensitive system actions (`rm -rf`, `sudo`, `chmod`, `kill`, path traversal `../`, piping remote scripts to shell).
 
 ---
 
-### 🔄 Updating Collagility (done)
+## ⌨️ Slash Commands & Keyboard Shortcuts
 
-To update Collagility to the latest version at any time, re-run the installation command:
+### Slash Commands
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/JhaSourav07/Collagility/main/install.sh | bash
-```
+| Slash Command | Description |
+| :--- | :--- |
+| `/config` or `/settings` | Open interactive session configuration overlay. |
+| `/permissions` | Open Security Mode configuration overlay. |
+| `/agents` | Toggle the Subagent Monitoring Drawer overlay. |
+| `/mcp` | Open connected Model Context Protocol (MCP) servers overview. |
+| `/rewind [steps]` or `/undo` | Step back conversation history by `N` turns and revert file diffs. |
+| `/fork` | Branch current session into a fresh workspace state with preserved history. |
+| `/resume [sessionId]` | List and restore previous saved session checkpoints from disk. |
+| `/clear` | Clear the terminal timeline screen (`Ctrl+L`). |
+| `/help` | Print interactive command help and keyboard shortcut reference. |
+| `/leave` | Leave active collaboration session gracefully. |
+
+### Keyboard Shortcuts
+
+- `Ctrl + K`: Toggle Subagent Monitoring Drawer.
+- `Shift + Tab`: Cycle through Security Modes (`manual` ➔ `accept-edits` ➔ `plan-only` ➔ `auto`).
+- `Esc Esc`: Clear active prompt text input.
+- `Ctrl + L`: Clear terminal timeline.
+- `Ctrl + D`: Leave active session.
+- `y` / `n` / `e`: Approve, Deny, or Edit permission prompt card actions.
 
 ---
 
-### 🛠️ Installing from Source (Contributors) (done)
+## 🚀 Quick Start (Local Development)
+
+Ensure you have Node.js >=18 and pnpm >=8 installed.
 
 ```bash
-# Clone repository & build monorepo packages
+# 1. Clone repository
 git clone https://github.com/JhaSourav07/Collagility.git
 cd Collagility
-pnpm install && pnpm run build
-sudo npm link
+
+# 2. Install dependencies & build packages
+pnpm install
+pnpm build
+
+# 3. Start local WebSocket server
+pnpm --filter @collagility/server start
+
+# 4. Host a new AI pair programming session (in another terminal)
+npx collagility start
 ```
 
----
+## 🌐 User-Friendly Multi-Device LAN Setup
 
-## 🚀 Usage (done)
-
-### 1. Start Collagility Server (done)
+### 1. Composite Join Target (`session@host`)
+To join a session hosted on another machine, Person B can simply specify `session@host` without typing long `--server` flags:
 
 ```bash
-collagility server start
+# Join session on IP 192.168.1.50
+collagility join swift-falcon-5588@192.168.1.50
 ```
 
-### 2. Create a Session (Session Owner) (done)
+### 2. Persistent Default Server (`collagility config`)
+Set your team's local server IP once so you never have to type it again:
 
 ```bash
-# Start & host a session
-collagility host
+# Save default server IP
+collagility config set server 192.168.1.50
 
-# Or in mock/demo mode (no AI binary required)
-collagility host --mock
+# Now run start or join cleanly without any flags!
+collagility start
+collagility join swift-falcon-5588
 ```
 
-### 3. Join a Session (Participant) (done)
-
-```bash
-collagility join <session-id>
-```
-
-### 4. Invoke AI Commands (done)
-
-Inside an active session terminal:
-
-```text
-> @agi create a responsive landing page in index.html
-> @gemini explain mutex lock in src/index.ts
-> hello team (normal chat)
-```
+### 3. Smart Server URL Normalization
+Collagility automatically normalizes any casual input format:
+- `192.168.1.50` ➔ `ws://192.168.1.50:8080/ws`
+- `192.168.1.50:9000` ➔ `ws://192.168.1.50:9000/ws`
+- `http://192.168.1.50:8080` ➔ `ws://192.168.1.50:8080/ws`
 
 ---
 
-## 🗺️ Roadmap
+## 📄 License
 
-- [x] **v0.1.0-alpha.1**: Multiplayer WebSocket relay, AI stream chunking, `agy`/`gemini` CLI adapter, workspace execution, terminal renderer.
-- [x] **v0.1.0-alpha.2**: Multi-provider adapters (`claude`, `codex`, `aider`, `goose`), permissions guard, binary packager, and release CI workflow.
-- [x] **v0.1.0-alpha.6**: Professional terminal UI overhaul — AGY tool timeline, incremental stream rendering, fixed layout engine, non-blocking animations, 13 terminal components.
-- [x] **v0.1.0beta** *(current)*: Official first public beta. Premium interactive installer (`install.sh`), `collagility host` alias, cross-platform test suite (28 tests), GitHub release `0.1.0beta`.
-- [ ] **v0.2.0** *(planned)*: `collagility upgrade` self-updater, WebAssembly diffing engine, OSC 8 hyperlinks, multi-agent relay swarm.
-- [ ] **v0.3.0** *(planned)*: Interactive co-driver approvals — peer code review for agent tool calls in real time.
-- [ ] **v0.4.0** *(planned)*: Web dashboard, multi-agent consensus swarm routing, Redis cluster scaling.
-
----
-
-## 📐 Architecture Overview
-
-```text
-┌────────────────┐     WebSocket     ┌────────────────┐     WebSocket     ┌────────────────┐
-│   Owner CLI    │ ────────────────> │ Fastify Server │ ────────────────> │  Participant   │
-│  (AI Adapter)  │ <──────────────── │ (StreamManager)│ <──────────────── │      CLI       │
-└────────────────┘                   └────────────────┘                   └────────────────┘
-```
-
-- **`apps/cli`**: Terminal user interface, command parser, stream renderer.
-- **`apps/server`**: High-performance WebSocket control plane and session manager.
-- **`packages/adapters`**: Multi-provider AI process manager (`agy`, `gemini`, `claude`, `codex`).
-- **`packages/stream`**: Token chunking, sequence ordering, and stream state management.
-- **`packages/protocol`**: Shared WebSocket event schemas and envelope types.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) and adhere to our [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
-
----
-
-## 📜 License
-
-Distributed under the MIT License. See [`LICENSE`](LICENSE) for details.
+Distributed under the MIT License. See [LICENSE](LICENSE) for details.

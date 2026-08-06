@@ -47,15 +47,17 @@ graph TD
             IAgentAdapter["IAgentAdapter (Domain Port)"]
         end
 
-        subgraph Concrete Drivers ["Adapter Drivers (@collagility/drivers)"]
-            GeminiAdapter["GeminiCLIAdapter (Initial)"]
-            ClaudeAdapter["ClaudeCodeAdapter (Future)"]
-            CodexAdapter["CodexCLIAdapter (Future)"]
-            AiderAdapter["AiderAdapter (Future)"]
-            GooseAdapter["GooseAdapter (Future)"]
+        subgraph Concrete Drivers ["Adapter Drivers (@collagility/adapters)"]
+            AntigravityAdapter["AntigravityAdapter (Completed)"]
+            GeminiAdapter["GeminiCLIAdapter (Completed)"]
+            ClaudeAdapter["ClaudeCodeAdapter (Completed)"]
+            CodexAdapter["CodexCLIAdapter (Completed)"]
+            AiderAdapter["AiderAdapter (Completed)"]
+            GooseAdapter["GooseAdapter (Completed)"]
         end
 
         subgraph Local System Processes ["Native OS Subprocesses"]
+            AntigravityProcess["agy (Antigravity CLI Process)"]
             GeminiProcess["gemini (CLI Process)"]
             ClaudeProcess["claude (PTY / Subprocess)"]
             CodexProcess["codex (CLI Process)"]

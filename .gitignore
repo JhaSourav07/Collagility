@@ -58,3 +58,7 @@ coverage/
 # Temporary and Scratch Files
 tmp/
 temp/
+
+# Collagility Local State & Checkpoints
+.collagility/
+

@@ -1,13 +1,15 @@
 {
-  "name": "@collagility/cli",
-  "version": "0.1.0beta",
-  "private": true,
+  "name": "collagility",
+  "version": "0.1.1-beta.1",
   "description": "Terminal CLI application for Collagility host and participant sessions",
   "type": "module",
   "bin": {
-    "collagility": "./dist/index.js"
+    "collagility": "./dist/main.js"
   },
-  "main": "./dist/index.js",
+  "main": "./dist/main.js",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc --build",
     "bundle": "node ./scripts/bundle.js",
