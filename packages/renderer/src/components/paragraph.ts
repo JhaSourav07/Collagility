@@ -41,12 +41,12 @@ export class ParagraphComponent implements RenderComponent<ParagraphNode> {
       return formatter.code(content);
     });
 
-    // Auto-detect Markdown link syntax: [label](url)
-    fullText = fullText.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label, url) => {
+    // Auto-detect Markdown link syntax: [label](url), preventing matching ANSI escapes
+    fullText = fullText.replace(/(?<!\u001b)\[([^\]]+)\]\(([^)]+)\)/g, (_match, label, url) => {
       const isFile =
         url.startsWith('file://') ||
-        url.includes('/') ||
-        /\.(ts|tsx|js|jsx|json|md|py|go|rs|css|html|yml|yaml)$/i.test(url);
+        (!url.includes('://') &&
+          (url.includes('/') || /\.(ts|tsx|js|jsx|json|md|py|go|rs|css|html|yml|yaml)$/i.test(url)));
       if (isFile) {
         return formatter.fileRef(label);
       }

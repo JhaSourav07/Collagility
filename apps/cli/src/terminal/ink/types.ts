@@ -1,3 +1,5 @@
+import type { PermissionRequest, PermissionDecision, SecurityMode } from '@collagility/protocol';
+
 export interface UserMember {
   name: string;
   isOwner?: boolean;
@@ -10,6 +12,14 @@ export interface SessionInfoState {
   createdAgo: string;
   userRole: 'owner' | 'visitor';
   users: UserMember[];
+  workspacePath?: string;
+  version?: string;
+  connectionStatus?: 'connected' | 'connecting' | 'disconnected';
+}
+
+export interface TokenStatus {
+  used: number;
+  limit: number;
 }
 
 export interface AIDriverState {
@@ -17,6 +27,33 @@ export interface AIDriverState {
   model: string;
   mode: string;
   status: string;
+  securityMode?: SecurityMode;
+  tokenStatus?: TokenStatus;
+}
+
+export interface SubagentTask {
+  id: string;
+  name: string;
+  target: string;
+  status: 'running' | 'idle' | 'completed' | 'failed';
+  runtime: string;
+  progress?: number;
+}
+
+export type OverlayType = 'none' | 'config' | 'permissions' | 'agents' | 'resume';
+
+export interface ToolExecutionCard {
+  toolName: string;
+  params?: Record<string, unknown>;
+  status: 'running' | 'success' | 'failed';
+  output?: string;
+}
+
+export interface FileEditCard {
+  filePath: string;
+  additions: number;
+  deletions: number;
+  diffSummary?: string;
 }
 
 export interface ChatMessageItem {
@@ -28,6 +65,9 @@ export interface ChatMessageItem {
   icon?: string;
   isStreaming?: boolean;
   isTyping?: boolean;
+  thoughtBlock?: string;
+  toolCard?: ToolExecutionCard;
+  fileEditCard?: FileEditCard;
 }
 
 export interface ActivityLogItem {
@@ -52,3 +92,9 @@ export interface InteractivePromptState {
 }
 
 export type CommandHandler = (commandOrMessage: string) => void;
+
+export interface PermissionPromptState {
+  id: string;
+  request: PermissionRequest;
+  onResolve: (decision: PermissionDecision) => void;
+}

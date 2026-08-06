@@ -20,7 +20,12 @@ import type {
   AIStreamFailedPayload,
   AIStreamTimeoutPayload,
   AIStreamErrorPayload,
+  PermissionRequest,
+  PermissionDecision,
+  SessionPermissionRequestPayload,
+  SessionPermissionResponsePayload,
 } from './types.js';
+
 
 export function createEnvelope<T>(
   type: string,
@@ -348,3 +353,28 @@ export function createAIFinishedEvent(
 ): EventEnvelope<unknown> {
   return createEnvelope(EVENT_TYPES.AI_FINISHED, { streamId, summary }, { sessionId });
 }
+
+export function createSessionPermissionRequestEvent(
+  request: PermissionRequest,
+  sessionId?: string
+): EventEnvelope<SessionPermissionRequestPayload> {
+  return createEnvelope(
+    EVENT_TYPES.SESSION_PERMISSION_REQUEST,
+    { ...request, sessionId },
+    { sessionId }
+  );
+}
+
+export function createSessionPermissionResponseEvent(
+  requestId: string,
+  decision: PermissionDecision,
+  userId: string,
+  sessionId?: string
+): EventEnvelope<SessionPermissionResponsePayload> {
+  return createEnvelope(
+    EVENT_TYPES.SESSION_PERMISSION_RESPONSE,
+    { requestId, decision, userId, sessionId },
+    { sessionId, sender: { id: userId, name: userId.slice(0, 8), role: 'owner' } }
+  );
+}
+

@@ -252,6 +252,80 @@ export class MessageHandler {
         break;
       }
 
+      case EVENT_TYPES.SESSION_PERMISSION_REQUEST:
+      case 'session.permission.request':
+      case 'permission_required': {
+        const session = this.sessionManager.getClientSession(clientId);
+        if (!session) {
+          this.broadcaster.sendToClient(
+            clientId,
+            createAIStreamErrorEvent({ error: 'You must join a session before sending permission requests' })
+          );
+          break;
+        }
+
+        const permReqEnvelope = {
+          version: 1,
+          type: EVENT_TYPES.SESSION_PERMISSION_REQUEST,
+          sessionId: session.id,
+          sender: { id: clientId, name: clientId.slice(0, 8), role: session.ownerId === clientId ? 'owner' : 'member' },
+          payload: message.payload,
+          timestamp: Date.now(),
+        };
+
+        this.logger.info(
+          { clientId, sessionId: session.id, toolName: (message.payload as any)?.toolName },
+          'Relaying session permission request to all session participants'
+        );
+
+        this.broadcaster.broadcastToSession(session.id, permReqEnvelope);
+        break;
+      }
+
+      case EVENT_TYPES.SESSION_PERMISSION_RESPONSE:
+      case 'session.permission.response':
+      case 'permission_response': {
+        const session = this.sessionManager.getClientSession(clientId);
+        if (!session) {
+          this.broadcaster.sendToClient(
+            clientId,
+            createAIStreamErrorEvent({ error: 'You must be in a session to respond to permission requests' })
+          );
+          break;
+        }
+
+        // Restrict resolution permissions: ONLY session owner can approve or deny
+        if (session.ownerId !== clientId) {
+          this.logger.warn(
+            { clientId, ownerId: session.ownerId, sessionId: session.id },
+            'Non-host client attempted to resolve permission request'
+          );
+          this.broadcaster.sendToClient(
+            clientId,
+            createAIStreamErrorEvent({ error: 'Only the session owner can respond to permission requests' }, session.id)
+          );
+          break;
+        }
+
+        const permResEnvelope = {
+          version: 1,
+          type: EVENT_TYPES.SESSION_PERMISSION_RESPONSE,
+          sessionId: session.id,
+          sender: { id: clientId, name: clientId.slice(0, 8), role: 'owner' as const },
+          payload: message.payload,
+          timestamp: Date.now(),
+        };
+
+        this.logger.info(
+          { clientId, sessionId: session.id, decision: (message.payload as any)?.decision },
+          'Broadcasting host permission resolution response to session'
+        );
+
+        this.broadcaster.broadcastToSession(session.id, permResEnvelope);
+        break;
+      }
+
+
       default: {
         const session = this.sessionManager.getClientSession(clientId);
         const genericEvent = {

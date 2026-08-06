@@ -242,3 +242,29 @@ export interface AIFinishedPayload {
   summary?: string;
 }
 
+// Security & Permission Subsystem Types
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+export type SecurityMode = 'manual' | 'accept-edits' | 'plan-only' | 'auto';
+export type PermissionDecision = 'allow-once' | 'allow-session' | 'deny';
+
+export interface PermissionRequest {
+  id: string;
+  toolName: string;
+  command: string;
+  riskLevel: RiskLevel;
+  metadata?: Record<string, any>;
+}
+
+export interface SessionPermissionRequestPayload extends PermissionRequest {
+  sessionId?: string;
+}
+
+export interface SessionPermissionResponsePayload {
+  requestId: string;
+  decision: PermissionDecision;
+  userId: string;
+  sessionId?: string;
+}
+
+
+

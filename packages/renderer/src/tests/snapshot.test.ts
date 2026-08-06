@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { MarkdownLexer } from '../lexer/lexer.js';
 import { MarkdownParser } from '../parser/parser.js';
 import { DocumentRenderer } from '../renderer/document-renderer.js';
+import { stripAnsi } from '../utils/word-wrap.js';
 
 describe('Markdown AST & Snapshot Pipeline', () => {
   const lexer = new MarkdownLexer();
@@ -28,8 +29,9 @@ describe('Markdown AST & Snapshot Pipeline', () => {
     expect(ast.children[0].type).toBe('paragraph');
 
     const output = renderer.renderMarkdown(md);
-    expect(output).toContain('This is a bold paragraph with a');
-    expect(output).toContain('link');
+    const plainText = stripAnsi(output);
+    expect(plainText).toContain('This is a bold paragraph with a');
+    expect(plainText).toContain('link');
   });
 
   it('should parse and render Task Lists (- [ ] and - [x])', () => {

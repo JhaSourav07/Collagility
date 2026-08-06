@@ -57,7 +57,9 @@ export interface WSClientEvents {
   onReconnecting?: (attempt: number, delayMs: number) => void;
 }
 
-export class WebSocketClient {
+import { EventEmitter } from 'node:events';
+
+export class WebSocketClient extends EventEmitter {
   private socket: WebSocket | null = null;
   private config: CLIConfig;
   private reconnectHandler: ReconnectHandler;
@@ -71,6 +73,7 @@ export class WebSocketClient {
   }
 
   constructor(config: CLIConfig, events: WSClientEvents = {}) {
+    super();
     this.config = config;
     this.events = events;
     this.reconnectHandler = new ReconnectHandler(
@@ -78,6 +81,7 @@ export class WebSocketClient {
       config.reconnectIntervalMs
     );
   }
+
 
   public connect(): Promise<string> {
     this.isExplicitClose = false;
@@ -138,9 +142,13 @@ export class WebSocketClient {
   }
 
   private handleFrame(frame: IncomingFrame, resolveConnect?: (clientId: string) => void): void {
+    this.emit('event', frame);
+    this.emit(frame.type, frame.payload !== undefined ? frame.payload : frame);
+
     if (this.events.onFrame) {
       this.events.onFrame(frame);
     }
+
 
     switch (frame.type) {
       case 'system.connected': {
