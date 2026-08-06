@@ -44,6 +44,9 @@ fi
 
 # 3. Verify installation
 echo -e "\n${GREEN}${BOLD}✓ Installation Complete!${RESET}"
+echo -e "\nVerifying installation..."
+collagility version
+
 echo -e "\nTo start a pair programming session, run:"
 echo -e "  ${CYAN}collagility start${RESET}\n"
 echo -e "To join an existing session, run:"

@@ -8,16 +8,24 @@ echo "========================================="
 echo "  Publishing Collagility 0.1.1-beta.1"
 echo "========================================="
 
-echo "1. Cleaning and building monorepo..."
-pnpm build
+if [ "$1" != "--skip-build" ]; then
+  echo "1. Building monorepo..."
+  pnpm build
+  chmod +x apps/cli/dist/main.js
+fi
 
-echo "2. Validating binary bundle..."
-chmod +x apps/cli/dist/main.js
-
-echo "3. Publishing collagility to NPM under the 'beta' dist-tag..."
+echo "2. Publishing collagility to NPM under the 'beta' dist-tag..."
 cd apps/cli
-# Note: --tag beta prevents this pre-release from overwriting the 'latest' stable tag on NPM
-npm publish --tag beta --access public
+OTP="$1"
+if [ "$1" = "--skip-build" ]; then
+  OTP="$2"
+fi
+
+if [ -n "$OTP" ]; then
+  npm publish --tag beta --access public --otp="$OTP"
+else
+  npm publish --tag beta --access public
+fi
 
 echo ""
 echo "✓ Successfully published collagility@0.1.1-beta.1 to NPM!"

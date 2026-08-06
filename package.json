@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "bin": {
-    "collagility": "./apps/cli/dist/index.js"
+    "collagility": "./apps/cli/dist/main.js"
   },
   "description": "The Multiplayer Workspace for AI Coding Agents - Monorepo Root",
   "packageManager": "pnpm@9.15.4",
@@ -18,7 +18,7 @@
     "test": "turbo run test",
     "collagility": "node ./apps/cli/dist/index.js",
     "format": "prettier --write \"**/*.{ts,js,json,md}\"",
-    "clean": "turbo run clean && rimraf node_modules"
+    "clean": "turbo run clean"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

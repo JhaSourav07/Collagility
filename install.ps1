@@ -17,6 +17,12 @@ if (-not $nodeInstalled) {
 }
 
 $nodeVerString = node -v
+$nodeMajor = [int]($nodeVerString -replace 'v', '').Split('.')[0]
+if ($nodeMajor -lt 18) {
+    Write-Host "✖ Error: Node.js version $nodeVerString is unsupported (>= v18 required)." -ForegroundColor Red
+    Write-Host "Please upgrade Node.js from https://nodejs.org/ and try again."
+    exit 1
+}
 Write-Host "✓ Node.js $nodeVerString detected" -ForegroundColor Green
 
 # 2. Install collagility globally via NPM
@@ -25,6 +31,10 @@ Write-Host "Installing collagility@0.1.1-beta.1 globally via NPM..." -Foreground
 npm install -g collagility@0.1.1-beta.1
 
 # 3. Verify installation
+Write-Host ""
+Write-Host "Verifying installation..." -ForegroundColor Cyan
+collagility version
+
 Write-Host ""
 Write-Host "✓ Installation Complete!" -ForegroundColor Green
 Write-Host ""
