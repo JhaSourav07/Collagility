@@ -154,9 +154,16 @@ export class ChatPrompt {
             } else {
               this.client.sendAIPrompt(parsed.prompt, parsed.adapterName);
             }
-          } else if (parsed.text.length > 0) {
+          } else if (parsed.type === 'mode') {
+            this.printAbovePrompt(
+              TerminalRenderer.renderSystemMessage(
+                `Security mode change requested: ${parsed.targetMode ? parsed.targetMode.toUpperCase() : 'cycle'}`
+              )
+            );
+          } else if (parsed.type === 'chat' && parsed.text.length > 0) {
             this.client.sendChatMessage(parsed.text);
           }
+
         }
       } catch {
         // Ignore send errors on prompt

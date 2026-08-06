@@ -10,6 +10,7 @@ import type {
   ChatMessageItem,
   ActivityLogItem,
   InteractivePromptState,
+  PermissionPromptState,
   CommandHandler,
 } from './types.js';
 
@@ -19,8 +20,10 @@ export interface AppProps {
   messages: ChatMessageItem[];
   activities: ActivityLogItem[];
   interactivePrompt?: InteractivePromptState | null;
+  permissionPrompt?: PermissionPromptState | null;
   queueCount?: number;
   onCommand: CommandHandler;
+  onCycleSecurityMode?: () => void;
 }
 
 export const App: React.FC<AppProps> = ({
@@ -29,9 +32,13 @@ export const App: React.FC<AppProps> = ({
   messages,
   activities,
   interactivePrompt,
+  permissionPrompt,
   queueCount = 1,
   onCommand,
+  onCycleSecurityMode,
 }) => {
+  const isInputBlocked = Boolean(permissionPrompt);
+
   return (
     <Box flexDirection="column" width="100%" paddingX={0}>
       {/* Header Info Banner */}
@@ -43,15 +50,22 @@ export const App: React.FC<AppProps> = ({
           messages={messages}
           activities={activities}
           interactivePrompt={interactivePrompt}
+          permissionPrompt={permissionPrompt}
+          isOwner={session.userRole === 'owner'}
           queueCount={queueCount}
         />
+
       </Box>
 
-      {/* Bottom Developer Input Box */}
-      <InputBar onSubmit={onCommand} />
+      {/* Bottom Developer Input Box (Disabled when permission prompt active) */}
+      <InputBar onSubmit={onCommand} isDisabled={isInputBlocked} />
 
-      {/* Bottom Status Bar */}
-      <Footer modelName={`${aiDriver.name} ${aiDriver.model}`} />
+      {/* Bottom Status Bar with Live Security Mode Badge */}
+      <Footer
+        modelName={`${aiDriver.name} ${aiDriver.model}`}
+        securityMode={aiDriver.securityMode || 'manual'}
+        onCycleSecurityMode={onCycleSecurityMode}
+      />
     </Box>
   );
 };

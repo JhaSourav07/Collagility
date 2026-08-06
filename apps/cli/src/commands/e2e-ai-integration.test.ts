@@ -2,10 +2,16 @@ import { describe, it, expect, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { EventEmitter } from 'node:events';
 import { parseCLIInput } from '../terminal/command-parser.js';
-import { GeminiHealthChecker, GeminiAIAdapter, AdapterRegistry, GeminiProcessManager } from '@collagility/adapters';
+import { GeminiHealthChecker, GeminiAIAdapter, AntigravityAIAdapter, AdapterRegistry, GeminiProcessManager } from '@collagility/adapters';
 import { StreamManager } from '@collagility/stream';
 import { EVENT_TYPES } from '@collagility/protocol';
+import { buildServer } from '@collagility/server';
+import { WebSocketClient } from '../client/ws-client.js';
+import { createConfig } from '../config/config.js';
+
+
 
 describe('Milestone 9 Workspace & End-to-End AI Integration', () => {
   it('should launch AI adapter process with cwd equal to session workspacePath', () => {
@@ -186,4 +192,142 @@ describe('Milestone 9 Workspace & End-to-End AI Integration', () => {
 
     await ownerAdapter.dispose();
   });
+
+  it('should synchronize permission requests and host approvals in real-time over WebSockets', async () => {
+    const serverInstance = buildServer();
+    await serverInstance.listen(0, '127.0.0.1');
+    const port = (serverInstance.app.server.address() as { port: number }).port;
+    const serverUrl = `ws://127.0.0.1:${port}/ws`;
+
+
+    // 1. Create Session Host (Person B) and Remote Client (Person C)
+    const hostClient = new WebSocketClient(createConfig({ serverUrl }));
+    const remoteClient = new WebSocketClient(createConfig({ serverUrl }));
+
+    await Promise.all([hostClient.connect(), remoteClient.connect()]);
+
+    let sessionId = '';
+    const hostEvents: any[] = [];
+    const remoteEvents: any[] = [];
+
+    hostClient.on('event', (evt) => hostEvents.push(evt));
+    remoteClient.on('event', (evt) => remoteEvents.push(evt));
+
+    // Host creates session
+    await new Promise<void>((resolve) => {
+      hostClient.once('session.created', (payload: any) => {
+        sessionId = payload.session?.id || hostClient.getSessionId();
+        resolve();
+      });
+      hostClient.createSession();
+    });
+
+
+    // Remote client joins session
+    await new Promise<void>((resolve) => {
+      remoteClient.once('session.joined', () => resolve());
+      remoteClient.joinSession(sessionId);
+    });
+
+    // 2. Initialize AntigravityAIAdapter on Host with securityMode: 'manual'
+    const mockProcess = new EventEmitter() as any;
+    mockProcess.stdout = new EventEmitter();
+    mockProcess.stderr = new EventEmitter();
+    mockProcess.killed = false;
+
+    const antigravityAdapter = new AntigravityAIAdapter({
+      mockProcessFactory: () => mockProcess,
+    });
+    await antigravityAdapter.initialize();
+    antigravityAdapter.setSecurityMode('manual');
+
+    // 3. Listen for PERMISSION_REQUIRED event from AntigravityAdapter on Host
+    let interceptedReqId = '';
+    antigravityAdapter.on('PERMISSION_REQUIRED', (evt: any) => {
+      interceptedReqId = evt.payload.id;
+      // Host broadcasts permission request over WebSocket to session
+      hostClient.send(EVENT_TYPES.SESSION_PERMISSION_REQUEST, {
+        id: evt.payload.id,
+        toolName: evt.payload.toolName,
+        command: evt.payload.command,
+        riskLevel: evt.payload.riskLevel,
+        sessionId,
+      });
+    });
+
+    // 4. Host adapter triggers tool execution requiring approval
+    const promptPromise = antigravityAdapter.sendPrompt('Run destructive command');
+
+    // Emit tool call requiring approval
+    mockProcess.stdout.emit(
+      'data',
+      Buffer.from(
+        JSON.stringify({
+          type: 'tool_call',
+          toolName: 'run_command',
+          toolArgs: { CommandLine: 'rm -rf node_modules' },
+          content: 'Executing command rm -rf node_modules',
+        }) + '\n'
+      )
+    );
+
+    // Wait briefly for WebSocket packet relay
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(interceptedReqId).not.toBe('');
+
+    // Verify WebSocket broadcast of permission request reached Remote Client (Person C)
+    const remoteReqEvent = remoteEvents.find((e) => e.type === EVENT_TYPES.SESSION_PERMISSION_REQUEST);
+    expect(remoteReqEvent).toBeDefined();
+    const reqCommand = remoteReqEvent?.payload?.command || remoteReqEvent?.command;
+    expect(reqCommand).toContain('rm -rf node_modules');
+
+
+    // 5. Verify Remote Client (Person C - non-host) resolution is rejected by server
+    const remoteErrorPromise = new Promise<any>((resolve) => {
+      remoteClient.once('ai.stream.error', (payload: any) => resolve(payload));
+    });
+
+    remoteClient.send(EVENT_TYPES.SESSION_PERMISSION_RESPONSE, {
+      requestId: interceptedReqId,
+      decision: 'allow-once',
+      userId: remoteClient.getClientId() || 'person-c',
+      sessionId,
+    });
+
+    const errPayload = await remoteErrorPromise;
+    expect(errPayload.error).toContain('Only the session owner can respond to permission requests');
+
+    // 6. Host (Person B) approves permission request over WebSocket
+    const hostApprovalPromise = new Promise<any>((resolve) => {
+      hostClient.once(EVENT_TYPES.SESSION_PERMISSION_RESPONSE, (evt: any) => resolve(evt));
+    });
+
+    hostClient.send(EVENT_TYPES.SESSION_PERMISSION_RESPONSE, {
+      requestId: interceptedReqId,
+      decision: 'allow-once',
+      userId: hostClient.getClientId() || 'person-b',
+      sessionId,
+    });
+
+    const hostApprovalEvent: any = await hostApprovalPromise;
+    const decision = hostApprovalEvent?.payload?.decision || hostApprovalEvent?.decision;
+    expect(decision).toBe('allow-once');
+
+
+    // Resolve host adapter permission so execution resumes
+    antigravityAdapter.resolvePermission(interceptedReqId, 'allow-once');
+    mockProcess.emit('exit', 0, null);
+
+    const completedResult = await promptPromise;
+    expect(completedResult.type).toBe('ai.completed');
+
+    // Cleanup
+    await antigravityAdapter.dispose();
+    hostClient.disconnect();
+    remoteClient.disconnect();
+    await serverInstance.close();
+  });
 });
+
+

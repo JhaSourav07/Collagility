@@ -181,11 +181,19 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
                   ink.appendMessage({ sender: 'System', senderRole: 'system', content: `✓ AI Model updated to '${arg1}'` });
                   return;
                 }
-                if (subCmd === '/mode' && arg1) {
-                  ink.setAiDriverInfo(binaryLabel, undefined, arg1);
-                  ink.appendMessage({ sender: 'System', senderRole: 'system', content: `✓ AI Mode updated to '${arg1}'` });
+                if (subCmd === '/mode') {
+                  const targetMode = arg1?.toLowerCase();
+                  if (targetMode === 'manual' || targetMode === 'accept-edits' || targetMode === 'accept' || targetMode === 'plan-only' || targetMode === 'plan' || targetMode === 'auto') {
+                    const normMode = targetMode === 'accept' ? 'accept-edits' : targetMode === 'plan' ? 'plan-only' : (targetMode as any);
+                    ink.setSecurityMode(normMode);
+                    adapter.setSecurityMode(normMode);
+                  } else {
+                    const newMode = ink.cycleSecurityMode();
+                    adapter.setSecurityMode(newMode);
+                  }
                   return;
                 }
+
                 if (subCmd === '/driver') {
                   const newDriver = arg1 || binaryLabel;
                   const newModel = arg2 || (newDriver === 'agy' ? 'Gemini 3.5 Flash' : 'gemini-2.5-pro');
@@ -332,10 +340,23 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
           });
         };
 
+        const onPermissionRequired = (evt: any) => {
+          const req = evt.payload;
+          if (splitRenderer) {
+            const ink = splitRenderer.getInkRenderer();
+            if (ink) {
+              ink.pushPermissionPrompt(req, (decision) => {
+                targetAdapter.resolvePermission(req.id, decision);
+              });
+            }
+          }
+        };
+
         targetAdapter.on('chunk' as any, onChunk);
         targetAdapter.on('plan' as any, onPlan);
         targetAdapter.on('question' as any, onQuestion);
         targetAdapter.on('confirmation' as any, onConfirmation);
+        targetAdapter.on('PERMISSION_REQUIRED' as any, onPermissionRequired);
 
         targetAdapter
           .sendPrompt(payload.prompt)
@@ -344,6 +365,8 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
             targetAdapter.off('plan' as any, onPlan);
             targetAdapter.off('question' as any, onQuestion);
             targetAdapter.off('confirmation' as any, onConfirmation);
+            targetAdapter.off('PERMISSION_REQUIRED' as any, onPermissionRequired);
+
             const fullText = resEnvelope?.payload?.responseText || '';
 
             if (seq === 0 && fullText) {
@@ -376,7 +399,9 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
             targetAdapter.off('plan' as any, onPlan);
             targetAdapter.off('question' as any, onQuestion);
             targetAdapter.off('confirmation' as any, onConfirmation);
+            targetAdapter.off('PERMISSION_REQUIRED' as any, onPermissionRequired);
             const errorMsg = err instanceof Error ? err.message : String(err);
+
             logger.error('Local AI execution failed', err);
             streamRenderer.onStreamFailed(errorMsg);
             if (splitRenderer) {

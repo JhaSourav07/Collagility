@@ -64,3 +64,14 @@ export class AdapterCancellationError extends AdapterError {
     );
   }
 }
+
+export class AdapterSecurityError extends AdapterError {
+  constructor(adapterName: string, reason: string = 'Permission denied for command execution') {
+    super(
+      `AI adapter '${adapterName}' security check failed: ${reason}`,
+      'ADAPTER_SECURITY_ERROR',
+      adapterName
+    );
+  }
+}
+

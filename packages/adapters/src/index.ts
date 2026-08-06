@@ -10,3 +10,9 @@ export * from './claude/claude-adapter.js';
 export * from './codex/codex-adapter.js';
 export * from './aider/aider-adapter.js';
 export * from './goose/goose-adapter.js';
+export * from './antigravity/antigravity-adapter.js';
+export * from './antigravity/parser.js';
+export * from './antigravity/health.js';
+export * from './security/risk-evaluator.js';
+
+

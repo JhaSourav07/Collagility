@@ -5,11 +5,13 @@ import TextInput from 'ink-text-input';
 interface InputBarProps {
   onSubmit: (text: string) => void;
   placeholder?: string;
+  isDisabled?: boolean;
 }
 
 export const InputBar: React.FC<InputBarProps> = ({
   onSubmit,
   placeholder = 'Type a message or /command...',
+  isDisabled = false,
 }) => {
   const [value, setValue] = useState('');
   const [history, setHistory] = useState<string[]>([]);
@@ -17,6 +19,7 @@ export const InputBar: React.FC<InputBarProps> = ({
 
   const commandList = [
     '/help',
+    '/mode',
     '/users',
     '/history',
     '/driver',
@@ -29,7 +32,9 @@ export const InputBar: React.FC<InputBarProps> = ({
     '@antigravity',
   ];
 
-  useInput((input, key) => {
+  useInput((_input, key) => {
+    if (isDisabled) return;
+
     if (key.upArrow) {
       if (history.length > 0) {
         const nextIndex = historyIndex < history.length - 1 ? historyIndex + 1 : historyIndex;
@@ -46,7 +51,6 @@ export const InputBar: React.FC<InputBarProps> = ({
         setValue('');
       }
     } else if (key.tab) {
-      // Simple tab autocomplete for slash commands
       if (value.startsWith('/') || value.startsWith('@')) {
         const match = commandList.find((cmd) => cmd.startsWith(value));
         if (match) {
@@ -57,6 +61,7 @@ export const InputBar: React.FC<InputBarProps> = ({
   });
 
   const handleSubmit = (text: string) => {
+    if (isDisabled) return;
     const trimmed = text.trim();
     if (!trimmed) return;
     setHistory((prev) => [...prev, trimmed]);
@@ -64,6 +69,23 @@ export const InputBar: React.FC<InputBarProps> = ({
     setValue('');
     onSubmit(trimmed);
   };
+
+  if (isDisabled) {
+    return (
+      <Box
+        borderStyle="round"
+        borderColor="gray"
+        width="100%"
+        paddingX={1}
+        paddingY={0}
+        marginTop={0}
+      >
+        <Text color="gray" bold>
+          🔒 [Input Blocked - Resolve Permission Prompt Above]
+        </Text>
+      </Box>
+    );
+  }
 
   return (
     <Box

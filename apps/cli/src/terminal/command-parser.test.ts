@@ -36,4 +36,12 @@ describe('parseCLIInput', () => {
       text: 'Hello team! How are we doing?',
     });
   });
+
+  it('should parse /mode command and mode options', () => {
+    expect(parseCLIInput('/mode')).toEqual({ type: 'mode', targetMode: undefined });
+    expect(parseCLIInput('/mode auto')).toEqual({ type: 'mode', targetMode: 'auto' });
+    expect(parseCLIInput('/mode manual')).toEqual({ type: 'mode', targetMode: 'manual' });
+    expect(parseCLIInput('/mode accept')).toEqual({ type: 'mode', targetMode: 'accept-edits' });
+  });
 });
+

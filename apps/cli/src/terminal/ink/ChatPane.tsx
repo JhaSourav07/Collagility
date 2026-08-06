@@ -1,16 +1,20 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import type { ChatMessageItem, ActivityLogItem, InteractivePromptState } from './types.js';
+import type { ChatMessageItem, ActivityLogItem, InteractivePromptState, PermissionPromptState } from './types.js';
 import { DocumentRenderer } from '@collagility/renderer';
 import { InteractivePromptCard } from './InteractivePromptCard.js';
+import { PermissionPromptCard } from './PermissionPromptCard.js';
 
 interface ChatPaneProps {
   messages: ChatMessageItem[];
   activities?: ActivityLogItem[];
   interactivePrompt?: InteractivePromptState | null;
+  permissionPrompt?: PermissionPromptState | null;
+  isOwner?: boolean;
   queueCount?: number;
   height?: number;
 }
+
 
 const docRenderer = new DocumentRenderer({ maxWidth: 95, theme: 'dark' });
 
@@ -28,8 +32,12 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   messages,
   activities = [],
   interactivePrompt,
+  permissionPrompt,
+  isOwner = true,
   queueCount = 1,
 }) => {
+
+
   // Build unified chronological timeline stream
   const timeline: TimelineEvent[] = [];
 
@@ -206,8 +214,30 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
         );
       })}
 
-      {/* Render Active Option Card inside timeline stream */}
-      {interactivePrompt && <InteractivePromptCard prompt={interactivePrompt} queueCount={queueCount} />}
+      {/* Render Security Permission Card or Active Option Card inside timeline stream */}
+      {permissionPrompt ? (
+        isOwner ? (
+          <PermissionPromptCard
+            request={permissionPrompt.request}
+            onSelect={permissionPrompt.onResolve}
+            queueCount={queueCount}
+          />
+        ) : (
+          <Box flexDirection="column" borderStyle="round" borderColor="yellow" paddingX={1} marginY={1}>
+            <Text color="yellow" bold>
+              ⏳ [Waiting for host to approve command: {permissionPrompt.request.command || permissionPrompt.request.toolName}]
+            </Text>
+            <Text color="gray" italic>
+              Risk: {permissionPrompt.request.riskLevel} • Tool: {permissionPrompt.request.toolName}
+            </Text>
+
+          </Box>
+        )
+      ) : (
+        interactivePrompt && <InteractivePromptCard prompt={interactivePrompt} queueCount={queueCount} />
+      )}
+
     </Box>
   );
 };
+

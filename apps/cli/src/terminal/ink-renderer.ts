@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, Instance } from 'ink';
 import { App } from './ink/App.js';
+import type { PermissionRequest, PermissionDecision, SecurityMode } from '@collagility/protocol';
 import type {
   SessionInfoState,
   AIDriverState,
@@ -8,6 +9,7 @@ import type {
   ActivityLogItem,
   UserMember,
   InteractivePromptState,
+  PermissionPromptState,
   CommandHandler,
 } from './ink/types.js';
 
@@ -18,6 +20,7 @@ export interface InkRendererOptions {
   aiDriverName?: string;
   aiModel?: string;
   aiMode?: string;
+  securityMode?: SecurityMode;
   initialMessages?: ChatMessageItem[];
   initialActivities?: ActivityLogItem[];
   initialUsers?: UserMember[];
@@ -40,11 +43,14 @@ export class InkTerminalRenderer {
     model: 'Gemini 3.5 Flash',
     mode: 'Code',
     status: 'Ready',
+    securityMode: 'manual',
   };
 
   private messages: ChatMessageItem[] = [];
   private activities: ActivityLogItem[] = [];
   private promptQueue: InteractivePromptState[] = [];
+  private permissionQueue: PermissionPromptState[] = [];
+
 
   constructor(options: InkRendererOptions = {}) {
     if (options.sessionId) this.session.id = options.sessionId;
@@ -97,6 +103,55 @@ export class InkTerminalRenderer {
     if (mode) this.aiDriver.mode = mode;
     this.rerender();
   }
+
+  public setSecurityMode(mode: SecurityMode): void {
+    this.aiDriver.securityMode = mode;
+    this.appendMessage({
+      sender: 'System',
+      senderRole: 'system',
+      content: `✓ Security Mode set to '${mode.toUpperCase()}'`,
+    });
+    this.rerender();
+  }
+
+  public cycleSecurityMode(): SecurityMode {
+    const modes: SecurityMode[] = ['manual', 'accept-edits', 'plan-only', 'auto'];
+    const current = this.aiDriver.securityMode || 'manual';
+    const nextIdx = (modes.indexOf(current) + 1) % modes.length;
+    const nextMode = modes[nextIdx];
+    this.setSecurityMode(nextMode);
+    return nextMode;
+  }
+
+  public pushPermissionPrompt(
+    request: PermissionRequest,
+    onResolve: (decision: PermissionDecision) => void
+  ): void {
+    const wrappedResolve = (decision: PermissionDecision) => {
+      this.popPermissionPrompt();
+      onResolve(decision);
+    };
+
+    if (!this.permissionQueue.some((p) => p.id === request.id)) {
+      this.permissionQueue.push({
+        id: request.id,
+        request,
+        onResolve: wrappedResolve,
+      });
+      this.rerender();
+    }
+  }
+
+  public getPermissionPrompt(): PermissionPromptState | null {
+    return this.permissionQueue.length > 0 ? this.permissionQueue[0] : null;
+  }
+
+  public popPermissionPrompt(): PermissionPromptState | null {
+    const popped = this.permissionQueue.shift() || null;
+    this.rerender();
+    return popped;
+  }
+
 
   public pushInteractivePrompt(prompt: InteractivePromptState): void {
     if (!this.promptQueue.some((p) => p.id === prompt.id)) {
@@ -234,6 +289,7 @@ export class InkTerminalRenderer {
 
   public renderApp(): Instance {
     const currentPrompt = this.getInteractivePrompt();
+    const currentPermission = this.getPermissionPrompt();
     if (!this.instance) {
       this.instance = render(
         React.createElement(App, {
@@ -242,13 +298,17 @@ export class InkTerminalRenderer {
           messages: this.messages,
           activities: this.activities,
           interactivePrompt: currentPrompt,
-          queueCount: this.promptQueue.length,
+          permissionPrompt: currentPermission,
+          queueCount: Math.max(this.promptQueue.length, this.permissionQueue.length),
           onCommand: (input: string) => {
             if (this.commandHandler) {
               this.commandHandler(input);
             } else {
               this.handleDefaultInput(input);
             }
+          },
+          onCycleSecurityMode: () => {
+            this.cycleSecurityMode();
           },
         })
       );
@@ -261,6 +321,7 @@ export class InkTerminalRenderer {
   private rerender(): void {
     if (this.instance) {
       const currentPrompt = this.getInteractivePrompt();
+      const currentPermission = this.getPermissionPrompt();
       this.instance.rerender(
         React.createElement(App, {
           session: this.session,
@@ -268,7 +329,8 @@ export class InkTerminalRenderer {
           messages: this.messages,
           activities: this.activities,
           interactivePrompt: currentPrompt,
-          queueCount: this.promptQueue.length,
+          permissionPrompt: currentPermission,
+          queueCount: Math.max(this.promptQueue.length, this.permissionQueue.length),
           onCommand: (input: string) => {
             if (this.commandHandler) {
               this.commandHandler(input);
@@ -276,10 +338,14 @@ export class InkTerminalRenderer {
               this.handleDefaultInput(input);
             }
           },
+          onCycleSecurityMode: () => {
+            this.cycleSecurityMode();
+          },
         })
       );
     }
   }
+
 
   private handleDefaultInput(input: string): void {
     const time = new Date().toLocaleTimeString('en-US', { hour12: false });

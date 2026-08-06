@@ -1,3 +1,5 @@
+import type { PermissionRequest, PermissionDecision, SecurityMode } from '@collagility/protocol';
+
 export interface UserMember {
   name: string;
   isOwner?: boolean;
@@ -17,7 +19,9 @@ export interface AIDriverState {
   model: string;
   mode: string;
   status: string;
+  securityMode?: SecurityMode;
 }
+
 
 export interface ChatMessageItem {
   id: string;
@@ -52,3 +56,10 @@ export interface InteractivePromptState {
 }
 
 export type CommandHandler = (commandOrMessage: string) => void;
+
+export interface PermissionPromptState {
+  id: string;
+  request: PermissionRequest;
+  onResolve: (decision: PermissionDecision) => void;
+}
+

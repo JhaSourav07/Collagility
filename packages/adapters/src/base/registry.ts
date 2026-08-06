@@ -1,5 +1,7 @@
 import type { AIAdapter, AdapterStatus } from './adapter.js';
 import { AdapterError, AdapterInitializationError } from './errors.js';
+import { AntigravityAIAdapter } from '../antigravity/antigravity-adapter.js';
+
 
 export interface AdapterSummary {
   name: string;
@@ -84,3 +86,21 @@ export class AdapterRegistry {
     return this.adapters.size;
   }
 }
+
+export function registerAntigravityAdapter(
+  registry: AdapterRegistry,
+  adapter?: AIAdapter
+): void {
+  const instance = adapter || new AntigravityAIAdapter();
+  registry.register('antigravity', instance);
+  if (!registry.has('agy')) {
+    registry.register('agy', instance);
+  }
+}
+
+export function createDefaultAdapterRegistry(): AdapterRegistry {
+  const registry = new AdapterRegistry();
+  registerAntigravityAdapter(registry);
+  return registry;
+}
+

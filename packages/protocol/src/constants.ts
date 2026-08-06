@@ -60,6 +60,11 @@ export const EVENT_TYPES = {
   AI_TOOL_REJECTED: 'ai.tool.rejected',
   AI_WAITING: 'ai.waiting',
   AI_FINISHED: 'ai.finished',
+
+  // Realtime Permission Synchronization Event Types
+  SESSION_PERMISSION_REQUEST: 'session.permission.request',
+  SESSION_PERMISSION_RESPONSE: 'session.permission.response',
 } as const;
+
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES] | (string & {});
