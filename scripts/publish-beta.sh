@@ -5,7 +5,7 @@ set -e
 # Releases collagility under the 'beta' dist-tag on NPM
 
 echo "========================================="
-echo "  Publishing Collagility 0.1.1-beta.1"
+echo "  Publishing Collagility 0.1.1-beta.2"
 echo "========================================="
 
 if [ "$1" != "--skip-build" ]; then
@@ -28,6 +28,6 @@ else
 fi
 
 echo ""
-echo "✓ Successfully published collagility@0.1.1-beta.1 to NPM!"
+echo "✓ Successfully published collagility@beta to NPM!"
 echo "  Install globally:  npm install -g collagility@beta"
 echo "  Run via npx:       npx collagility@beta start"

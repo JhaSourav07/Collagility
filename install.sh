@@ -2,7 +2,7 @@
 set -e
 
 # Collagility Installer for macOS & Linux
-# Target Release: 0.1.1-beta.1
+# Target Release: beta
 
 BOLD="\033[1m"
 GREEN="\033[32m"
@@ -11,7 +11,7 @@ RED="\033[31m"
 RESET="\033[0m"
 
 echo -e "${CYAN}${BOLD}"
-echo "  ⚡ Collagility 0.1.1-beta.1 Installer"
+echo "  ⚡ Collagility Beta Installer"
 echo "  The Realtime Agentic Terminal for Collaborative AI Pair Programming"
 echo -e "${RESET}\n"
 
@@ -34,12 +34,12 @@ fi
 echo -e "${GREEN}✓ Node.js v$NODE_VERSION detected${RESET}"
 
 # 2. Install collagility globally via NPM
-echo -e "\n${BOLD}Installing collagility@0.1.1-beta.1 globally...${RESET}"
+echo -e "\n${BOLD}Installing collagility@beta globally...${RESET}"
 if command -v sudo &> /dev/null && [ "$EUID" -ne 0 ] && [ ! -w "$(npm config get prefix)/lib/node_modules" 2>/dev/null ]; then
     echo "Elevated permissions required for global NPM install:"
-    sudo npm install -g collagility@0.1.1-beta.1
+    sudo npm install -g collagility@beta
 else
-    npm install -g collagility@0.1.1-beta.1
+    npm install -g collagility@beta
 fi
 
 # 3. Verify installation

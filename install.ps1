@@ -1,10 +1,10 @@
 # Collagility Installer for Windows PowerShell
-# Target Release: 0.1.1-beta.1
+# Target Release: beta
 
 $ErrorActionPreference = "Stop"
 
 Write-Host ""
-Write-Host "  ⚡ Collagility 0.1.1-beta.1 Installer" -ForegroundColor Cyan
+Write-Host "  ⚡ Collagility Beta Installer" -ForegroundColor Cyan
 Write-Host "  The Realtime Agentic Terminal for Collaborative AI Pair Programming" -ForegroundColor Cyan
 Write-Host ""
 
@@ -27,8 +27,8 @@ Write-Host "✓ Node.js $nodeVerString detected" -ForegroundColor Green
 
 # 2. Install collagility globally via NPM
 Write-Host ""
-Write-Host "Installing collagility@0.1.1-beta.1 globally via NPM..." -ForegroundColor Yellow
-npm install -g collagility@0.1.1-beta.1
+Write-Host "Installing collagility@beta globally via NPM..." -ForegroundColor Yellow
+npm install -g collagility@beta
 
 # 3. Verify installation
 Write-Host ""

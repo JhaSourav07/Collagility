@@ -6,27 +6,37 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 
-console.log('📦 Bundling @collagility/cli with esbuild...');
+console.log('📦 Bundling collagility CLI entrypoint dist/main.js with esbuild...');
+
+const externalPlugin = {
+  name: 'external-except-monorepo',
+  setup(build) {
+    build.onResolve({ filter: /^@?[a-z0-9]/ }, (args) => {
+      if (args.path.startsWith('@collagility/')) {
+        return undefined;
+      }
+      return { external: true };
+    });
+  },
+};
 
 try {
   await esbuild.build({
-    entryPoints: [path.join(projectRoot, 'src', 'index.ts')],
+    entryPoints: [path.join(projectRoot, 'src', 'main.ts')],
     bundle: true,
     platform: 'node',
     target: 'node20',
-    format: 'cjs',
-    outfile: path.join(projectRoot, 'dist', 'bundle.cjs'),
+    format: 'esm',
+    outfile: path.join(projectRoot, 'dist', 'main.js'),
+    plugins: [externalPlugin],
     sourcemap: false,
     minify: false,
-    loader: {
-      '.ts': 'ts',
-    },
     define: {
       'process.env.NODE_ENV': '"production"',
     },
   });
 
-  console.log('✓ ESBuild bundle generated: apps/cli/dist/bundle.cjs');
+  console.log('✓ ESBuild bundle generated successfully in dist/main.js');
 } catch (err) {
   console.error('✖ Bundle failed:', err);
   process.exit(1);

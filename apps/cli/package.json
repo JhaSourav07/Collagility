@@ -1,6 +1,6 @@
 {
   "name": "collagility",
-  "version": "0.1.1-beta.1",
+  "version": "0.1.1-beta.2",
   "description": "Terminal CLI application for Collagility host and participant sessions",
   "type": "module",
   "bin": {
@@ -11,7 +11,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsc --build && node ./scripts/bundle.js",
     "bundle": "node ./scripts/bundle.js",
     "package": "node ./scripts/bundle.js && node ./scripts/package.js",
     "dev": "tsc --build --watch",
@@ -22,15 +22,10 @@
     "clean": "rimraf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@collagility/adapters": "workspace:*",
-    "@collagility/protocol": "workspace:*",
-    "@collagility/renderer": "workspace:*",
-    "@collagility/sdk": "workspace:*",
-    "@collagility/server": "workspace:*",
-    "@collagility/stream": "workspace:*",
-    "@collagility/types": "workspace:*",
+    "@fastify/websocket": "^11.0.1",
     "chalk": "^5.4.1",
     "commander": "^13.0.0",
+    "fastify": "^5.2.0",
     "ink": "^5.2.1",
     "ink-text-input": "^6.0.0",
     "pino": "^9.6.0",
