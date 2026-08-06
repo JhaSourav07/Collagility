@@ -1,31 +1,60 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import type { SessionInfoState, AIDriverState } from './types.js';
+import type { SessionInfoState, AIDriverState, SubagentTask } from './types.js';
 
 interface HeaderProps {
   session: SessionInfoState;
   aiDriver: AIDriverState;
+  subagents?: SubagentTask[];
 }
 
-export const Header: React.FC<HeaderProps> = ({ session, aiDriver }) => {
+export const Header: React.FC<HeaderProps> = ({ session, aiDriver, subagents = [] }) => {
   const isOwner = session.userRole === 'owner';
+  const workspace = session.workspacePath || process.cwd();
+  const version = session.version || 'v2.0';
+  const activeSubagentsCount = subagents.filter((s) => s.status === 'running').length;
+  const connection = session.connectionStatus || 'connected';
 
   return (
     <Box flexDirection="column" width="100%" marginBottom={0}>
-      {/* Title Bar Frame */}
+      {/* Classic Antigravity CLI Top Header Frame */}
       <Box
         borderStyle="single"
-        borderColor="gray"
-        justifyContent="center"
+        borderColor="cyan"
+        justifyContent="space-between"
         width="100%"
         paddingX={1}
       >
-        <Text color="cyan" bold>
-          Collagility – Multiplayer Workspace for AI Coding
-        </Text>
+        <Box gap={1}>
+          <Text color="cyan" bold>
+            agy {version}
+          </Text>
+          <Text color="gray">//</Text>
+          <Text color="white" bold>
+            workspace:
+          </Text>
+          <Text color="blue">{workspace}</Text>
+        </Box>
+
+        <Box gap={2}>
+          {/* Real-time Connection Status Badge */}
+          <Box gap={1}>
+            <Text color={connection === 'connected' ? 'green' : 'yellow'}>
+              ● {connection.toUpperCase()}
+            </Text>
+          </Box>
+          <Text color="gray">|</Text>
+          {/* Active Agent & Model */}
+          <Box gap={1}>
+            <Text color="magenta" bold>
+              {aiDriver.name}
+            </Text>
+            <Text color="gray">({aiDriver.model})</Text>
+          </Box>
+        </Box>
       </Box>
 
-      {/* 4 Header Cards Row */}
+      {/* Sub-header Cards / Status Info Row */}
       <Box
         borderStyle="single"
         borderColor="gray"
@@ -35,87 +64,51 @@ export const Header: React.FC<HeaderProps> = ({ session, aiDriver }) => {
         paddingX={1}
         paddingY={0}
       >
-        {/* Card 1: Session Info */}
+        {/* Card 1: Session & Role */}
         <Box flexDirection="column" minWidth={22}>
-          <Box>
-            <Text color="gray">Session: </Text>
+          <Box gap={1}>
+            <Text color="gray">Session:</Text>
             <Text color="blue" bold>{session.id}</Text>
           </Box>
-          <Box>
-            <Text color="gray">Owner:   </Text>
+          <Box gap={1}>
+            <Text color="gray">Owner:</Text>
             <Text color="magenta" bold>{session.ownerName}</Text>
           </Box>
-          <Box>
-            <Text color="gray">Created: </Text>
-            <Text color="gray">{session.createdAgo}</Text>
-          </Box>
         </Box>
 
-        {/* Card 2: AI Driver Info */}
-        <Box flexDirection="column" minWidth={26}>
-          <Box>
-            <Text color="gray">AI Driver: </Text>
-            <Text color="magenta" bold>{aiDriver.name}</Text>
-          </Box>
-          <Box>
-            <Text color="gray">Model:     </Text>
-            <Text color="blue">{aiDriver.model}</Text>
-          </Box>
-          <Box>
-            <Text color="gray">Mode:      </Text>
-            <Text color="blue">{aiDriver.mode}</Text>
-          </Box>
-        </Box>
-
-        {/* Card 3: Users */}
+        {/* Card 2: Subagent Monitor Badge Indicator */}
         <Box flexDirection="column" minWidth={24}>
-          <Text color="gray" bold>Users ({session.users.length})</Text>
-          {session.users.slice(0, 3).map((user, idx) => (
-            <Box key={idx}>
-              <Text color="green">• </Text>
-              <Text color={user.isSelf ? 'green' : 'white'} bold={user.isSelf}>
-                {user.name} {user.isSelf ? '(you)' : ''}
-              </Text>
-              {user.isOwner ? (
-                <Text color="magenta">  Owner</Text>
-              ) : null}
-            </Box>
-          ))}
+          <Box gap={1}>
+            <Text color="cyan" bold>🤖 Subagents:</Text>
+            <Text color={activeSubagentsCount > 0 ? 'green' : 'gray'} bold>
+              {activeSubagentsCount} active
+            </Text>
+          </Box>
+          <Text color="gray">Press Ctrl+K / /agents</Text>
         </Box>
 
-        {/* Card 4: Commands */}
-        <Box flexDirection="column" minWidth={30}>
-          <Text color="gray" bold>Commands</Text>
-          {isOwner ? (
-            <>
-              <Box gap={2}>
-                <Text color="cyan">/help</Text>
-                <Text color="cyan">/users</Text>
-                <Text color="cyan">/history</Text>
-              </Box>
-              <Box gap={2}>
-                <Text color="cyan">/driver</Text>
-                <Text color="cyan">/share</Text>
-                <Text color="cyan">/leave</Text>
-              </Box>
-              <Box>
-                <Text color="cyan">/clear</Text>
-              </Box>
-            </>
-          ) : (
-            <>
-              <Box gap={2}>
-                <Text color="cyan">/help</Text>
-                <Text color="cyan">/users</Text>
-                <Text color="cyan">/history</Text>
-              </Box>
-              <Box gap={2}>
-                <Text color="cyan">/share</Text>
-                <Text color="cyan">/leave</Text>
-                <Text color="cyan">/clear</Text>
-              </Box>
-            </>
-          )}
+        {/* Card 3: Connected Users */}
+        <Box flexDirection="column" minWidth={22}>
+          <Text color="gray" bold>
+            Users ({session.users.length})
+          </Text>
+          <Box gap={1}>
+            {session.users.slice(0, 2).map((user, idx) => (
+              <Text key={idx} color={user.isSelf ? 'green' : 'white'}>
+                {user.name}{user.isSelf ? ' (you)' : ''}
+              </Text>
+            ))}
+          </Box>
+        </Box>
+
+        {/* Card 4: Quick Slash Shortcuts */}
+        <Box flexDirection="column" minWidth={26}>
+          <Text color="gray" bold>Shortcuts</Text>
+          <Box gap={2}>
+            <Text color="cyan">/config</Text>
+            <Text color="cyan">/agents</Text>
+            <Text color="cyan">/permissions</Text>
+          </Box>
         </Box>
       </Box>
     </Box>

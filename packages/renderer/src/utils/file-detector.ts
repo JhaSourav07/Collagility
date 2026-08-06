@@ -98,8 +98,9 @@ export function detectFileReferences(text: string): ExtractedLink[] {
 
     const isFile =
       targetUrl.startsWith('file://') ||
-      targetUrl.includes('/') ||
-      /\.(ts|tsx|js|jsx|json|md|py|go|rs|css|html|yml|yaml)$/i.test(targetUrl);
+      (!targetUrl.includes('://') &&
+        (targetUrl.includes('/') ||
+          /\.(ts|tsx|js|jsx|json|md|py|go|rs|css|html|yml|yaml)$/i.test(targetUrl)));
 
     links.push({
       text: textLabel,

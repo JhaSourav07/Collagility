@@ -5,23 +5,42 @@ import type { PermissionRequest, RiskLevel, PermissionDecision } from '@collagil
 export interface PermissionPromptCardProps {
   request: PermissionRequest;
   onSelect: (decision: PermissionDecision) => void;
+  onEditCommand?: (command: string) => void;
   queueCount?: number;
 }
 
 export const PermissionPromptCard: React.FC<PermissionPromptCardProps> = ({
   request,
   onSelect,
+  onEditCommand,
   queueCount = 1,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const options: Array<{ label: string; value: PermissionDecision }> = [
-    { label: 'Yes, run once', value: 'allow-once' },
-    { label: `Always allow [${request.toolName}] for this session`, value: 'allow-session' },
-    { label: 'No, deny execution', value: 'deny' },
+    { label: '(y) Yes, run once', value: 'allow-once' },
+    { label: `Always allow [${request.toolName}] for session`, value: 'allow-session' },
+    { label: '(n) No, deny execution', value: 'deny' },
   ];
 
-  useInput((_input, key) => {
+  useInput((input, key) => {
+    const lowerInput = input.toLowerCase();
+
+    if (lowerInput === 'y') {
+      onSelect('allow-once');
+      return;
+    }
+    if (lowerInput === 'n') {
+      onSelect('deny');
+      return;
+    }
+    if (lowerInput === 'e') {
+      if (onEditCommand) {
+        onEditCommand(request.command || request.toolName);
+      }
+      return;
+    }
+
     if (key.upArrow) {
       setSelectedIndex((prev) => (prev > 0 ? prev - 1 : options.length - 1));
     }
@@ -90,7 +109,7 @@ export const PermissionPromptCard: React.FC<PermissionPromptCardProps> = ({
 
       <Box flexDirection="column" marginTop={1}>
         <Text color="gray" italic>
-          Select action using ↑/↓ arrow keys and press Enter:
+          Press <Text color="white" bold>y</Text> to approve • <Text color="white" bold>n</Text> to deny • <Text color="white" bold>e</Text> to edit • <Text color="white" bold>↑/↓/Enter</Text> to select:
         </Text>
         {options.map((opt, idx) => {
           const isSelected = idx === selectedIndex;

@@ -12,6 +12,14 @@ export interface SessionInfoState {
   createdAgo: string;
   userRole: 'owner' | 'visitor';
   users: UserMember[];
+  workspacePath?: string;
+  version?: string;
+  connectionStatus?: 'connected' | 'connecting' | 'disconnected';
+}
+
+export interface TokenStatus {
+  used: number;
+  limit: number;
 }
 
 export interface AIDriverState {
@@ -20,8 +28,33 @@ export interface AIDriverState {
   mode: string;
   status: string;
   securityMode?: SecurityMode;
+  tokenStatus?: TokenStatus;
 }
 
+export interface SubagentTask {
+  id: string;
+  name: string;
+  target: string;
+  status: 'running' | 'idle' | 'completed' | 'failed';
+  runtime: string;
+  progress?: number;
+}
+
+export type OverlayType = 'none' | 'config' | 'permissions' | 'agents' | 'resume';
+
+export interface ToolExecutionCard {
+  toolName: string;
+  params?: Record<string, unknown>;
+  status: 'running' | 'success' | 'failed';
+  output?: string;
+}
+
+export interface FileEditCard {
+  filePath: string;
+  additions: number;
+  deletions: number;
+  diffSummary?: string;
+}
 
 export interface ChatMessageItem {
   id: string;
@@ -32,6 +65,9 @@ export interface ChatMessageItem {
   icon?: string;
   isStreaming?: boolean;
   isTyping?: boolean;
+  thoughtBlock?: string;
+  toolCard?: ToolExecutionCard;
+  fileEditCard?: FileEditCard;
 }
 
 export interface ActivityLogItem {
@@ -62,4 +98,3 @@ export interface PermissionPromptState {
   request: PermissionRequest;
   onResolve: (decision: PermissionDecision) => void;
 }
-

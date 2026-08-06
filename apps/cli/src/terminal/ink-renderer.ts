@@ -10,6 +10,7 @@ import type {
   UserMember,
   InteractivePromptState,
   PermissionPromptState,
+  SubagentTask,
   CommandHandler,
 } from './ink/types.js';
 
@@ -24,6 +25,7 @@ export interface InkRendererOptions {
   initialMessages?: ChatMessageItem[];
   initialActivities?: ActivityLogItem[];
   initialUsers?: UserMember[];
+  workspacePath?: string;
 }
 
 export class InkTerminalRenderer {
@@ -36,6 +38,9 @@ export class InkTerminalRenderer {
     createdAgo: 'Just now',
     userRole: 'owner',
     users: [],
+    workspacePath: process.cwd(),
+    version: 'v2.0',
+    connectionStatus: 'connected',
   };
 
   private aiDriver: AIDriverState = {
@@ -44,13 +49,14 @@ export class InkTerminalRenderer {
     mode: 'Code',
     status: 'Ready',
     securityMode: 'manual',
+    tokenStatus: { used: 14200, limit: 1000000 },
   };
 
   private messages: ChatMessageItem[] = [];
   private activities: ActivityLogItem[] = [];
   private promptQueue: InteractivePromptState[] = [];
   private permissionQueue: PermissionPromptState[] = [];
-
+  private subagents: SubagentTask[] = [];
 
   constructor(options: InkRendererOptions = {}) {
     if (options.sessionId) this.session.id = options.sessionId;
@@ -61,6 +67,7 @@ export class InkTerminalRenderer {
     if (options.aiDriverName) this.aiDriver.name = options.aiDriverName;
     if (options.aiModel) this.aiDriver.model = options.aiModel;
     if (options.aiMode) this.aiDriver.mode = options.aiMode;
+    if (options.workspacePath) this.session.workspacePath = options.workspacePath;
 
     if (options.initialUsers) {
       this.session.users = options.initialUsers;
@@ -123,6 +130,22 @@ export class InkTerminalRenderer {
     return nextMode;
   }
 
+  public clearScreen(): void {
+    this.messages = this.messages.filter((m) => m.id.startsWith('sys-init'));
+    this.activities = [];
+    this.appendMessage({
+      sender: 'System',
+      senderRole: 'system',
+      content: '✓ Terminal screen cleared (Ctrl+L)',
+    });
+    this.rerender();
+  }
+
+  public setSubagents(tasks: SubagentTask[]): void {
+    this.subagents = tasks;
+    this.rerender();
+  }
+
   public pushPermissionPrompt(
     request: PermissionRequest,
     onResolve: (decision: PermissionDecision) => void
@@ -152,7 +175,6 @@ export class InkTerminalRenderer {
     return popped;
   }
 
-
   public pushInteractivePrompt(prompt: InteractivePromptState): void {
     if (!this.promptQueue.some((p) => p.id === prompt.id)) {
       this.promptQueue.push(prompt);
@@ -160,20 +182,18 @@ export class InkTerminalRenderer {
     }
   }
 
-  public setInteractivePrompt(prompt: InteractivePromptState | null): void {
-    if (prompt) {
-      this.pushInteractivePrompt(prompt);
-    } else {
-      this.clearInteractivePrompt();
-    }
+  public setInteractivePrompt(prompt: InteractivePromptState): void {
+    this.promptQueue = [prompt];
+    this.rerender();
+  }
+
+  public clearInteractivePrompt(): void {
+    this.promptQueue = [];
+    this.rerender();
   }
 
   public getInteractivePrompt(): InteractivePromptState | null {
     return this.promptQueue.length > 0 ? this.promptQueue[0] : null;
-  }
-
-  public getPromptQueueCount(): number {
-    return this.promptQueue.length;
   }
 
   public popInteractivePrompt(): InteractivePromptState | null {
@@ -182,76 +202,70 @@ export class InkTerminalRenderer {
     return popped;
   }
 
-  public clearInteractivePrompt(): void {
-    this.promptQueue = [];
-    this.rerender();
+  public startStreamMessage(streamId: string, adapterName = 'Gemini'): void {
+    this.appendMessage({
+      id: streamId,
+      sender: adapterName,
+      senderRole: 'ai',
+      content: '',
+      isStreaming: true,
+    });
   }
 
-  public appendMessage(msg: Partial<ChatMessageItem> & { content: string }): void {
-    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
-    const item: ChatMessageItem = {
-      id: msg.id || `msg-${Date.now()}-${Math.random()}`,
-      timestamp: msg.timestamp || time,
-      sender: msg.sender || 'System',
-      senderRole: msg.senderRole || 'system',
+  public appendStreamChunk(streamId: string, senderName: string, content: string): void {
+    this.updateStreamingMessage(streamId, content, false);
+  }
+
+  public completeStreamMessage(id: string, durationMs?: number): void {
+    this.completeStreamingMessage(id, durationMs);
+  }
+
+  public appendMessage(msg: Omit<ChatMessageItem, 'id' | 'timestamp'> & { id?: string; timestamp?: string }): void {
+    const time = msg.timestamp || new Date().toLocaleTimeString('en-US', { hour12: false });
+    const id = msg.id || `msg-${Date.now()}-${Math.random()}`;
+
+    this.messages.push({
+      id,
+      timestamp: time,
+      sender: msg.sender,
+      senderRole: msg.senderRole,
       content: msg.content,
       icon: msg.icon,
       isStreaming: msg.isStreaming,
       isTyping: msg.isTyping,
-    };
-    this.messages.push(item);
+      thoughtBlock: msg.thoughtBlock,
+      toolCard: msg.toolCard,
+      fileEditCard: msg.fileEditCard,
+    });
+
     this.rerender();
   }
 
-  public startStreamMessage(streamId: string, sender: string): void {
-    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
-    const msgId = `stream-${streamId}`;
-    const existing = this.messages.find((m) => m.id === msgId);
-    if (!existing) {
-      this.messages.push({
-        id: msgId,
-        timestamp: time,
-        sender,
-        senderRole: 'ai',
-        content: 'Thinking...',
-        isStreaming: true,
-      });
-      this.rerender();
-    }
-  }
-
-  public appendStreamChunk(streamId: string, sender: string, chunkContent: string): void {
-    const msgId = `stream-${streamId}`;
-    const existing = this.messages.find((m) => m.id === msgId);
+  public updateStreamingMessage(id: string, chunk: string, isDone = false): void {
+    const existing = this.messages.find((m) => m.id === id);
     if (existing) {
-      if (existing.content === 'Thinking...' || existing.content === 'Thinking') {
-        existing.content = chunkContent;
-      } else {
-        existing.content += chunkContent;
-      }
+      existing.content += chunk;
+      existing.isStreaming = !isDone;
     } else {
-      const time = new Date().toLocaleTimeString('en-US', { hour12: false });
-      this.messages.push({
-        id: msgId,
-        timestamp: time,
-        sender,
+      this.appendMessage({
+        id,
+        sender: this.aiDriver.name,
         senderRole: 'ai',
-        content: chunkContent,
-        isStreaming: true,
+        content: chunk,
+        isStreaming: !isDone,
       });
     }
     this.rerender();
   }
 
-  public completeStreamMessage(streamId: string, durationMs?: number): void {
-    const msgId = `stream-${streamId}`;
-    const existing = this.messages.find((m) => m.id === msgId);
+  public completeStreamingMessage(id: string, durationMs?: number): void {
+    const existing = this.messages.find((m) => m.id === id);
     if (existing) {
       existing.isStreaming = false;
     }
     if (durationMs !== undefined) {
       this.appendMessage({
-        sender: 'Gemini',
+        sender: this.aiDriver.name,
         senderRole: 'ai',
         content: `✓ Stream Completed (${durationMs}ms)`,
       });
@@ -297,6 +311,7 @@ export class InkTerminalRenderer {
           aiDriver: this.aiDriver,
           messages: this.messages,
           activities: this.activities,
+          subagents: this.subagents,
           interactivePrompt: currentPrompt,
           permissionPrompt: currentPermission,
           queueCount: Math.max(this.promptQueue.length, this.permissionQueue.length),
@@ -309,6 +324,9 @@ export class InkTerminalRenderer {
           },
           onCycleSecurityMode: () => {
             this.cycleSecurityMode();
+          },
+          onClearScreen: () => {
+            this.clearScreen();
           },
         })
       );
@@ -328,6 +346,7 @@ export class InkTerminalRenderer {
           aiDriver: this.aiDriver,
           messages: this.messages,
           activities: this.activities,
+          subagents: this.subagents,
           interactivePrompt: currentPrompt,
           permissionPrompt: currentPermission,
           queueCount: Math.max(this.promptQueue.length, this.permissionQueue.length),
@@ -341,11 +360,13 @@ export class InkTerminalRenderer {
           onCycleSecurityMode: () => {
             this.cycleSecurityMode();
           },
+          onClearScreen: () => {
+            this.clearScreen();
+          },
         })
       );
     }
   }
-
 
   private handleDefaultInput(input: string): void {
     const time = new Date().toLocaleTimeString('en-US', { hour12: false });

@@ -13,8 +13,8 @@ interface ChatPaneProps {
   isOwner?: boolean;
   queueCount?: number;
   height?: number;
+  onEditCommand?: (cmd: string) => void;
 }
-
 
 const docRenderer = new DocumentRenderer({ maxWidth: 95, theme: 'dark' });
 
@@ -26,6 +26,9 @@ interface TimelineEvent {
   content: string;
   icon?: string;
   isStreaming?: boolean;
+  thoughtBlock?: string;
+  toolCard?: ChatMessageItem['toolCard'];
+  fileEditCard?: ChatMessageItem['fileEditCard'];
 }
 
 export const ChatPane: React.FC<ChatPaneProps> = ({
@@ -35,9 +38,8 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   permissionPrompt,
   isOwner = true,
   queueCount = 1,
+  onEditCommand,
 }) => {
-
-
   // Build unified chronological timeline stream
   const timeline: TimelineEvent[] = [];
 
@@ -64,6 +66,9 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
         sender: msg.sender.replace(/^🤖\s*/, '').trim(),
         content: msg.content,
         isStreaming: msg.isStreaming,
+        thoughtBlock: msg.thoughtBlock,
+        toolCard: msg.toolCard,
+        fileEditCard: msg.fileEditCard,
       });
     } else {
       timeline.push({
@@ -118,17 +123,17 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
         if (event.kind === 'ai') {
           const isCheckmark = event.content.startsWith('✓');
-          const isThinking = event.content === 'Thinking...';
+          const isThinking = event.content === 'Thinking...' || event.content.startsWith('Thinking');
 
-          if (isThinking) {
+          if (isThinking && !event.thoughtBlock) {
             return (
               <Box key={event.id} gap={1} marginY={0.2}>
                 <Text color="gray">{event.timestamp}</Text>
                 <Text color="magenta" bold>
                   {event.sender}&gt;
                 </Text>
-                <Text color="gray" italic>
-                  Thinking...
+                <Text color="magenta" dimColor italic>
+                  💭 Multi-step reasoning in progress...
                 </Text>
               </Box>
             );
@@ -159,7 +164,74 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
                   {event.sender}&gt;
                 </Text>
               </Box>
+
               <Box paddingLeft={2} flexDirection="column">
+                {/* Antigravity Thought Streaming Reasoning Block */}
+                {event.thoughtBlock && (
+                  <Box
+                    borderStyle="single"
+                    borderColor="gray"
+                    flexDirection="column"
+                    paddingX={1}
+                    marginY={0.3}
+                  >
+                    <Text color="magenta" bold dimColor>
+                      ▸ Multi-Step Reasoning / Thought Process:
+                    </Text>
+                    <Text color="gray" italic dimColor>
+                      {event.thoughtBlock}
+                    </Text>
+                  </Box>
+                )}
+
+                {/* Structured File Edit Card */}
+                {event.fileEditCard && (
+                  <Box
+                    borderStyle="round"
+                    borderColor="cyan"
+                    flexDirection="column"
+                    paddingX={1}
+                    marginY={0.3}
+                  >
+                    <Box gap={1}>
+                      <Text color="cyan" bold>📝 File Edit:</Text>
+                      <Text color="white" bold>{event.fileEditCard.filePath}</Text>
+                    </Box>
+                    <Box gap={2}>
+                      <Text color="green">+{event.fileEditCard.additions} lines</Text>
+                      <Text color="red">-{event.fileEditCard.deletions} lines</Text>
+                    </Box>
+                    {event.fileEditCard.diffSummary && (
+                      <Text color="gray" italic>{event.fileEditCard.diffSummary}</Text>
+                    )}
+                  </Box>
+                )}
+
+                {/* Structured Tool Execution Card */}
+                {event.toolCard && (
+                  <Box
+                    borderStyle="round"
+                    borderColor={event.toolCard.status === 'failed' ? 'red' : 'green'}
+                    flexDirection="column"
+                    paddingX={1}
+                    marginY={0.3}
+                  >
+                    <Box justifyContent="space-between">
+                      <Box gap={1}>
+                        <Text color="yellow" bold>🛠 Tool Execution:</Text>
+                        <Text color="white" bold>{event.toolCard.toolName}</Text>
+                      </Box>
+                      <Text color={event.toolCard.status === 'success' ? 'green' : 'yellow'} bold>
+                        [{event.toolCard.status.toUpperCase()}]
+                      </Text>
+                    </Box>
+                    {event.toolCard.output && (
+                      <Text color="gray">{event.toolCard.output}</Text>
+                    )}
+                  </Box>
+                )}
+
+                {/* Inline markdown lines */}
                 {lines.map((line, idx) => {
                   const trimmedLine = line.trim();
 
@@ -167,14 +239,14 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
                   if (trimmedLine.startsWith('●')) {
                     return (
                       <Box key={idx} gap={1}>
-                        <Text color="cyan">●</Text>
+                        <Text color="cyan">⚙️</Text>
                         <Text color="white">{trimmedLine.slice(1).trim()}</Text>
                       </Box>
                     );
                   }
 
                   // Tool action completed: ✓ Read(file)
-                  if (trimmedLine.startsWith('✓ Tool') || trimmedLine.startsWith('✓ Read') || trimmedLine.startsWith('✓ Search')) {
+                  if (trimmedLine.startsWith('✓ Tool') || trimmedLine.startsWith('✓ Read') || trimmedLine.startsWith('✓ Search') || trimmedLine.startsWith('✓ Edit')) {
                     return (
                       <Box key={idx} gap={1}>
                         <Text color="green">✓</Text>
@@ -187,7 +259,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
                   if (trimmedLine.startsWith('▸ Thought') || trimmedLine.startsWith('▸')) {
                     return (
                       <Box key={idx} marginY={0.2}>
-                        <Text color="magenta" dimColor>
+                        <Text color="magenta" italic dimColor>
                           {trimmedLine}
                         </Text>
                       </Box>
@@ -220,6 +292,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
           <PermissionPromptCard
             request={permissionPrompt.request}
             onSelect={permissionPrompt.onResolve}
+            onEditCommand={onEditCommand}
             queueCount={queueCount}
           />
         ) : (
@@ -230,14 +303,11 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
             <Text color="gray" italic>
               Risk: {permissionPrompt.request.riskLevel} • Tool: {permissionPrompt.request.toolName}
             </Text>
-
           </Box>
         )
       ) : (
         interactivePrompt && <InteractivePromptCard prompt={interactivePrompt} queueCount={queueCount} />
       )}
-
     </Box>
   );
 };
-

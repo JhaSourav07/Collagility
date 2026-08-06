@@ -43,5 +43,19 @@ describe('parseCLIInput', () => {
     expect(parseCLIInput('/mode manual')).toEqual({ type: 'mode', targetMode: 'manual' });
     expect(parseCLIInput('/mode accept')).toEqual({ type: 'mode', targetMode: 'accept-edits' });
   });
-});
 
+  it('should parse overlay slash commands (/config, /settings, /permissions, /agents, /resume)', () => {
+    expect(parseCLIInput('/config')).toEqual({ type: 'overlay', target: 'config' });
+    expect(parseCLIInput('/settings')).toEqual({ type: 'overlay', target: 'config' });
+    expect(parseCLIInput('/permissions')).toEqual({ type: 'overlay', target: 'permissions' });
+    expect(parseCLIInput('/agents')).toEqual({ type: 'overlay', target: 'agents' });
+    expect(parseCLIInput('/resume')).toEqual({ type: 'overlay', target: 'resume' });
+  });
+
+  it('should parse action slash commands (/rewind, /undo, /clear, /help)', () => {
+    expect(parseCLIInput('/rewind')).toEqual({ type: 'action', action: 'rewind' });
+    expect(parseCLIInput('/undo')).toEqual({ type: 'action', action: 'rewind' });
+    expect(parseCLIInput('/clear')).toEqual({ type: 'action', action: 'clear' });
+    expect(parseCLIInput('/help')).toEqual({ type: 'action', action: 'help' });
+  });
+});
