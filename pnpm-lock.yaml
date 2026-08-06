@@ -68,12 +68,18 @@ importers:
       '@collagility/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@fastify/websocket':
+        specifier: ^11.0.1
+        version: 11.3.0
       chalk:
         specifier: ^5.4.1
         version: 5.6.2
       commander:
         specifier: ^13.0.0
         version: 13.1.0
+      fastify:
+        specifier: ^5.2.0
+        version: 5.11.0
       ink:
         specifier: ^5.2.1
         version: 5.2.1(@types/react@18.3.31)(react@18.3.1)
