@@ -24,6 +24,7 @@ import { TmuxPromptRouter, isAiPrompt } from '../terminal/tmux/tmux-prompt-route
 import { TmuxSession } from '../terminal/tmux/tmux-session.js';
 import { SessionHostBroadcaster } from '../terminal/session-host.js';
 import { PtyTerminalHost } from '../terminal/pty-terminal-host.js';
+import { appendAndTrimTerminalBuffer } from '../terminal/buffer-utils.js';
 
 export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
   const logger = new CLILogger(options.verbose);
@@ -447,7 +448,8 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
               const ink = splitRenderer.getInkRenderer();
               if (ink && payload.data) {
                 const current = ink.getRemoteTerminalScreen();
-                ink.setRemoteTerminalScreen((current.data || '') + '\n' + payload.data);
+                const trimmed = appendAndTrimTerminalBuffer(current.data || '', payload.data);
+                ink.setRemoteTerminalScreen(trimmed);
               }
             }
           },

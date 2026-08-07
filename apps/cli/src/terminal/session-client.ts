@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events';
 import type { StreamChunk } from '@collagility/protocol';
 import { PtyScreenBuffer } from './pty-screen-buffer.js';
+import { appendAndTrimTerminalBuffer } from './buffer-utils.js';
 
 export interface SessionClientStreamHandlerOptions {
   sessionId: string;
@@ -97,7 +98,7 @@ export class SessionClientStreamHandler extends EventEmitter {
 
   public handleRawScreenData(data: string): void {
     if (!data) return;
-    this.rawBuffer += (this.rawBuffer ? '\n' : '') + data;
+    this.rawBuffer = appendAndTrimTerminalBuffer(this.rawBuffer, data);
     this.notifyUpdate();
   }
 
