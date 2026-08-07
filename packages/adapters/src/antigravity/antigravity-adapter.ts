@@ -144,11 +144,14 @@ export class AntigravityAIAdapter extends BaseAdapter {
             cwd,
             env: {
               ...process.env,
+              PYTHONUNBUFFERED: '1',
               FORCE_COLOR: '1',
+              CI: 'true',
               ...this.adapterConfig.env,
             },
             stdio: ['pipe', 'pipe', 'pipe'],
           });
+
         } catch (err) {
           this._status = 'failed';
           const errorMsg = err instanceof Error ? err.message : String(err);
@@ -157,25 +160,51 @@ export class AntigravityAIAdapter extends BaseAdapter {
         }
 
         let isSettled = false;
+        let receivedStdout = false;
+        let stderrOutput = '';
 
-        const timeoutMs = this.adapterConfig.timeoutMs || 35000;
-        let procTimeout: NodeJS.Timeout | null = setTimeout(() => {
-          if (!isSettled) {
-            if (this.childProcess && !this.childProcess.killed) {
-              this.childProcess.kill('SIGTERM');
-            }
-            if (this.responseBuffer.length === 0) {
-              const timeoutErr = `Antigravity CLI ('${binary}') timed out after ${timeoutMs}ms without returning stream output (Network / dial TCP timeout).`;
-              this.emitParsedEvent({
-                type: 'ERROR',
-                content: timeoutErr,
-                metadata: { errorCode: 'NETWORK_TIMEOUT' },
-              });
-            }
+        let stdoutDiagnosticTimer: NodeJS.Timeout | null = setTimeout(() => {
+          if (!receivedStdout && !isSettled) {
+            console.warn('[AntigravityAdapter] Warning: agy spawned but no stdout received after 5000ms. Checking stdin/process status...');
+            this.emitParsedEvent({
+              type: 'TEXT',
+              content: '▸ [AntigravityAdapter] Warning: agy spawned but no stdout received after 5000ms. Checking stdin/process status...',
+              metadata: { warning: 'STDOUT_DELAYED' },
+            });
           }
-        }, timeoutMs);
+        }, 5000);
+
+        const timeoutMs = this.adapterConfig.timeoutMs || 180000;
+        let procTimeout: NodeJS.Timeout | null = null;
+
+        const resetProcTimeout = () => {
+          if (procTimeout) {
+            clearTimeout(procTimeout);
+          }
+          procTimeout = setTimeout(() => {
+            if (!isSettled) {
+              if (this.childProcess && !this.childProcess.killed) {
+                this.childProcess.kill('SIGTERM');
+              }
+              if (this.responseBuffer.length === 0) {
+                const timeoutErr = `Antigravity CLI ('${binary}') timed out after ${timeoutMs}ms without returning stream output (Network / dial TCP timeout).`;
+                this.emitParsedEvent({
+                  type: 'ERROR',
+                  content: timeoutErr,
+                  metadata: { errorCode: 'NETWORK_TIMEOUT' },
+                });
+              }
+            }
+          }, timeoutMs);
+        };
+
+        resetProcTimeout();
 
         const cleanup = () => {
+          if (stdoutDiagnosticTimer) {
+            clearTimeout(stdoutDiagnosticTimer);
+            stdoutDiagnosticTimer = null;
+          }
           if (procTimeout) {
             clearTimeout(procTimeout);
             procTimeout = null;
@@ -185,6 +214,12 @@ export class AntigravityAIAdapter extends BaseAdapter {
 
         if (this.childProcess.stdout) {
           this.childProcess.stdout.on('data', (chunk: Buffer) => {
+            receivedStdout = true;
+            if (stdoutDiagnosticTimer) {
+              clearTimeout(stdoutDiagnosticTimer);
+              stdoutDiagnosticTimer = null;
+            }
+            resetProcTimeout();
             const str = chunk.toString('utf-8');
             this.handleStreamChunk(str);
           });
@@ -192,7 +227,9 @@ export class AntigravityAIAdapter extends BaseAdapter {
 
         if (this.childProcess.stderr) {
           this.childProcess.stderr.on('data', (chunk: Buffer) => {
+            resetProcTimeout();
             const errStr = chunk.toString('utf-8');
+            stderrOutput += errStr;
             this.handleStreamChunk(errStr);
           });
         }
@@ -226,7 +263,8 @@ export class AntigravityAIAdapter extends BaseAdapter {
 
             if (code !== 0 && code !== null) {
               this._status = 'failed';
-              const errMsg = `Antigravity process exited with code ${code}`;
+              const detailedError = stderrOutput.trim() ? `: ${stderrOutput.trim()}` : '';
+              const errMsg = `Antigravity process exited with code ${code}${detailedError}`;
               this.emit('ai.failed', createAIFailedEvent(this.name, errMsg));
               reject(new AdapterExecutionError(this.name, errMsg));
             } else {
@@ -245,6 +283,9 @@ export class AntigravityAIAdapter extends BaseAdapter {
     } else if (this.adapterConfig.mockProcessFactory) {
       return new Promise<EventEnvelope<AICompletedPayload>>((resolve, reject) => {
         this.childProcess = this.adapterConfig.mockProcessFactory!();
+        if (this.childProcess && this.childProcess.stdin && this.childProcess.stdin.writable) {
+          this.childProcess.stdin.write('\n');
+        }
         let isSettled = false;
 
         if (this.childProcess.stdout) {
@@ -306,9 +347,20 @@ export class AntigravityAIAdapter extends BaseAdapter {
   }
 
   private emitParsedEvent(ev: AntigravityParsedEvent): void {
+    if (ev.type === 'COMPLETION') {
+      if (!this.responseBuffer && ev.content) {
+        this.responseBuffer = ev.content;
+      }
+      return;
+    }
+
     if (ev.content) {
       this.responseBuffer += (this.responseBuffer ? '\n' : '') + ev.content;
-      this.emit('chunk' as any, ev.content);
+      const chunkContent =
+        (ev.type !== 'TEXT' || ev.content.startsWith('▸ ')) && !ev.content.endsWith('\n')
+          ? ev.content + '\n'
+          : ev.content;
+      this.emit('chunk' as any, chunkContent);
     }
 
     switch (ev.type) {
@@ -350,6 +402,9 @@ export class AntigravityAIAdapter extends BaseAdapter {
         });
         break;
       case 'TOOL_FILE_EDIT':
+        if (this.childProcess && this.childProcess.stdin && this.childProcess.stdin.writable) {
+          this.childProcess.stdin.write('\n');
+        }
         this.emit('tool_file_edit' as any, {
           toolName: ev.metadata?.toolName,
           targetFile: ev.metadata?.targetFile,

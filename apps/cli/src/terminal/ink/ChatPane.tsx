@@ -310,6 +310,15 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
                   return <Text key={idx}>{line}</Text>;
                 })}
+
+                {/* Active typing indicator while response stream is processing */}
+                {event.isStreaming && (
+                  <Box gap={1} marginY={0.3}>
+                    <Text color="magenta" dimColor italic>
+                      [agy typing...]
+                    </Text>
+                  </Box>
+                )}
               </Box>
             </Box>
           );

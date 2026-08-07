@@ -220,6 +220,84 @@ describe('AntigravityAIAdapter', () => {
       fakeProcess.emit('exit', 0, null);
       await promptPromise;
     });
+
+    it('should write stdin newline on TOOL_FILE_EDIT and resume final text response stream', async () => {
+      const fakeProcess = new EventEmitter() as any;
+      fakeProcess.stdin = { write: vi.fn(), writable: true };
+      fakeProcess.stdout = new EventEmitter();
+      fakeProcess.stderr = new EventEmitter();
+      fakeProcess.killed = false;
+
+      const mockAdapter = new AntigravityAIAdapter({
+        mockProcessFactory: () => fakeProcess,
+      });
+
+      await mockAdapter.start();
+
+      const toolEditListener = vi.fn();
+      const chunkListener = vi.fn();
+      mockAdapter.on('tool_file_edit' as any, toolEditListener);
+      mockAdapter.on('chunk' as any, chunkListener);
+
+      const promptPromise = mockAdapter.sendPrompt('Create hello.txt file edit');
+
+      // 1. Emit TOOL_FILE_EDIT event stream chunk
+      fakeProcess.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            toolName: 'write_to_file',
+            targetFile: 'hello.txt',
+            TargetContent: '',
+            ReplacementContent: 'Hello World',
+          }) + '\n'
+        )
+      );
+
+      // Verify stdin write was triggered for tool edit resumption
+      expect(fakeProcess.stdin.write).toHaveBeenCalledWith('\n');
+      expect(toolEditListener).toHaveBeenCalled();
+
+      // 2. Emit final text summary stream chunk
+      fakeProcess.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            event: 'step_update',
+            step_update: {
+              step_type: 'agent_response',
+              text_delta: 'Created hello.txt with requested plan content.',
+            },
+          }) + '\n'
+        )
+      );
+
+      fakeProcess.emit('exit', 0, null);
+
+      const result = await promptPromise;
+      expect(result.type).toBe('ai.completed');
+      expect(chunkListener).toHaveBeenCalledWith('Created hello.txt with requested plan content.');
+    });
+
+    it('should flush initial stdin newline on spawn to bypass welcome prompts', async () => {
+      const fakeProcess = new EventEmitter() as any;
+      fakeProcess.stdin = { write: vi.fn(), writable: true };
+      fakeProcess.stdout = new EventEmitter();
+      fakeProcess.stderr = new EventEmitter();
+      fakeProcess.killed = false;
+
+      const mockAdapter = new AntigravityAIAdapter({
+        mockProcessFactory: () => fakeProcess,
+      });
+
+      await mockAdapter.start();
+      const promptPromise = mockAdapter.sendPrompt('Test initial stdin flush');
+
+      expect(fakeProcess.stdin.write).toHaveBeenCalledWith('\n');
+
+      fakeProcess.emit('exit', 0, null);
+      await promptPromise;
+    });
   });
 
   describe('AntigravityOutputParser', () => {

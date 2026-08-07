@@ -36,6 +36,7 @@ export interface AntigravityParsedEvent {
     diffLines?: Array<{ type: 'add' | 'delete' | 'context'; line: string }>;
     changeType?: 'created' | 'modified' | 'deleted';
     errorCode?: string;
+    warning?: string;
     subagentId?: string;
     taskDescription?: string;
     activeTool?: string;
