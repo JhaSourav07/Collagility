@@ -173,6 +173,7 @@ All commands below are exactly what `collagility --help` will show you — this 
 | `collagility config get [key]` | — | Read a persisted config value (or all values). |
 | `collagility config set <key> <value>` | — | Persist a config value to `~/.collagility/config.json`. |
 | `collagility version` | — | Print the installed Collagility version. |
+| `collagility upgrade` | `collagility update` | Upgrade Collagility CLI to the latest published version. |
 
 ### Flags for `start` / `host`
 

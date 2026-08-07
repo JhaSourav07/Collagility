@@ -9,6 +9,7 @@ import { leaveCommand } from './commands/leave.js';
 import { serverCommand } from './commands/server.js';
 import { sessionsCommand } from './commands/sessions.js';
 import { versionCommand } from './commands/version.js';
+import { upgradeCommand } from './commands/upgrade.js';
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'node:fs';
@@ -222,6 +223,15 @@ export function createProgram(): Command {
     .description('Display CLI and platform version banner')
     .action(() => {
       versionCommand();
+    });
+
+  program
+    .command('upgrade')
+    .alias('update')
+    .description('Upgrade Collagility CLI to the latest version')
+    .option('-f, --force', 'Force re-install even if already at latest version')
+    .action(async (cmdOpts: { force?: boolean }) => {
+      await upgradeCommand({ force: cmdOpts.force });
     });
 
   const configCmd = program.command('config').description('Manage persistent Collagility user configuration');
