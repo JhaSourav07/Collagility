@@ -83,13 +83,19 @@ export class SplitTerminalRenderer {
     }
   }
 
+  private activeFocus: PaneFocus = 'chat';
+
   public get currentFocus(): PaneFocus {
-    return 'chat';
+    return this.activeFocus;
   }
 
-  public setFocus(_focus: PaneFocus): void {}
+  public setFocus(focus: PaneFocus): void {
+    this.activeFocus = focus;
+  }
+
   public toggleFocus(): PaneFocus {
-    return 'chat';
+    this.activeFocus = this.activeFocus === 'chat' ? 'pty' : 'chat';
+    return this.activeFocus;
   }
 
   public renderHeader(): void {
