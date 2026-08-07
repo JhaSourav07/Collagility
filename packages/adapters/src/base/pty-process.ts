@@ -1,6 +1,8 @@
 import * as pty from 'node-pty';
-import { Terminal } from '@xterm/headless';
+import xtermHeadless, { type Terminal as TerminalType } from '@xterm/headless';
 import type { SecurityMode, RiskLevel } from '@collagility/protocol';
+
+const Terminal = (xtermHeadless as unknown as { Terminal: typeof TerminalType }).Terminal || (xtermHeadless as unknown as typeof TerminalType);
 
 export interface StyledRun {
   text: string;
@@ -38,7 +40,7 @@ export interface AgentPtyOptions {
 
 export class AgentPtyProcess {
   private ptyProcess: IPtyLike | null = null;
-  private terminal: Terminal;
+  private terminal: TerminalType;
   private options: AgentPtyOptions;
 
   private dataCallbacks: Array<(data: string) => void> = [];
