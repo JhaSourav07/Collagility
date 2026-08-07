@@ -73,6 +73,10 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
               senderRole: 'system',
             });
 
+            ink.setOnExitSession(() => {
+              handleExit();
+            });
+
             ink.setCommandHandler((input: string) => {
               const trimmed = input.trim();
               if (!trimmed) return;

@@ -106,6 +106,10 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
             ink.appendMessage({ content: `Connected to server`, sender: 'System', senderRole: 'system' });
             ink.appendMessage({ content: `Session created: ${sessionId}`, sender: 'System', senderRole: 'system' });
 
+            ink.setOnExitSession(() => {
+              handleExit();
+            });
+
             ink.setCommandHandler((input: string) => {
               const trimmed = input.trim();
               if (!trimmed) return;

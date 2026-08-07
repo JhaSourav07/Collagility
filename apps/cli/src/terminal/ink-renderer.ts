@@ -31,9 +31,14 @@ export interface InkRendererOptions {
 export class InkTerminalRenderer {
   private instance: Instance | null = null;
   private commandHandler: CommandHandler | null = null;
+  private onExitSessionCallback: (() => void) | null = null;
 
   public setCommandHandler(handler: CommandHandler): void {
     this.commandHandler = handler;
+  }
+
+  public setOnExitSession(handler: () => void): void {
+    this.onExitSessionCallback = handler;
   }
 
   private session: SessionInfoState = {
@@ -328,6 +333,15 @@ export class InkTerminalRenderer {
           onClearScreen: () => {
             this.clearScreen();
           },
+          onExitSession: () => {
+            if (this.onExitSessionCallback) {
+              this.onExitSessionCallback();
+            } else if (this.commandHandler) {
+              this.commandHandler('/leave');
+            } else {
+              process.exit(0);
+            }
+          },
         }),
         {
           // Do NOT let Ink exit the process on Ctrl+C — we own SIGINT.
@@ -369,6 +383,15 @@ export class InkTerminalRenderer {
           },
           onClearScreen: () => {
             this.clearScreen();
+          },
+          onExitSession: () => {
+            if (this.onExitSessionCallback) {
+              this.onExitSessionCallback();
+            } else if (this.commandHandler) {
+              this.commandHandler('/leave');
+            } else {
+              process.exit(0);
+            }
           },
         })
       );

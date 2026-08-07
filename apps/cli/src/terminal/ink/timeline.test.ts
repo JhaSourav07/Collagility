@@ -52,9 +52,9 @@ describe('buildHumanTimeline', () => {
 
     const timeline = buildHumanTimeline(messages, activities);
 
-    // AI message msg-ai-1 must be filtered out
+    // AI message msg-ai-1 must be filtered out, items sorted by timestamp
     expect(timeline).toHaveLength(4);
-    expect(timeline.map((e) => e.id)).toEqual(['sys-init-1', 'msg-1', 'msg-2', 'act-1']);
+    expect(timeline.map((e) => e.id)).toEqual(['sys-init-1', 'act-1', 'msg-1', 'msg-2']);
 
     expect(timeline[0]).toEqual({
       id: 'sys-init-1',
@@ -64,6 +64,13 @@ describe('buildHumanTimeline', () => {
     });
 
     expect(timeline[1]).toEqual({
+      id: 'act-1',
+      timestamp: '10:00:02',
+      kind: 'activity',
+      content: 'Alex joined',
+    });
+
+    expect(timeline[2]).toEqual({
       id: 'msg-1',
       timestamp: '10:00:05',
       kind: 'user',
@@ -72,20 +79,13 @@ describe('buildHumanTimeline', () => {
       icon: '💬',
     });
 
-    expect(timeline[2]).toEqual({
+    expect(timeline[3]).toEqual({
       id: 'msg-2',
       timestamp: '10:00:15',
       kind: 'user',
       sender: 'Alex',
       content: 'Hey Sourav',
       icon: undefined,
-    });
-
-    expect(timeline[3]).toEqual({
-      id: 'act-1',
-      timestamp: '10:00:02',
-      kind: 'activity',
-      content: 'Alex joined',
     });
   });
 });
