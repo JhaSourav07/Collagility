@@ -312,6 +312,10 @@ export class WebSocketClient extends EventEmitter {
     this.send('ai.stream.prompt', { prompt, adapterName });
   }
 
+  public sendStreamChunk(streamId: string, content: string, adapterName = 'gemini'): void {
+    this.send('ai.stream.chunk', { streamId, content, adapterName });
+  }
+
   public createSession(metadata?: Record<string, unknown>): void {
     this.send('session.create', { metadata });
   }
