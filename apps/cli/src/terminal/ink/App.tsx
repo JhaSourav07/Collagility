@@ -146,6 +146,7 @@ export const App: React.FC<AppProps> = ({
         modelName={`${aiDriver.name} ${aiDriver.model}`}
         securityMode={aiDriver.securityMode || 'manual'}
         tokenStatus={aiDriver.tokenStatus}
+        isVisitor={session.userRole !== 'owner'}
         onCycleSecurityMode={onCycleSecurityMode}
       />
     </Box>

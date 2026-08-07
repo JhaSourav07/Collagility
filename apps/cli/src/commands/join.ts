@@ -60,9 +60,9 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
               ownerId,
               members.map((m) => ({ name: m, isOwner: m === ownerId, isSelf: m === memberId }))
             );
-            ink.setAiDriverInfo('Gemini CLI', 'gemini-2.5-pro', 'Connected');
+            ink.setAiDriverInfo('Host AI (Screenshare)', 'Gemini 3.5 Flash', 'Remote Stream');
             ink.appendMessage({
-              content: `Connected to session ${sessionId} as Visitor. Observing AI stream.`,
+              content: `📺 Joined session '${sessionId}' via Live AI Screenshare. Zero local tokens required.`,
               sender: 'System',
               senderRole: 'system',
             });

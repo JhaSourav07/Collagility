@@ -8,6 +8,7 @@ export interface FooterProps {
   modelName?: string;
   securityMode?: SecurityMode;
   tokenStatus?: TokenStatus;
+  isVisitor?: boolean;
   onCycleSecurityMode?: () => void;
 }
 
@@ -15,10 +16,12 @@ export const Footer: React.FC<FooterProps> = ({
   modelName = 'Gemini 3.5 Flash',
   securityMode = 'manual',
   tokenStatus = { used: 14200, limit: 1000000 },
+  isVisitor = false,
   onCycleSecurityMode,
 }) => {
   const { stdout } = useStdout();
-  const columns = stdout?.columns || 80;
+  const rawColumns = stdout?.columns;
+  const columns = typeof rawColumns === 'number' && rawColumns > 0 ? rawColumns : 60;
   const tier = getHeaderTier(columns);
 
   useInput((_input, key) => {
@@ -31,6 +34,9 @@ export const Footer: React.FC<FooterProps> = ({
   });
 
   const getSecurityBadge = (mode: SecurityMode) => {
+    if (isVisitor) {
+      return <Text color="cyan" bold>[ 📺 SCREENSHARE ]</Text>;
+    }
     switch (mode) {
       case 'auto':
         return <Text color="green" bold>[ ⚡ AUTO ]</Text>;
@@ -50,6 +56,17 @@ export const Footer: React.FC<FooterProps> = ({
     return `${num}`;
   };
 
+  const renderTokenText = () => {
+    if (isVisitor) {
+      return <Text color="green" bold>0 Tokens (Host Funded)</Text>;
+    }
+    return (
+      <Text color="white" bold>
+        {formatTokens(tokenStatus.used)} / {formatTokens(tokenStatus.limit)}
+      </Text>
+    );
+  };
+
   if (tier === 'minimal') {
     return (
       <Box flexDirection="column" width="100%" marginTop={0}>
@@ -62,9 +79,7 @@ export const Footer: React.FC<FooterProps> = ({
 
           <Box gap={1}>
             <Text color="gray">Tokens:</Text>
-            <Text color="white" bold>
-              {formatTokens(tokenStatus.used)} / {formatTokens(tokenStatus.limit)}
-            </Text>
+            {renderTokenText()}
           </Box>
         </Box>
 
@@ -89,9 +104,7 @@ export const Footer: React.FC<FooterProps> = ({
 
       <Box gap={1}>
         <Text color="gray">Tokens:</Text>
-        <Text color="white" bold>
-          {formatTokens(tokenStatus.used)} / {formatTokens(tokenStatus.limit)}
-        </Text>
+        {renderTokenText()}
       </Box>
 
       <Text color="gray">
