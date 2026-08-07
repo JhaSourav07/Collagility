@@ -9,6 +9,7 @@ import { leaveCommand } from './commands/leave.js';
 import { serverCommand } from './commands/server.js';
 import { sessionsCommand } from './commands/sessions.js';
 import { versionCommand } from './commands/version.js';
+import { handleConfigCommand, handleConfigSetCommand } from './commands/config.js';
 import { checkTmuxAvailable } from './terminal/tmux/tmux-guard.js';
 
 export function createProgram(): Command {
