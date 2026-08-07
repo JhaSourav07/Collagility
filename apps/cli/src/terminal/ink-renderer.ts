@@ -2,6 +2,7 @@ import React from 'react';
 import { render, Instance } from 'ink';
 import { App } from './ink/App.js';
 import type { PermissionRequest, PermissionDecision, SecurityMode } from '@collagility/protocol';
+import { AgentPtyProcess, type StyledRun } from '@collagility/adapters';
 import type {
   SessionInfoState,
   AIDriverState,
@@ -31,6 +32,10 @@ export interface InkRendererOptions {
 export class InkTerminalRenderer {
   private instance: Instance | null = null;
   private commandHandler: CommandHandler | null = null;
+
+  private agentPty: AgentPtyProcess | null = null;
+  private renderTimer: ReturnType<typeof setTimeout> | null = null;
+  private ptySnapshot: StyledRun[][] = [];
 
   private session: SessionInfoState = {
     id: 'active-session',
@@ -87,6 +92,41 @@ export class InkTerminalRenderer {
 
   public setCommandHandler(handler: CommandHandler): void {
     this.commandHandler = handler;
+  }
+
+  public setAgentPty(ptyProcess: AgentPtyProcess): void {
+    this.agentPty = ptyProcess;
+    this.ptySnapshot = ptyProcess.getScreenSnapshot();
+    this.agentPty.onData(() => {
+      this.scheduleThrottledRerender();
+    });
+    this.rerender();
+  }
+
+  public resizePty(cols: number, rows: number): void {
+    if (this.agentPty) {
+      this.agentPty.resize(cols, rows);
+      this.ptySnapshot = this.agentPty.getScreenSnapshot();
+      this.scheduleThrottledRerender();
+    }
+  }
+
+  public getPtySnapshot(): StyledRun[][] {
+    if (this.agentPty) {
+      this.ptySnapshot = this.agentPty.getScreenSnapshot();
+    }
+    return this.ptySnapshot;
+  }
+
+  private scheduleThrottledRerender(): void {
+    if (this.renderTimer) return;
+    this.renderTimer = setTimeout(() => {
+      this.renderTimer = null;
+      if (this.agentPty) {
+        this.ptySnapshot = this.agentPty.getScreenSnapshot();
+      }
+      this.rerender();
+    }, 20);
   }
 
   public setSessionInfo(
@@ -382,6 +422,10 @@ export class InkTerminalRenderer {
   }
 
   public unmount(): void {
+    if (this.renderTimer) {
+      clearTimeout(this.renderTimer);
+      this.renderTimer = null;
+    }
     if (this.instance) {
       this.instance.unmount();
       this.instance = null;
