@@ -11,6 +11,7 @@
     "dev": "tsc --build --watch",
     "lint": "eslint src/**/*.ts",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "clean": "rimraf dist *.tsbuildinfo"
   },
   "dependencies": {
