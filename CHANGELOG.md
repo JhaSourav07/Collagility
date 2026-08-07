@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [v0.1.2] - 2026-08-07
+
+### Added
+- **Comprehensive User Guide**: Added `docs/GUIDE.md` detailing architecture, configuration, installation, troubleshooting, CLI command & flag reference, security modes, and LAN collaboration setup.
+- **Private Vulnerability Reporting**: Updated `SECURITY.md` to point security disclosures to GitHub Private Vulnerability Reporting.
+
+### Changed
+- **System Requirements**: Updated required Node.js version to `>=22.0.0` and pnpm to `>=9.0.0` across README, INSTALL guide, and User Guide.
+- **Server Bind Defaults**: Documented default `0.0.0.0:8080` binding behavior for seamless local network (LAN) accessibility out-of-the-box.
+
+---
+
 ## [v0.1.1] - 2026-08-07
 
 ### Added
