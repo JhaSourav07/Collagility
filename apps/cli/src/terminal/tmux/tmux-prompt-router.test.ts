@@ -1,19 +1,21 @@
 import { describe, it, expect, vi } from 'vitest';
-import { isSlashCommand, TmuxPromptRouter } from './tmux-prompt-router.js';
+import { isSlashCommand, isAiPrompt, TmuxPromptRouter } from './tmux-prompt-router.js';
 import { TmuxSession } from './tmux-session.js';
 
-describe('TmuxPromptRouter & Slash Command Filter', () => {
-  it('correctly identifies local slash commands vs AI prompts', () => {
+describe('TmuxPromptRouter & AI Tag Filter', () => {
+  it('correctly identifies local slash commands vs AI prompts vs normal chat', () => {
     expect(isSlashCommand('/leave')).toBe(true);
     expect(isSlashCommand('/clear')).toBe(true);
     expect(isSlashCommand('/driver agy')).toBe(true);
-    expect(isSlashCommand('/mode auto')).toBe(true);
-    expect(isSlashCommand('/help')).toBe(true);
 
-    expect(isSlashCommand('write a test')).toBe(false);
-    expect(isSlashCommand('@agi fix this bug')).toBe(false);
-    expect(isSlashCommand('@gemini hello')).toBe(false);
-    expect(isSlashCommand('/gemini hello')).toBe(false);
+    expect(isAiPrompt('hello')).toBe(false);
+    expect(isAiPrompt('how are you')).toBe(false);
+    expect(isAiPrompt('/leave')).toBe(false);
+
+    expect(isAiPrompt('@agi fix this bug')).toBe(true);
+    expect(isAiPrompt('@agy create a file')).toBe(true);
+    expect(isAiPrompt('@gemini hello')).toBe(true);
+    expect(isAiPrompt('/gemini hello')).toBe(true);
   });
 
   it('sendPrompt executes literal -l text send-keys followed by separate Enter send-keys in order', async () => {
@@ -38,7 +40,7 @@ describe('TmuxPromptRouter & Slash Command Filter', () => {
     ]);
   });
 
-  it('does NOT forward slash commands to the right pane', async () => {
+  it('does NOT forward normal chat messages or slash commands to the right pane', async () => {
     const mockSendPrompt = vi.fn().mockResolvedValue(undefined);
     const mockSession = {
       sendPrompt: mockSendPrompt,
@@ -46,17 +48,17 @@ describe('TmuxPromptRouter & Slash Command Filter', () => {
 
     const router = new TmuxPromptRouter('collagility-123', mockSession);
 
+    const forwardedHello = await router.forwardPrompt('hello');
     const forwardedLeave = await router.forwardPrompt('/leave');
-    const forwardedClear = await router.forwardPrompt('/clear');
     const forwardedMode = await router.forwardPrompt('/mode auto');
 
+    expect(forwardedHello).toBe(false);
     expect(forwardedLeave).toBe(false);
-    expect(forwardedClear).toBe(false);
     expect(forwardedMode).toBe(false);
     expect(mockSendPrompt).not.toHaveBeenCalled();
   });
 
-  it('forwards AI prompts to the right pane with stripped prefix', async () => {
+  it('forwards AI prompts tagged with @agi/@agy/@gemini to the right pane with stripped tag prefix', async () => {
     const mockSendPrompt = vi.fn().mockResolvedValue(undefined);
     const mockSession = {
       sendPrompt: mockSendPrompt,
@@ -64,9 +66,13 @@ describe('TmuxPromptRouter & Slash Command Filter', () => {
 
     const router = new TmuxPromptRouter('collagility-123', mockSession);
 
-    const forwarded = await router.forwardPrompt('@agi create a new file');
+    const forwardedAgi = await router.forwardPrompt('@agi create a new file');
+    const forwardedAgy = await router.forwardPrompt('@agy refactor function');
 
-    expect(forwarded).toBe(true);
-    expect(mockSendPrompt).toHaveBeenCalledWith('collagility-123', 1, 'create a new file');
+    expect(forwardedAgi).toBe(true);
+    expect(mockSendPrompt).toHaveBeenNthCalledWith(1, 'collagility-123', 1, 'create a new file');
+
+    expect(forwardedAgy).toBe(true);
+    expect(mockSendPrompt).toHaveBeenNthCalledWith(2, 'collagility-123', 1, 'refactor function');
   });
 });
