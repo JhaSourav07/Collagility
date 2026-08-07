@@ -18,6 +18,7 @@ export type {
   PermissionDecision,
 };
 import type { AdapterEventMap, AdapterEventName, AdapterEventListener } from './events.js';
+import { debugLog } from './logger.js';
 import { evaluateRisk } from '../security/risk-evaluator.js';
 import { AdapterSecurityError } from './errors.js';
 
@@ -121,7 +122,9 @@ export abstract class AIAdapter extends EventEmitter {
     this._pendingPermissions.delete(id);
     resolver(decision);
     if (decision === 'allow-once' || decision === 'allow-session') {
-      this.sendTmuxApproval(this._approvalKeystroke).catch(() => {});
+      this.sendTmuxApproval(this._approvalKeystroke).catch((err) => {
+        debugLog('Failed to send tmux approval keystroke', err);
+      });
     }
     return true;
   }

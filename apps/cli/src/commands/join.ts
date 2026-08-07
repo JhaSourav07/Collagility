@@ -246,7 +246,9 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
             );
           } catch { }
         } else if (tmuxSessionName && tmuxSession) {
-          tmuxSession.writeToPane(tmuxSessionName, 1, `\n\n--- AI Stream Started (${payload.adapterName || 'Host AI'}) ---\n`).catch(() => { });
+          tmuxSession.writeToPane(tmuxSessionName, 1, `\n\n--- AI Stream Started (${payload.adapterName || 'Host AI'}) ---\n`).catch((err) => {
+            logger.debug('Failed to write stream start header to tmux pane', err);
+          });
         }
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();
@@ -268,7 +270,9 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
             fs.appendFileSync(screenshareLog, payload.content);
           } catch { }
         } else if (tmuxSessionName && tmuxSession && payload.content) {
-          tmuxSession.writeToPane(tmuxSessionName, 1, payload.content).catch(() => { });
+          tmuxSession.writeToPane(tmuxSessionName, 1, payload.content).catch((err) => {
+            logger.debug('Failed to write stream chunk to tmux pane', err);
+          });
         }
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();
@@ -292,7 +296,9 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
             );
           } catch { }
         } else if (tmuxSessionName && tmuxSession) {
-          tmuxSession.writeToPane(tmuxSessionName, 1, `\n--- Stream Finished (${payload.durationMs}ms) ---\n\n`).catch(() => { });
+          tmuxSession.writeToPane(tmuxSessionName, 1, `\n--- Stream Finished (${payload.durationMs}ms) ---\n\n`).catch((err) => {
+            logger.debug('Failed to write stream finished footer to tmux pane', err);
+          });
         }
 
         if (splitRenderer) {
