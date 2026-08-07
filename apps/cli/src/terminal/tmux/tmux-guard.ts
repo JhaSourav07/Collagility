@@ -1,9 +1,16 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-const execFileAsync = promisify(execFile);
+export type ExecFileFunction = (
+  file: string,
+  args?: readonly string[] | null
+) => Promise<{ stdout: string; stderr: string }>;
 
-export async function checkTmuxAvailable(): Promise<{ ok: true } | { ok: false; reason: string }> {
+const defaultExecFileAsync: ExecFileFunction = promisify(execFile);
+
+export async function checkTmuxAvailable(
+  execFileFn: ExecFileFunction = defaultExecFileAsync
+): Promise<{ ok: true } | { ok: false; reason: string }> {
   if (process.platform === 'win32') {
     return {
       ok: false,
@@ -13,7 +20,7 @@ export async function checkTmuxAvailable(): Promise<{ ok: true } | { ok: false; 
   }
 
   try {
-    await execFileAsync('tmux', ['-V']);
+    await execFileFn('tmux', ['-V']);
     return { ok: true };
   } catch {
     return {

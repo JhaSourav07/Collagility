@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import * as childProcess from 'node:child_process';
 import { checkTmuxAvailable } from './tmux-guard.js';
 
 describe('checkTmuxAvailable', () => {
@@ -32,29 +31,18 @@ describe('checkTmuxAvailable', () => {
 
   it('returns ok: true on Linux when tmux is found', async () => {
     setPlatform('linux');
-    vi.spyOn(childProcess, 'execFile').mockImplementation((_cmd: any, _args: any, callback: any) => {
-      const cb = typeof _args === 'function' ? _args : callback;
-      if (typeof cb === 'function') {
-        cb(null, { stdout: 'tmux 3.3a', stderr: '' });
-      }
-      return {} as any;
-    });
+    const mockExecFile = vi.fn().mockResolvedValue({ stdout: 'tmux 3.3a', stderr: '' });
 
-    const result = await checkTmuxAvailable();
+    const result = await checkTmuxAvailable(mockExecFile);
     expect(result.ok).toBe(true);
+    expect(mockExecFile).toHaveBeenCalledWith('tmux', ['-V']);
   });
 
   it('returns ok: false with install message on Linux when tmux is missing', async () => {
     setPlatform('linux');
-    vi.spyOn(childProcess, 'execFile').mockImplementation((_cmd: any, _args: any, callback: any) => {
-      const cb = typeof _args === 'function' ? _args : callback;
-      if (typeof cb === 'function') {
-        cb(new Error('ENOENT'), { stdout: '', stderr: '' });
-      }
-      return {} as any;
-    });
+    const mockExecFile = vi.fn().mockRejectedValue(new Error('ENOENT'));
 
-    const result = await checkTmuxAvailable();
+    const result = await checkTmuxAvailable(mockExecFile);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.reason).toContain('apt install tmux');
@@ -64,15 +52,10 @@ describe('checkTmuxAvailable', () => {
 
   it('returns ok: true on macOS (darwin) when tmux is found', async () => {
     setPlatform('darwin');
-    vi.spyOn(childProcess, 'execFile').mockImplementation((_cmd: any, _args: any, callback: any) => {
-      const cb = typeof _args === 'function' ? _args : callback;
-      if (typeof cb === 'function') {
-        cb(null, { stdout: 'tmux 3.4', stderr: '' });
-      }
-      return {} as any;
-    });
+    const mockExecFile = vi.fn().mockResolvedValue({ stdout: 'tmux 3.4', stderr: '' });
 
-    const result = await checkTmuxAvailable();
+    const result = await checkTmuxAvailable(mockExecFile);
     expect(result.ok).toBe(true);
+    expect(mockExecFile).toHaveBeenCalledWith('tmux', ['-V']);
   });
 });
