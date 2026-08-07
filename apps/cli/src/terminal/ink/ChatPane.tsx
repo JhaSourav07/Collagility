@@ -7,6 +7,8 @@ import { PermissionPromptCard } from './PermissionPromptCard.js';
 import { FileAnalysisBadge } from './FileAnalysisBadge.js';
 import { FileDiffCard } from './FileDiffCard.js';
 
+import { buildHumanTimeline, type TimelineEvent } from './timeline.js';
+
 interface ChatPaneProps {
   messages: ChatMessageItem[];
   activities?: ActivityLogItem[];
@@ -20,20 +22,6 @@ interface ChatPaneProps {
 
 const docRenderer = new DocumentRenderer({ maxWidth: 95, theme: 'dark' });
 
-interface TimelineEvent {
-  id: string;
-  timestamp: string;
-  kind: 'system' | 'activity' | 'user' | 'ai';
-  sender?: string;
-  content: string;
-  icon?: string;
-  isStreaming?: boolean;
-  thoughtBlock?: string;
-  toolCard?: ChatMessageItem['toolCard'];
-  fileEditCard?: ChatMessageItem['fileEditCard'];
-  analysisBadge?: ChatMessageItem['analysisBadge'];
-}
-
 export const ChatPane: React.FC<ChatPaneProps> = ({
   messages,
   activities = [],
@@ -43,57 +31,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   queueCount = 1,
   onEditCommand,
 }) => {
-  // Build unified chronological timeline stream
-  const timeline: TimelineEvent[] = [];
-
-  for (const msg of messages) {
-    if (msg.id.startsWith('sys-init')) {
-      timeline.push({
-        id: msg.id,
-        timestamp: msg.timestamp,
-        kind: 'system',
-        content: msg.content,
-      });
-    } else if (msg.senderRole === 'system') {
-      timeline.push({
-        id: msg.id,
-        timestamp: msg.timestamp,
-        kind: 'system',
-        content: msg.content,
-      });
-    } else if (msg.senderRole === 'ai') {
-      timeline.push({
-        id: msg.id,
-        timestamp: msg.timestamp,
-        kind: 'ai',
-        sender: msg.sender.replace(/^🤖\s*/, '').trim(),
-        content: msg.content,
-        isStreaming: msg.isStreaming,
-        thoughtBlock: msg.thoughtBlock,
-        toolCard: msg.toolCard,
-        fileEditCard: msg.fileEditCard,
-        analysisBadge: msg.analysisBadge,
-      });
-    } else {
-      timeline.push({
-        id: msg.id,
-        timestamp: msg.timestamp,
-        kind: 'user',
-        sender: msg.sender,
-        content: msg.content,
-        icon: msg.icon,
-      });
-    }
-  }
-
-  for (const act of activities) {
-    timeline.push({
-      id: act.id,
-      timestamp: act.timestamp,
-      kind: 'activity',
-      content: act.text,
-    });
-  }
+  const timeline = buildHumanTimeline(messages, activities);
 
   const getSenderColor = (sender?: string, kind?: string) => {
     if (kind === 'system' || kind === 'activity') return 'gray';
