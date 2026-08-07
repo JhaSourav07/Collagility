@@ -18,15 +18,15 @@ echo -e "${RESET}\n"
 # 1. Check Node.js runtime
 if ! command -v node &> /dev/null; then
     echo -e "${RED}✖ Error: Node.js is not installed.${RESET}"
-    echo "Please install Node.js (v18.0.0 or higher) from https://nodejs.org/ before running this installer."
+    echo "Please install Node.js (v22.0.0 or higher) from https://nodejs.org/ before running this installer."
     exit 1
 fi
 
 NODE_VERSION=$(node -v | cut -d 'v' -f 2)
 NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d '.' -f 1)
 
-if [ "$NODE_MAJOR" -lt 18 ]; then
-    echo -e "${RED}✖ Error: Node.js version v$NODE_VERSION is unsupported (>= v18 required).${RESET}"
+if [ "$NODE_MAJOR" -lt 22 ]; then
+    echo -e "${RED}✖ Error: Node.js version v$NODE_VERSION is unsupported (>= v22 required).${RESET}"
     echo "Please upgrade Node.js from https://nodejs.org/ and try again."
     exit 1
 fi
@@ -34,12 +34,12 @@ fi
 echo -e "${GREEN}✓ Node.js v$NODE_VERSION detected${RESET}"
 
 # 2. Install collagility globally via NPM
-echo -e "\n${BOLD}Installing collagility@beta globally...${RESET}"
+echo -e "\n${BOLD}Installing collagility@latest globally...${RESET}"
 if command -v sudo &> /dev/null && [ "$EUID" -ne 0 ] && [ ! -w "$(npm config get prefix)/lib/node_modules" 2>/dev/null ]; then
     echo "Elevated permissions required for global NPM install:"
-    sudo npm install -g collagility@beta
+    sudo npm install -g collagility@latest
 else
-    npm install -g collagility@beta
+    npm install -g collagility@latest
 fi
 
 # 3. Verify installation

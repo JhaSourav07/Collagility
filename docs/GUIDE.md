@@ -73,10 +73,10 @@ Remember: the installer can prepare your environment from PowerShell, but *runni
 ### Option 3 — npm / npx
 ```bash
 # Install globally
-npm install -g collagility@beta
+npm install -g collagility
 
 # Or run without installing
-npx collagility@beta start
+npx collagility start
 ```
 
 ### Option 4 — From source (for development or contributing)

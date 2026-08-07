@@ -36,10 +36,10 @@ iwr -useb https://raw.githubusercontent.com/JhaSourav07/Collagility/main/install
 ### Option 3: Global NPM or NPX
 ```bash
 # Global Install
-npm install -g collagility@beta
+npm install -g collagility
 
 # Run without installing
-npx collagility@beta start
+npx collagility start
 ```
 
 ---

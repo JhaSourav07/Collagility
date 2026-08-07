@@ -12,14 +12,14 @@ Write-Host ""
 $nodeInstalled = Get-Command node -ErrorAction SilentlyContinue
 if (-not $nodeInstalled) {
     Write-Host "✖ Error: Node.js is not installed." -ForegroundColor Red
-    Write-Host "Please install Node.js (v18.0.0 or higher) from https://nodejs.org/ before running this installer."
+    Write-Host "Please install Node.js (v22.0.0 or higher) from https://nodejs.org/ before running this installer."
     exit 1
 }
 
 $nodeVerString = node -v
 $nodeMajor = [int]($nodeVerString -replace 'v', '').Split('.')[0]
-if ($nodeMajor -lt 18) {
-    Write-Host "✖ Error: Node.js version $nodeVerString is unsupported (>= v18 required)." -ForegroundColor Red
+if ($nodeMajor -lt 22) {
+    Write-Host "✖ Error: Node.js version $nodeVerString is unsupported (>= v22 required)." -ForegroundColor Red
     Write-Host "Please upgrade Node.js from https://nodejs.org/ and try again."
     exit 1
 }
@@ -27,8 +27,8 @@ Write-Host "✓ Node.js $nodeVerString detected" -ForegroundColor Green
 
 # 2. Install collagility globally via NPM
 Write-Host ""
-Write-Host "Installing collagility@beta globally via NPM..." -ForegroundColor Yellow
-npm install -g collagility@beta
+Write-Host "Installing collagility@latest globally via NPM..." -ForegroundColor Yellow
+npm install -g collagility@latest
 
 # 3. Verify installation
 Write-Host ""
