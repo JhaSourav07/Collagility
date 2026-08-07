@@ -9,6 +9,7 @@ import {
   createAICancelledEvent,
   type EventEnvelope,
   type AICompletedPayload,
+  type PermissionDecision,
 } from '@collagility/protocol';
 import { AdapterExecutionError } from '../base/errors.js';
 import { AntigravityHealthChecker, type AntigravityHealthInfo } from './health.js';
@@ -135,8 +136,8 @@ export class AntigravityAIAdapter extends BaseAdapter {
       return new Promise<EventEnvelope<AICompletedPayload>>((resolve, reject) => {
         const cwd = this.adapterConfig.cwd || process.cwd();
         const binary = this.adapterConfig.binaryPath || 'agy';
-        const defaultArgs = ['--stream-json', '--headless'];
-        const procArgs = this.adapterConfig.args ? [...this.adapterConfig.args, prompt] : [...defaultArgs, prompt];
+        const defaultArgs = ['-p', prompt, '--output-format', 'stream-json', '--dangerously-skip-permissions'];
+        const procArgs = this.adapterConfig.args ? [...this.adapterConfig.args, prompt] : defaultArgs;
 
         try {
           this.childProcess = spawn(binary, procArgs, {
@@ -157,7 +158,28 @@ export class AntigravityAIAdapter extends BaseAdapter {
 
         let isSettled = false;
 
+        const timeoutMs = this.adapterConfig.timeoutMs || 35000;
+        let procTimeout: NodeJS.Timeout | null = setTimeout(() => {
+          if (!isSettled) {
+            if (this.childProcess && !this.childProcess.killed) {
+              this.childProcess.kill('SIGTERM');
+            }
+            if (this.responseBuffer.length === 0) {
+              const timeoutErr = `Antigravity CLI ('${binary}') timed out after ${timeoutMs}ms without returning stream output (Network / dial TCP timeout).`;
+              this.emitParsedEvent({
+                type: 'ERROR',
+                content: timeoutErr,
+                metadata: { errorCode: 'NETWORK_TIMEOUT' },
+              });
+            }
+          }
+        }, timeoutMs);
+
         const cleanup = () => {
+          if (procTimeout) {
+            clearTimeout(procTimeout);
+            procTimeout = null;
+          }
           this.childProcess = null;
         };
 
@@ -300,6 +322,9 @@ export class AntigravityAIAdapter extends BaseAdapter {
 
         this.interceptCommandPermission(toolName, command, { ...ev.metadata, riskLevel })
           .then(() => {
+            if (this.childProcess && this.childProcess.stdin && this.childProcess.stdin.writable) {
+              this.childProcess.stdin.write('y\n');
+            }
             this.emit('tool_call' as any, {
               toolName,
               toolArgs: ev.metadata?.toolArgs,
@@ -315,6 +340,27 @@ export class AntigravityAIAdapter extends BaseAdapter {
           });
         break;
       }
+      case 'TOOL_ANALYSIS':
+        this.emit('tool_analysis' as any, {
+          toolName: ev.metadata?.toolName,
+          filePath: ev.metadata?.filePath,
+          lineRange: ev.metadata?.lineRange,
+          query: ev.metadata?.query,
+          content: ev.content,
+        });
+        break;
+      case 'TOOL_FILE_EDIT':
+        this.emit('tool_file_edit' as any, {
+          toolName: ev.metadata?.toolName,
+          targetFile: ev.metadata?.targetFile,
+          filePath: ev.metadata?.filePath,
+          addedLines: ev.metadata?.addedLines,
+          deletedLines: ev.metadata?.deletedLines,
+          patch: ev.metadata?.patch,
+          diffLines: ev.metadata?.diffLines,
+          content: ev.content,
+        });
+        break;
       case 'FILE_CHANGE':
         this.emit('file_change' as any, {
           filePath: ev.metadata?.filePath,
@@ -331,12 +377,25 @@ export class AntigravityAIAdapter extends BaseAdapter {
     }
   }
 
+  public override resolvePermission(id: string, decision: PermissionDecision): boolean {
+    const resolved = super.resolvePermission(id, decision);
+    if (resolved && (decision === 'allow-once' || decision === 'allow-session')) {
+      if (this.childProcess && this.childProcess.stdin && this.childProcess.stdin.writable) {
+        this.childProcess.stdin.write('y\n');
+      }
+    }
+    return resolved;
+  }
+
   public async executeToolCall(
     toolName: string,
     command: string,
     metadata?: Record<string, any>
   ): Promise<void> {
     await this.interceptCommandPermission(toolName, command, metadata);
+    if (this.childProcess && this.childProcess.stdin && this.childProcess.stdin.writable) {
+      this.childProcess.stdin.write('y\n');
+    }
   }
 
 

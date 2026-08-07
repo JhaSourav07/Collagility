@@ -4,6 +4,8 @@ import type { ChatMessageItem, ActivityLogItem, InteractivePromptState, Permissi
 import { DocumentRenderer } from '@collagility/renderer';
 import { InteractivePromptCard } from './InteractivePromptCard.js';
 import { PermissionPromptCard } from './PermissionPromptCard.js';
+import { FileAnalysisBadge } from './FileAnalysisBadge.js';
+import { FileDiffCard } from './FileDiffCard.js';
 
 interface ChatPaneProps {
   messages: ChatMessageItem[];
@@ -29,6 +31,7 @@ interface TimelineEvent {
   thoughtBlock?: string;
   toolCard?: ChatMessageItem['toolCard'];
   fileEditCard?: ChatMessageItem['fileEditCard'];
+  analysisBadge?: ChatMessageItem['analysisBadge'];
 }
 
 export const ChatPane: React.FC<ChatPaneProps> = ({
@@ -69,6 +72,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
         thoughtBlock: msg.thoughtBlock,
         toolCard: msg.toolCard,
         fileEditCard: msg.fileEditCard,
+        analysisBadge: msg.analysisBadge,
       });
     } else {
       timeline.push({
@@ -152,9 +156,25 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
             );
           }
 
-          // Render formatted markdown response document
-          const formattedResponse = docRenderer.renderMarkdown(event.content);
-          const lines = formattedResponse.split(/\r?\n/);
+          // Clean raw internal JSON string fragments and side-by-side duplicate badges
+          const cleanedContent = event.content
+            .replace(/\{"event":"(?:step_update|telemetry)".*?\}/g, '')
+            .replace(/(📁 Listed directory [^\n]+?)\1+/g, '$1')
+            .replace(/(🔍 Analyzed [^\n]+?)\1+/g, '$1')
+            .replace(/(✏️ Edited [^\n]+?)\1+/g, '$1')
+            .replace(/(🔎 Searched [^\n]+?)\1+/g, '$1')
+            .trim();
+
+          const formattedResponse = docRenderer.renderMarkdown(cleanedContent);
+          const rawLines = formattedResponse.split(/\r?\n/);
+          const lines: string[] = [];
+          for (let i = 0; i < rawLines.length; i++) {
+            const curr = rawLines[i].trim();
+            if (!curr && i > 0 && !rawLines[i - 1].trim()) continue;
+            if (curr.includes('{"event":"step_update"') || curr.includes('{"event":"telemetry"')) continue;
+            if (i > 0 && curr.length > 0 && curr === rawLines[i - 1].trim()) continue;
+            lines.push(rawLines[i]);
+          }
 
           return (
             <Box key={event.id} flexDirection="column" marginY={0.5}>
@@ -173,37 +193,35 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
                     borderColor="gray"
                     flexDirection="column"
                     paddingX={1}
-                    marginY={0.3}
+                    marginY={1}
                   >
                     <Text color="magenta" bold dimColor>
-                      ▸ Multi-Step Reasoning / Thought Process:
+                      💭 Reasoning Thought:
                     </Text>
                     <Text color="gray" italic dimColor>
-                      {event.thoughtBlock}
+                      {event.thoughtBlock.startsWith('>') ? event.thoughtBlock : `> _${event.thoughtBlock}_`}
                     </Text>
+                  </Box>
+                )}
+
+                {/* Structured File Analysis Badge */}
+                {event.analysisBadge && (
+                  <Box marginY={1} flexDirection="column">
+                    <FileAnalysisBadge {...event.analysisBadge} />
                   </Box>
                 )}
 
                 {/* Structured File Edit Card */}
                 {event.fileEditCard && (
-                  <Box
-                    borderStyle="round"
-                    borderColor="cyan"
-                    flexDirection="column"
-                    paddingX={1}
-                    marginY={0.3}
-                  >
-                    <Box gap={1}>
-                      <Text color="cyan" bold>📝 File Edit:</Text>
-                      <Text color="white" bold>{event.fileEditCard.filePath}</Text>
-                    </Box>
-                    <Box gap={2}>
-                      <Text color="green">+{event.fileEditCard.additions} lines</Text>
-                      <Text color="red">-{event.fileEditCard.deletions} lines</Text>
-                    </Box>
-                    {event.fileEditCard.diffSummary && (
-                      <Text color="gray" italic>{event.fileEditCard.diffSummary}</Text>
-                    )}
+                  <Box marginY={1} flexDirection="column">
+                    <FileDiffCard
+                      filePath={event.fileEditCard.filePath}
+                      additions={event.fileEditCard.additions}
+                      deletions={event.fileEditCard.deletions}
+                      diffSummary={event.fileEditCard.diffSummary}
+                      patch={event.fileEditCard.patch}
+                      diffLines={event.fileEditCard.diffLines}
+                    />
                   </Box>
                 )}
 
@@ -214,7 +232,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
                     borderColor={event.toolCard.status === 'failed' ? 'red' : 'green'}
                     flexDirection="column"
                     paddingX={1}
-                    marginY={0.3}
+                    marginY={1}
                   >
                     <Box justifyContent="space-between">
                       <Box gap={1}>
@@ -235,10 +253,34 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
                 {lines.map((line, idx) => {
                   const trimmedLine = line.trim();
 
+                  // File Analysis Badge: 🔍 Analyzed / 🔎 Searched / 📁 Listed
+                  if (trimmedLine.startsWith('🔍') || trimmedLine.startsWith('🔎') || trimmedLine.startsWith('📁') || trimmedLine.startsWith('[TOOL_ANALYSIS]')) {
+                    return (
+                      <Box key={idx} marginY={1} flexDirection="column">
+                        <FileAnalysisBadge content={trimmedLine} />
+                      </Box>
+                    );
+                  }
+
+                  // File Diff Card: ✏️ Edited / [TOOL_FILE_EDIT]
+                  if (trimmedLine.startsWith('✏️') || trimmedLine.startsWith('[TOOL_FILE_EDIT]')) {
+                    const fMatch = trimmedLine.match(/(?:Edited\s+([^\s\()]+)|replace_file\s+([^\s]+)|write_file\s+([^\s]+)|edit_file\s+([^\s]+))/i);
+                    const file = fMatch ? (fMatch[1] || fMatch[2] || fMatch[3] || fMatch[4]) : 'file';
+                    const addMatch = trimmedLine.match(/\+(\d+)\s*lines?/i);
+                    const delMatch = trimmedLine.match(/\-(\d+)\s*lines?/i);
+                    const additions = addMatch ? parseInt(addMatch[1], 10) : 0;
+                    const deletions = delMatch ? parseInt(delMatch[1], 10) : 0;
+                    return (
+                      <Box key={idx} marginY={1} flexDirection="column">
+                        <FileDiffCard filePath={file} additions={additions} deletions={deletions} />
+                      </Box>
+                    );
+                  }
+
                   // Tool action execution log: ● Read(file)
                   if (trimmedLine.startsWith('●')) {
                     return (
-                      <Box key={idx} gap={1}>
+                      <Box key={idx} gap={1} marginY={0.1}>
                         <Text color="cyan">⚙️</Text>
                         <Text color="white">{trimmedLine.slice(1).trim()}</Text>
                       </Box>
@@ -248,18 +290,18 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
                   // Tool action completed: ✓ Read(file)
                   if (trimmedLine.startsWith('✓ Tool') || trimmedLine.startsWith('✓ Read') || trimmedLine.startsWith('✓ Search') || trimmedLine.startsWith('✓ Edit')) {
                     return (
-                      <Box key={idx} gap={1}>
+                      <Box key={idx} gap={1} marginY={0.1}>
                         <Text color="green">✓</Text>
                         <Text color="gray">{trimmedLine.replace(/^✓\s*/, '')}</Text>
                       </Box>
                     );
                   }
 
-                  // Thought step summary: ▸ Thought for 2.1s
-                  if (trimmedLine.startsWith('▸ Thought') || trimmedLine.startsWith('▸')) {
+                  // Thought step summary or blockquote
+                  if (trimmedLine.startsWith('▸ Thought') || trimmedLine.startsWith('▸') || trimmedLine.startsWith('>')) {
                     return (
-                      <Box key={idx} marginY={0.2}>
-                        <Text color="magenta" italic dimColor>
+                      <Box key={idx} marginY={0.1}>
+                        <Text color="gray" italic dimColor>
                           {trimmedLine}
                         </Text>
                       </Box>

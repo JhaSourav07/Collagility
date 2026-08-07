@@ -125,13 +125,10 @@ export function main(): void {
 }
 
 if (process.env['NODE_ENV'] !== 'test') {
-  const isDirectRun = Boolean(
-    process.argv[1] &&
-      (process.argv[1].endsWith('main.js') ||
-        process.argv[1].endsWith('index.js') ||
-        process.argv[1].includes('collagility'))
+  const isDirectMain = Boolean(
+    process.argv[1] && process.argv[1].endsWith('main.js')
   );
-  if (isDirectRun) {
+  if (isDirectMain) {
     main();
   }
 }

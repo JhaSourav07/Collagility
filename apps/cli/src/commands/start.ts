@@ -11,7 +11,13 @@ import { PlanRenderer } from '../terminal/plan-renderer.js';
 import { InteractivePromptRenderer } from '../terminal/interactive-prompt-renderer.js';
 import { readPlanArtifact } from '../terminal/plan-reader.js';
 import { DocumentRenderer } from '@collagility/renderer';
-import { GeminiAIAdapter, GeminiHealthChecker, AdapterRegistry } from '@collagility/adapters';
+import {
+  GeminiAIAdapter,
+  GeminiHealthChecker,
+  AntigravityAIAdapter,
+  AntigravityHealthChecker,
+  AdapterRegistry,
+} from '@collagility/adapters';
 import { createStreamChunk } from '@collagility/stream';
 
 export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
@@ -27,7 +33,10 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
 
   // Step 1: Check AI CLI (agy / antigravity / gemini) availability & authentication
   console.log(colors.bold(`\nChecking AI CLI (${targetBinary})...`));
-  const healthChecker = new GeminiHealthChecker(targetBinary, isMock, options.cliVersion);
+  const isAntigravity = targetBinary.toLowerCase() === 'agy' || targetBinary.toLowerCase() === 'antigravity';
+  const healthChecker = isAntigravity
+    ? new AntigravityHealthChecker(targetBinary, isMock, options.cliVersion)
+    : new GeminiHealthChecker(targetBinary, isMock, options.cliVersion);
   const health = await healthChecker.checkDetailedHealth();
 
   if (!health.ok) {
@@ -45,7 +54,10 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
   logger.success(`✓ ${binaryLabel} ${health.version || '1.x'}\n`);
 
   // Step 2: Initialize AI Adapter with session workspacePath and Register in AdapterRegistry
-  const adapter = new GeminiAIAdapter({ binaryPath: binaryLabel, mockMode: isMock, cwd: workspacePath });
+  const isAntigravityAdapter = binaryLabel.toLowerCase() === 'agy' || binaryLabel.toLowerCase() === 'antigravity';
+  const adapter = isAntigravityAdapter
+    ? new AntigravityAIAdapter({ binaryPath: health.executable || binaryLabel, mockMode: isMock, cwd: workspacePath })
+    : new GeminiAIAdapter({ binaryPath: health.executable || binaryLabel, mockMode: isMock, cwd: workspacePath });
   const registry = new AdapterRegistry();
 
   try {
