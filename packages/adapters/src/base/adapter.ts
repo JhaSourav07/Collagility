@@ -85,6 +85,35 @@ export abstract class AIAdapter extends EventEmitter {
     }
   }
 
+  protected _tmuxSessionName?: string;
+  protected _tmuxSendKeysHandler?: (
+    sessionName: string,
+    paneIndex: 0 | 1,
+    keys: string
+  ) => Promise<void>;
+  protected _approvalKeystroke = 'y';
+
+  public setTmuxSession(
+    sessionName: string,
+    sendKeysHandler?: (sessionName: string, paneIndex: 0 | 1, keys: string) => Promise<void>
+  ): void {
+    this._tmuxSessionName = sessionName;
+    if (sendKeysHandler) {
+      this._tmuxSendKeysHandler = sendKeysHandler;
+    }
+  }
+
+  public setApprovalKeystroke(keystroke: string): void {
+    this._approvalKeystroke = keystroke;
+  }
+
+  public async sendTmuxApproval(keys: string = this._approvalKeystroke): Promise<void> {
+    if (!this._tmuxSessionName) return;
+    if (this._tmuxSendKeysHandler) {
+      await this._tmuxSendKeysHandler(this._tmuxSessionName, 1, keys);
+    }
+  }
+
   public resolvePermission(id: string, decision: PermissionDecision): boolean {
     const resolver = this._pendingPermissions.get(id);
     if (!resolver) {
@@ -92,6 +121,9 @@ export abstract class AIAdapter extends EventEmitter {
     }
     this._pendingPermissions.delete(id);
     resolver(decision);
+    if (decision === 'allow-once' || decision === 'allow-session') {
+      this.sendTmuxApproval(this._approvalKeystroke).catch(() => {});
+    }
     return true;
   }
 
@@ -104,10 +136,12 @@ export abstract class AIAdapter extends EventEmitter {
     const sessionKey = `${toolName}:${command}`;
 
     if (this._sessionApprovals.has(sessionKey)) {
+      await this.sendTmuxApproval(this._approvalKeystroke);
       return 'allow-session';
     }
 
     if (!this.isPermissionRequired(riskLevel)) {
+      await this.sendTmuxApproval(this._approvalKeystroke);
       return 'allow-once';
     }
 
