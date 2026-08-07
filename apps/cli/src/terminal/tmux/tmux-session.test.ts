@@ -56,13 +56,49 @@ describe('TmuxSession', () => {
     ]);
   });
 
-  it('attach executes correct attach-session arguments', async () => {
+  it('attach calls spawn with attach-session, stdio inherit and resolves with exit code', async () => {
     const mockExecFile = vi.fn().mockResolvedValue({ stdout: '', stderr: '' });
-    const session = new TmuxSession(mockExecFile);
+    const listeners: Record<string, (arg?: any) => void> = {};
+    const mockChildProcess = {
+      on: vi.fn((event: string, cb: (arg?: any) => void) => {
+        listeners[event] = cb;
+      }),
+    };
+    const mockSpawn = vi.fn().mockReturnValue(mockChildProcess);
+    const session = new TmuxSession(mockExecFile, mockSpawn as any);
 
-    await session.attach('collagility-123');
+    const attachPromise = session.attach('collagility-123');
 
-    expect(mockExecFile).toHaveBeenCalledWith('tmux', ['attach-session', '-t', 'collagility-123']);
+    expect(mockSpawn).toHaveBeenCalledWith('tmux', ['attach-session', '-t', 'collagility-123'], {
+      stdio: 'inherit',
+    });
+
+    if (listeners['exit']) {
+      listeners['exit'](0);
+    }
+
+    const exitCode = await attachPromise;
+    expect(exitCode).toBe(0);
+  });
+
+  it('attach promise rejects on spawn error', async () => {
+    const mockExecFile = vi.fn().mockResolvedValue({ stdout: '', stderr: '' });
+    const listeners: Record<string, (arg?: any) => void> = {};
+    const mockChildProcess = {
+      on: vi.fn((event: string, cb: (arg?: any) => void) => {
+        listeners[event] = cb;
+      }),
+    };
+    const mockSpawn = vi.fn().mockReturnValue(mockChildProcess);
+    const session = new TmuxSession(mockExecFile, mockSpawn as any);
+
+    const attachPromise = session.attach('collagility-123');
+
+    if (listeners['error']) {
+      listeners['error'](new Error('ENOENT: tmux not found'));
+    }
+
+    await expect(attachPromise).rejects.toThrow('ENOENT: tmux not found');
   });
 
   it('sendKeys formats pane target and appends Enter', async () => {
@@ -111,8 +147,8 @@ describe('TmuxSession', () => {
     });
     const session = new TmuxSession(mockExecFile);
 
-    await expect(session.attach('non-existent')).rejects.toThrow(
-      "tmux command failed ['tmux attach-session -t non-existent']: tmux stderr: no server running on /tmp/tmux-1000/default"
+    await expect(session.killSession('non-existent')).rejects.toThrow(
+      "tmux command failed ['tmux kill-session -t non-existent']: tmux stderr: no server running on /tmp/tmux-1000/default"
     );
   });
 });

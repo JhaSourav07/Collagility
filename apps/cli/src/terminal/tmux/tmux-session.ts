@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn, type ChildProcess, type SpawnOptions } from 'node:child_process';
 import { promisify } from 'node:util';
 
 export type ExecFileFunction = (
@@ -6,13 +6,25 @@ export type ExecFileFunction = (
   args?: readonly string[] | null
 ) => Promise<{ stdout: string; stderr: string }>;
 
+export type SpawnFunction = (
+  command: string,
+  args: readonly string[],
+  options: SpawnOptions
+) => ChildProcess;
+
 const defaultExecFileAsync: ExecFileFunction = promisify(execFile);
+const defaultSpawn: SpawnFunction = (cmd, args, opts) => spawn(cmd, args, opts);
 
 export class TmuxSession {
   private execFileFn: ExecFileFunction;
+  private spawnFn: SpawnFunction;
 
-  constructor(execFileFn: ExecFileFunction = defaultExecFileAsync) {
+  constructor(
+    execFileFn: ExecFileFunction = defaultExecFileAsync,
+    spawnFn: SpawnFunction = defaultSpawn
+  ) {
     this.execFileFn = execFileFn;
+    this.spawnFn = spawnFn;
   }
 
   private async runTmux(args: string[]): Promise<{ stdout: string; stderr: string }> {
@@ -54,8 +66,20 @@ export class TmuxSession {
     ]);
   }
 
-  public async attach(name: string): Promise<void> {
-    await this.runTmux(['attach-session', '-t', name]);
+  public attach(name: string): Promise<number | null> {
+    return new Promise((resolve, reject) => {
+      const child = this.spawnFn('tmux', ['attach-session', '-t', name], {
+        stdio: 'inherit',
+      });
+
+      child.on('error', (err) => {
+        reject(err);
+      });
+
+      child.on('exit', (code) => {
+        resolve(code);
+      });
+    });
   }
 
   public async sendKeys(name: string, paneIndex: 0 | 1, keys: string): Promise<void> {
