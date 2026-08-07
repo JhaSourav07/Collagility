@@ -3,9 +3,9 @@ import { Box, Text, useStdout } from 'ink';
 import type { SessionInfoState, AIDriverState, SubagentTask } from './types.js';
 
 export function getHeaderTier(columns: number): 'wide' | 'compact' | 'minimal' {
+  if (!columns || Number.isNaN(columns) || columns < 60) return 'minimal';
   if (columns >= 100) return 'wide';
-  if (columns >= 60) return 'compact';
-  return 'minimal';
+  return 'compact';
 }
 
 export function truncateWorkspacePath(workspacePath: string): string {
@@ -27,7 +27,8 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ session, aiDriver, subagents = [] }) => {
   const { stdout } = useStdout();
-  const columns = stdout?.columns || 80;
+  const rawColumns = stdout?.columns;
+  const columns = typeof rawColumns === 'number' && rawColumns > 0 ? rawColumns : 60;
   const tier = getHeaderTier(columns);
 
   const workspace = session.workspacePath || process.cwd();
