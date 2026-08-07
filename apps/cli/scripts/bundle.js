@@ -6,7 +6,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 
+import fs from 'node:fs';
+
 console.log('📦 Bundling collagility CLI entrypoint dist/main.js with esbuild...');
+
+// Copy root README.md to apps/cli/README.md for NPM publishing
+fs.copyFileSync(path.resolve(projectRoot, '../../README.md'), path.resolve(projectRoot, 'README.md'));
+console.log('📄 Synchronized root README.md to apps/cli/README.md');
 
 const externalPlugin = {
   name: 'external-except-monorepo',
