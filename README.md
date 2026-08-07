@@ -10,6 +10,15 @@ Collagility is an open-source multiplayer terminal workspace that turns local AI
 
 ---
 
+## ⚡ System Requirements
+
+- **tmux**: Collagility orchestrates native `tmux` binary split sessions.
+  - **Linux**: Install via your package manager (e.g., `sudo apt install tmux`).
+  - **macOS**: Install via Homebrew (`brew install tmux`).
+  - **Windows**: Collagility must be run inside **WSL (Windows Subsystem for Linux)**. Native Windows (`cmd.exe` / PowerShell) is not supported for multi-pane session hosting. Refer to [Microsoft's WSL Installation Guide](https://learn.microsoft.com/en-us/windows/wsl/install).
+
+---
+
 ## ⚡ Quick Installation
 
 ### Option 1: macOS / Linux (`curl | bash`)

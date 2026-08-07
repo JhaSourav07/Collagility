@@ -1,69 +1,64 @@
-# Manual QA Checklist: PTY & Embedded AI Terminal Integration
+# Manual QA Checklist — Tmux Orchestration & Realtime AI Collaboration
 
-This document outlines the step-by-step manual verification process for the PTY-driven embedded terminal UI and security permission bridging in Collagility.
-
----
-
-## Prerequisites
-- Monorepo built: `pnpm build`
-- Installed dependencies: `node-pty` and `@xterm/headless`
-- Operating System: Linux / macOS / Windows with terminal emulator (xterm-256color support)
+Use this checklist to manually verify Collagility's `tmux` multi-pane session orchestration and permission bridge on macOS, Linux, and WSL environments.
 
 ---
 
-## QA Test Scenarios
-
-### Scenario 1: CLI Startup & Dual-Pane Rendering
-- [ ] Launch Collagility CLI using `pnpm --filter collagility start` or `node apps/cli/dist/main.js start`.
-- [ ] **Expected Result**:
-  - The Ink app opens with a split layout when terminal width is $\ge$ 100 columns.
-  - The **left pane** renders the `ChatPane` (human/system timeline) and bottom `InputBar`.
-  - The **right pane** renders `AITerminalPane` containing the live `@xterm/headless` virtual screen buffer snapshot of the underlying CLI process.
+### 1. Tmux Split Session Creation
+- [ ] Run `collagility start` (or `collagility host`).
+- [ ] **Expected**: A new tmux session `collagility-<sessionId>` is created and attached automatically.
+- [ ] **Expected**: Terminal is split into two panes:
+  - **Left Pane (~38%)**: Collagility Ink React UI (Chat feed, active member badges, security mode, activity log).
+  - **Right Pane (~62%)**: Raw AI CLI executable (`agy`, `gemini`, `claude`, etc.).
 
 ---
 
-### Scenario 2: Focused Keyboard Input Delivery
-- [ ] Press **Tab** (or **Ctrl+T**) to focus the `AITerminalPane`.
-- [ ] Verify visual focus indicator: `AITerminalPane` border turns **cyan** and the header displays `● live`.
-- [ ] Type `help` or `gemini --help` into the terminal pane and press **Enter**.
-- [ ] **Expected Result**: Keystrokes (`h-e-l-p\r`) are received directly by `AgentPtyProcess.write()`, and the CLI help output appears formatted in the right pane.
+### 2. Native AI CLI Interface
+- [ ] Inspect the right pane's interface.
+- [ ] **Expected**: Displays full native colors, ANSI styling, and raw prompt UI completely unmodified.
+- [ ] **Expected**: No wrapper artifacts, rendering lag, or missing interactive elements.
 
 ---
 
-### Scenario 3: Terminal Resizing & CLI Output Reflow
-- [ ] Resize your terminal emulator window (e.g. shrink from 140 columns down to 80 columns).
-- [ ] **Expected Result**:
-  - `App.tsx` calculates updated `cols` and `rows` and calls `AgentPtyProcess.resize(cols, rows)`.
-  - The child process receives the `SIGWINCH` resize signal and reflows line text to match the new dimensions.
-  - When window width drops below 100 columns, layout gracefully falls back to stacked view.
+### 3. Native Keyboard Focus & Input Navigation
+- [ ] Use `Ctrl+B Left` to focus the left Collagility chat pane and type a message or slash command (`/help`).
+- [ ] **Expected**: Input is received by Collagility's Ink chat input bar.
+- [ ] Use `Ctrl+B Right` (or `Ctrl+B o`) to switch focus to the right AI CLI pane.
+- [ ] **Expected**: Direct keyboard inputs (typing, arrow keys, `Ctrl+C`, `Ctrl+D`) pass natively to the AI CLI without interference.
 
 ---
 
-### Scenario 4: Focus Switching & Shortcut Isolation
-- [ ] Focus the terminal pane (**Tab** / **Ctrl+T**).
-- [ ] Press **Ctrl+K** or **Ctrl+L** or **Ctrl+D**.
-- [ ] **Expected Result**:
-  - Collagility global shortcuts (drawer/clear/exit) **do not fire**.
-  - Raw control bytes (`\x0b`, `\x0c`, `\x04`) are passed directly to the child process.
-- [ ] Press **Tab** again to return focus to `ChatPane`.
-- [ ] **Expected Result**:
-  - `AITerminalPane` border reverts to **gray** with `○ idle` status.
-  - `InputBar` becomes active for chat commands, and **Ctrl+K** opens the subagent drawer as expected.
+### 4. Session Detach & Re-attach
+- [ ] Detach from the session using `Ctrl+B d`.
+- [ ] **Expected**: Returns cleanly to your shell while the tmux session continues running in the background.
+- [ ] Re-attach using `tmux attach-session -t collagility-<sessionId>`.
+- [ ] **Expected**: Terminal re-attaches instantly with intact left chat and right AI CLI panes.
 
 ---
 
-### Scenario 5: Process Failure & Error Resilience
-- [ ] Trigger an unexpected process exit (e.g., execute `exit 1` or terminate the underlying CLI process).
-- [ ] **Expected Result**:
-  - The Ink app handles process termination gracefully without unmounting or crashing the CLI UI.
-  - An exit event notification appears in the timeline (`✓ Process exited with code 1`).
+### 5. Child Process Termination & Clean Exit
+- [ ] Exit or kill the process running in the right pane (e.g. exit the AI CLI).
+- [ ] **Expected**: Collagility detects the exit, cleans up temporary log files, and exits gracefully without hanging the terminal.
 
 ---
 
-### Scenario 6: Auto-Mode Permission Bridging vs Manual Mode
-- [ ] Set security mode to `'auto'` (via `/mode auto` or footer toggle).
-- [ ] Trigger a LOW-risk CLI operation that prompts for confirmation (e.g., `Proceed? [Y/n]`).
-- [ ] **Expected Result**: `processPtyAutoApproval` detects the LOW-risk prompt and auto-writes `\r` to approve without requiring manual keystrokes.
-- [ ] Switch security mode to `'manual'` (via `/mode manual`).
-- [ ] Trigger the same CLI prompt.
-- [ ] **Expected Result**: No auto-keystroke is sent; the system waits for the user to manually type into the focused pane.
+### 6. Pipe-Pane Event & Broadcast Pipeline
+- [ ] Execute an AI prompt in the session.
+- [ ] **Expected**: `pipe-pane` streams stdout from the right pane into the adapter parser.
+- [ ] **Expected**: Activity feed updates on the left pane, and remote WebSocket participants receive streamed updates token-by-token.
+
+---
+
+### 7. Remote Collaborator Approval Relay
+- [ ] Join the session from a remote participant terminal (`collagility join <sessionId>`).
+- [ ] Set security mode to `manual`.
+- [ ] Trigger an action requiring approval.
+- [ ] Have the remote participant click "Approve" (or type `y`) in their Collagility UI.
+- [ ] **Expected**: Remote decision is relayed over WebSocket to the local host process.
+- [ ] **Expected**: Local host process executes `sendKeys(sessionName, 1, 'y')`, forwarding the approval keystroke directly to the right tmux pane.
+
+---
+
+### 8. Native Windows WSL Enforcement
+- [ ] Attempt to run `collagility start` on native Windows (`cmd.exe` or PowerShell outside WSL).
+- [ ] **Expected**: Outputs a clear error message stating `tmux` requires WSL, displays the Microsoft WSL install doc link (`https://learn.microsoft.com/en-us/windows/wsl/install`), and exits non-zero cleanly without crashing.
