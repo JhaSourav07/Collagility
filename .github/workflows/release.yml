@@ -43,7 +43,10 @@ jobs:
       - name: Publish Package to GitHub Packages
         run: |
           npm config set //npm.pkg.github.com/:_authToken ${{ secrets.GITHUB_TOKEN }}
-          cd apps/cli && npm publish --registry https://npm.pkg.github.com/ || true
+          cd apps/cli
+          npm pkg set name="@jhasourav07/collagility"
+          npm publish --registry https://npm.pkg.github.com/ || true
+          git checkout package.json
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
