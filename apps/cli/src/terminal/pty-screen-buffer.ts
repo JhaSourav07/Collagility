@@ -1,4 +1,10 @@
-import { Terminal } from '@xterm/headless';
+import xtermHeadless from '@xterm/headless';
+
+const TerminalConstructor: any =
+  (xtermHeadless as any).Terminal ||
+  (xtermHeadless as any).default?.Terminal ||
+  (xtermHeadless as any).default ||
+  xtermHeadless;
 
 export interface PtyScreenBufferOptions {
   cols?: number;
@@ -18,14 +24,14 @@ export interface PtyRowInfo {
 }
 
 export class PtyScreenBuffer {
-  private terminal: Terminal;
+  private terminal: any;
   private cols: number;
   private rows: number;
 
   constructor(options: PtyScreenBufferOptions = {}) {
     this.cols = options.cols || 80;
     this.rows = options.rows || 24;
-    this.terminal = new Terminal({
+    this.terminal = new TerminalConstructor({
       cols: this.cols,
       rows: this.rows,
       scrollback: options.scrollback || 1000,
