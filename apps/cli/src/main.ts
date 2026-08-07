@@ -36,7 +36,12 @@ export function createProgram(): Command {
     .option('-r, --resume <session>', 'Resume an existing collaboration session from disk checkpoint')
     .option('-m, --mock', 'Run in mock AI mode without spawning real CLI process')
     .option('--pane <type>', 'Internal pane type identifier (e.g., chat)')
+    .option('--session-name <name>', 'Tmux session name')
     .action(async (cmdOpts) => {
+      if (cmdOpts.sessionName) {
+        process.env['COLLAGILITY_TMUX_SESSION'] = cmdOpts.sessionName;
+      }
+
       if (cmdOpts.pane === 'chat' || process.env['COLLAGILITY_INTERNAL_PANE'] === 'chat') {
         const opts = program.opts();
         const config = createConfig({
@@ -63,6 +68,7 @@ export function createProgram(): Command {
         cmdOpts.resume ||
         `sess-${Math.random().toString(36).substring(2, 8)}`;
       const sessionName = `collagility-${sessionId}`;
+      process.env['COLLAGILITY_TMUX_SESSION'] = sessionName;
       const targetBinary = cmdOpts.cli || 'agy';
       const logPath = path.join(os.tmpdir(), `${sessionName}-right.log`);
 
@@ -78,6 +84,8 @@ export function createProgram(): Command {
         'start',
         '--pane',
         'chat',
+        '--session-name',
+        sessionName,
         ...(cmdOpts.cli ? ['--cli', cmdOpts.cli] : []),
         ...(cmdOpts.cliVersion ? ['--cli-version', cmdOpts.cliVersion] : []),
         ...(cmdOpts.resume ? ['--resume', cmdOpts.resume] : []),

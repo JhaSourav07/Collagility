@@ -19,6 +19,8 @@ import {
   AdapterRegistry,
 } from '@collagility/adapters';
 import { createStreamChunk } from '@collagility/stream';
+import { TmuxPromptRouter, isSlashCommand } from '../terminal/tmux/tmux-prompt-router.js';
+import { TmuxSession } from '../terminal/tmux/tmux-session.js';
 
 export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
   const logger = new CLILogger(options.verbose);
@@ -70,6 +72,14 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
   } catch (err) {
     logger.error(`Failed to initialize local ${binaryLabel} adapter`, err);
     process.exit(1);
+  }
+
+  const tmuxSessionName = process.env['COLLAGILITY_TMUX_SESSION'];
+  const tmuxSession = tmuxSessionName ? new TmuxSession() : null;
+  const promptRouter = tmuxSessionName ? new TmuxPromptRouter(tmuxSessionName, tmuxSession!) : null;
+
+  if (tmuxSessionName && adapter) {
+    adapter.setTmuxSession(tmuxSessionName, (s, p, k) => tmuxSession!.sendKeys(s, p, k));
   }
 
   const spinner = new CLIProgressSpinner('Initializing multiplayer server connection...');
@@ -175,6 +185,10 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
                     return;
                   }
                 }
+              }
+
+              if (promptRouter && !isSlashCommand(trimmed)) {
+                promptRouter.forwardPrompt(trimmed).catch(() => {});
               }
 
               if (trimmed.startsWith('/leave')) {
@@ -298,6 +312,10 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
           if (ink) {
             ink.startStreamMessage(payload.streamId, payload.adapterName || 'Gemini');
           }
+        }
+
+        if (promptRouter && payload.prompt && !isSlashCommand(payload.prompt)) {
+          promptRouter.forwardPrompt(payload.prompt).catch(() => {});
         }
 
         const reqName = payload.adapterName?.toLowerCase();

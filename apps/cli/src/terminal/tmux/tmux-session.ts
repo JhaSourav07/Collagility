@@ -92,6 +92,11 @@ export class TmuxSession {
     await this.runTmux(['send-keys', '-t', `${name}.${paneIndex}`, keys, 'Enter']);
   }
 
+  public async sendPrompt(name: string, paneIndex: 0 | 1, text: string): Promise<void> {
+    await this.runTmux(['send-keys', '-t', `${name}.${paneIndex}`, '-l', text]);
+    await this.runTmux(['send-keys', '-t', `${name}.${paneIndex}`, 'Enter']);
+  }
+
   public async pipePane(name: string, paneIndex: 0 | 1, targetPath: string): Promise<void> {
     await this.runTmux(['pipe-pane', '-t', `${name}.${paneIndex}`, '-O', `cat >> ${targetPath}`]);
   }
