@@ -2,7 +2,7 @@
 
 > **The Real-Time Agentic Terminal for Collaborative AI Pair Programming**
 
-[![Release](https://img.shields.io/badge/version-0.1.1--beta.1-cyan.svg)](https://github.com/JhaSourav07/Collagility/releases/tag/v0.1.1-beta.1)
+[![Release](https://img.shields.io/badge/version-0.1.1-cyan.svg)](https://github.com/JhaSourav07/Collagility/releases/tag/v0.1.1)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 

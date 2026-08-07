@@ -1,6 +1,10 @@
 {
   "name": "collagility",
-  "version": "0.1.1-beta.2",
+  "version": "0.1.1",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "description": "Terminal CLI application for Collagility host and participant sessions",
   "type": "module",
   "bin": {

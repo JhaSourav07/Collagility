@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [v0.1.1] - 2026-08-07
+
+### Added
+- **1:1 Unbuffered AI Screenshare Streaming**: Real-time byte-by-byte terminal streaming from host right pane into joined visitors using `tail -f` screenshare logs with 0 token cost to visitors.
+- **Real Host IP Join Guidance**: `collagility start` now automatically detects real LAN IPv4 address and displays `collagility join session@192.168.1.50` instructions.
+- **Chronological Timeline Sorting**: Fixed activity logs and system notifications to sort chronologically by timestamp.
+- **Short Collaborator IDs**: Truncated 36-char UUIDs to 8-char short IDs (`2138c10c`) to prevent text wrapping on narrow panes.
+- **Graceful Ctrl+C Exit**: Restored `Ctrl+C` handling in Ink TUI to gracefully disconnect WebSocket sessions, terminate tmux split sessions, and exit cleanly.
+
+---
+
 ## [0.1.1-beta.1] - 2026-08-06
 
 ### Added

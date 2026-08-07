@@ -12,6 +12,7 @@ jobs:
 
     permissions:
       contents: write
+      packages: write
 
     steps:
       - name: Checkout Repository
@@ -38,6 +39,13 @@ jobs:
 
       - name: Package Standalone CLI Executables
         run: pnpm --filter @collagility/cli package
+
+      - name: Publish Package to GitHub Packages
+        run: |
+          npm config set //npm.pkg.github.com/:_authToken ${{ secrets.GITHUB_TOKEN }}
+          cd apps/cli && npm publish --registry https://npm.pkg.github.com/ || true
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Changelog Entry
         id: changelog
