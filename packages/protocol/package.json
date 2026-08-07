@@ -1,6 +1,6 @@
 {
   "name": "@collagility/protocol",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "WebSocket protocol definitions and frame schemas for Collagility",
   "type": "module",

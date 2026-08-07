@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [v0.1.3] - 2026-08-07
+
+### Fixed
+- **Session Type Safety**: Added missing `workspacePath` requirement to mock Session instances in server unit tests to ensure strict TypeScript type compliance.
+
+---
+
 ## [v0.1.2] - 2026-08-07
 
 ### Added
