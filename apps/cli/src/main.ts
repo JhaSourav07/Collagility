@@ -36,9 +36,15 @@ export function createProgram(): Command {
     .option('--cli-version <ver>', 'Specify or override AI CLI version')
     .option('-r, --resume <session>', 'Resume an existing collaboration session from disk checkpoint')
     .option('-m, --mock', 'Run in mock AI mode without spawning real CLI process')
+    .option('--pty', 'Enable byte-accurate raw PTY terminal mirror for session joiners')
+    .option('--terminal-mirror <mode>', 'Terminal mirror mode: legacy (reconstructed chat view) or pty (raw byte-accurate PTY mirror)', 'legacy')
     .option('--pane <type>', 'Internal pane type identifier (e.g., chat)')
     .option('--session-name <name>', 'Tmux session name')
     .action(async (cmdOpts) => {
+      if (cmdOpts.pty || cmdOpts.terminalMirror === 'pty') {
+        process.env['COLLAGILITY_TERMINAL_MIRROR'] = 'pty';
+      }
+
       if (cmdOpts.sessionName) {
         process.env['COLLAGILITY_TMUX_SESSION'] = cmdOpts.sessionName;
       }

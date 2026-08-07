@@ -159,6 +159,34 @@ One honest limitation: since you're a real local user attached to a real tmux se
 
 ---
 
+### 5.1 Real Terminal Mirror Mode (Opt-In)
+
+By default, Collagility broadcasts a **reconstructed summary view** of AI execution (tool calls, thoughts, and output text) to remote collaborators. This keeps network bandwidth minimal and focuses on readable activity logs.
+
+If you require a **100% byte-accurate terminal mirror** for session joiners:
+
+```bash
+# Enable PTY mirror via CLI flag
+collagility start --pty
+
+# Or via environment variable
+export COLLAGILITY_TERMINAL_MIRROR=pty
+collagility start
+```
+
+#### Comparison of Modes
+
+| Mode | Trigger | Joiner Experience | Network Bandwidth | Use Case |
+| :--- | :--- | :--- | :--- | :--- |
+| **Default (Legacy)** | Default | Reconstructed chat & tool call activity feed. | Low | Low-bandwidth networks, focused summary overview. |
+| **PTY Mirror** | `--pty` or `COLLAGILITY_TERMINAL_MIRROR=pty` | Byte-accurate `@xterm/headless` terminal mirror reproducing carriage returns (`\r`), ANSI escape codes, and exact row alignment. | Moderate | Full visual pair programming, progress bar tracking, complex CLI layout mirror. |
+
+#### Known Limitations (v1)
+- **Bandwidth**: Raw PTY streaming sends raw terminal output frames over WebSockets at 16ms intervals (up to 16KB per payload limit), consuming slightly more bandwidth than the default chat summary.
+- **Interactive Prompts**: Host stdout continues to evaluate `AntigravityOutputParser` in parallel so interactive AI prompts (`ai.plan`, `ai.question`, `PERMISSION_REQUIRED`) remain fully functional.
+
+---
+
 ## 6. Command Reference
 
 All commands below are exactly what `collagility --help` will show you — this table won't drift from the code.
