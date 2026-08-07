@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AgentPtyProcess, type IPtyLike } from './pty-process.js';
+import { AgentPtyProcess, processPtyAutoApproval, type IPtyLike } from './pty-process.js';
 
 class MockPty implements IPtyLike {
   public dataListeners: Array<(data: string) => void> = [];
@@ -133,5 +133,84 @@ describe('AgentPtyProcess', () => {
 
     agentPty.kill('SIGKILL');
     expect(mockPtyInstance!.killedSignal).toBe('SIGKILL');
+  });
+});
+
+describe('processPtyAutoApproval', () => {
+  it('auto mode writes expected keystroke when risk is LOW', () => {
+    let written = '';
+    const handled = processPtyAutoApproval(
+      'Allow tool execution? [Y/n]',
+      {
+        securityMode: 'auto',
+        evaluateRisk: () => 'LOW',
+        approvalKeystroke: '\r',
+      },
+      (keystroke) => {
+        written = keystroke;
+      }
+    );
+
+    expect(handled).toBe(true);
+    expect(written).toBe('\r');
+  });
+
+  it('manual mode never auto-writes regardless of risk level', () => {
+    let written = '';
+    const handledLow = processPtyAutoApproval(
+      'Proceed with read_file? [Y/n]',
+      {
+        securityMode: 'manual',
+        evaluateRisk: () => 'LOW',
+      },
+      (keystroke) => {
+        written = keystroke;
+      }
+    );
+
+    const handledHigh = processPtyAutoApproval(
+      'Proceed with delete_file? [Y/n]',
+      {
+        securityMode: 'manual',
+        evaluateRisk: () => 'HIGH',
+      },
+      (keystroke) => {
+        written = keystroke;
+      }
+    );
+
+    expect(handledLow).toBe(false);
+    expect(handledHigh).toBe(false);
+    expect(written).toBe('');
+  });
+
+  it('accept-edits mode writes keystroke for LOW/MEDIUM risk and blocks HIGH risk', () => {
+    let written = '';
+    const handledMedium = processPtyAutoApproval(
+      'Apply edit to src/main.ts? [Y/n]',
+      {
+        securityMode: 'accept-edits',
+        evaluateRisk: () => 'MEDIUM',
+      },
+      (k) => {
+        written = k;
+      }
+    );
+    expect(handledMedium).toBe(true);
+    expect(written).toBe('\r');
+
+    written = '';
+    const handledHigh = processPtyAutoApproval(
+      'Run rm -rf /? [y/N]',
+      {
+        securityMode: 'accept-edits',
+        evaluateRisk: () => 'HIGH',
+      },
+      (k) => {
+        written = k;
+      }
+    );
+    expect(handledHigh).toBe(false);
+    expect(written).toBe('');
   });
 });

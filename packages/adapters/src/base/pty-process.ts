@@ -1,5 +1,6 @@
 import * as pty from 'node-pty';
 import { Terminal } from '@xterm/headless';
+import type { SecurityMode, RiskLevel } from '@collagility/protocol';
 
 export interface StyledRun {
   text: string;
@@ -220,4 +221,49 @@ function isSameStyle(run: StyledRun, style: Omit<StyledRun, 'text'>): boolean {
     Boolean(run.italic) === Boolean(style.italic) &&
     Boolean(run.underline) === Boolean(style.underline)
   );
+}
+
+export function isPermissionRequiredForMode(securityMode: SecurityMode, riskLevel: RiskLevel): boolean {
+  switch (securityMode) {
+    case 'auto':
+      return false;
+    case 'accept-edits':
+      return riskLevel === 'HIGH';
+    case 'plan-only':
+    case 'manual':
+    default:
+      return riskLevel === 'MEDIUM' || riskLevel === 'HIGH';
+  }
+}
+
+export interface PtyAutoApprovalOptions {
+  securityMode: SecurityMode;
+  evaluateRisk?: (commandOrChunk: string) => RiskLevel;
+  approvalKeystroke?: string;
+}
+
+export function processPtyAutoApproval(
+  chunk: string,
+  options: PtyAutoApprovalOptions,
+  writeToPty: (keystroke: string) => void
+): boolean {
+  if (options.securityMode === 'manual') {
+    return false;
+  }
+
+  const isPrompt = /\[y\/n\]|\[Y\/n\]|\[y\/N\]|\bproceed\?|\bconfirm\?|\bdo you want to\b/i.test(chunk);
+  if (!isPrompt) {
+    return false;
+  }
+
+  const riskLevel = options.evaluateRisk ? options.evaluateRisk(chunk) : 'LOW';
+  const isRequired = isPermissionRequiredForMode(options.securityMode, riskLevel);
+
+  if (!isRequired) {
+    const keystroke = options.approvalKeystroke || '\r';
+    writeToPty(keystroke);
+    return true;
+  }
+
+  return false;
 }
