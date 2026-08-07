@@ -2,6 +2,7 @@ export * from './base/adapter.js';
 export * from './base/events.js';
 export * from './base/errors.js';
 export * from './base/registry.js';
+export * from './base/pty-process.js';
 export * from './mock/mock-adapter.js';
 export * from './gemini/gemini-adapter.js';
 export * from './gemini/gemini-process.js';
