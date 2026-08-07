@@ -1,6 +1,6 @@
 {
   "name": "@collagility/server",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "description": "Fastify WebSocket relay control plane server for Collagility",
   "type": "module",

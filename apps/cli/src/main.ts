@@ -261,11 +261,6 @@ export function main(): void {
 }
 
 if (process.env['NODE_ENV'] !== 'test') {
-  const isDirectMain = Boolean(
-    process.argv[1] && process.argv[1].endsWith('main.js')
-  );
-  if (isDirectMain) {
-    main();
-  }
+  main();
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "@collagility/renderer",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "description": "Rich Document Rendering Engine for Collagility terminal applications",
   "type": "module",

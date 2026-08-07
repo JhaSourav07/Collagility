@@ -1,6 +1,6 @@
 {
   "name": "@collagility/stream",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "description": "Real-time Collaborative AI Streaming Engine for Collagility",
   "type": "module",

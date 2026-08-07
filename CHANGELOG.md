@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [v0.1.5] - 2026-08-07
+
+### Fixed
+- **CLI Entrypoint Invocation**: Removed fragile `process.argv[1].endsWith('main.js')` check in `apps/cli/src/main.ts` that caused global NPM binary commands (`collagility`, `collagility help`, `collagility server start`) to silently exit without executing.
+
+---
+
 ## [v0.1.4] - 2026-08-07
 
 ### Fixed
