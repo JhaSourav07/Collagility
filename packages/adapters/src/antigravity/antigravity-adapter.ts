@@ -294,13 +294,19 @@ export class AntigravityAIAdapter extends BaseAdapter {
 
         if (this.childProcess.stdout) {
           this.childProcess.stdout.on('data', (chunk: Buffer | string) => {
-            this.handleStreamChunk(chunk.toString());
+            const str = chunk.toString();
+            this.emit('stdout', str);
+            this.emit('pty.data', str);
+            this.handleStreamChunk(str);
           });
         }
 
         if (this.childProcess.stderr) {
           this.childProcess.stderr.on('data', (chunk: Buffer | string) => {
-            this.handleStreamChunk(chunk.toString());
+            const errStr = chunk.toString();
+            this.emit('stderr', errStr);
+            this.emit('pty.data', errStr);
+            this.handleStreamChunk(errStr);
           });
         }
 

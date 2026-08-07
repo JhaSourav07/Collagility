@@ -462,7 +462,6 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
         targetAdapter.on('confirmation' as any, onConfirmation);
         targetAdapter.on('PERMISSION_REQUIRED' as any, onPermissionRequired);
         targetAdapter.on('stdout' as any, onStdoutData);
-        targetAdapter.on('pty.data' as any, onStdoutData);
 
         targetAdapter
           .sendPrompt(payload.prompt)
@@ -474,7 +473,6 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
             targetAdapter.off('confirmation' as any, onConfirmation);
             targetAdapter.off('PERMISSION_REQUIRED' as any, onPermissionRequired);
             targetAdapter.off('stdout' as any, onStdoutData);
-            targetAdapter.off('pty.data' as any, onStdoutData);
 
             const fullText = resEnvelope?.payload?.responseText || '';
 
@@ -511,7 +509,6 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
             targetAdapter.off('confirmation' as any, onConfirmation);
             targetAdapter.off('PERMISSION_REQUIRED' as any, onPermissionRequired);
             targetAdapter.off('stdout' as any, onStdoutData);
-            targetAdapter.off('pty.data' as any, onStdoutData);
             const errorMsg = err instanceof Error ? err.message : String(err);
 
             logger.error('Local AI execution failed', err);
