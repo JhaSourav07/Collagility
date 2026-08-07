@@ -194,14 +194,11 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
         if (
           screenshareLog &&
           msg.text &&
-          (msg.text.startsWith('@agy') || msg.text.startsWith('@agi') || msg.text.startsWith('@gemini'))
+          (msg.text.startsWith('@agy') || msg.text.startsWith('@agi') || msg.text.startsWith('@gemini') || msg.text.startsWith('/gemini'))
         ) {
           try {
-            const senderName =
-              msg.senderName && msg.senderName.includes('-')
-                ? msg.senderName.split('-')[0]
-                : msg.senderName || 'User';
-            fs.appendFileSync(screenshareLog, `\x1b[33m\n> ${senderName}: ${msg.text}\x1b[0m\n`);
+            const promptText = msg.text.replace(/^(@agi|@agy|@gemini|\/gemini)\s*/, '');
+            fs.appendFileSync(screenshareLog, `\x1b[1;35magy>\x1b[0m \x1b[1m${promptText}\x1b[0m\n\n`);
           } catch {}
         }
         if (splitRenderer) {
@@ -238,16 +235,6 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
       },
 
       onStreamStarted: (payload) => {
-        if (screenshareLog) {
-          try {
-            fs.appendFileSync(
-              screenshareLog,
-              `\n\x1b[36m--- AI Stream Started (${payload.adapterName || 'Host AI'}) ---\x1b[0m\n`
-            );
-          } catch {}
-        } else if (tmuxSessionName && tmuxSession) {
-          tmuxSession.writeToPane(tmuxSessionName, 1, `\n\n--- AI Stream Started (${payload.adapterName || 'Host AI'}) ---\n`).catch(() => {});
-        }
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();
           if (ink) {
@@ -264,11 +251,15 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
           streamAccumulator.set(payload.streamId, current + payload.content);
         }
         if (screenshareLog && payload.content) {
-          try {
-            fs.appendFileSync(screenshareLog, payload.content);
-          } catch {}
+          if (!payload.content.includes('[AntigravityAdapter]') && !payload.content.includes('Initializing Antigravity')) {
+            try {
+              fs.appendFileSync(screenshareLog, payload.content);
+            } catch {}
+          }
         } else if (tmuxSessionName && tmuxSession && payload.content) {
-          tmuxSession.writeToPane(tmuxSessionName, 1, payload.content).catch(() => {});
+          if (!payload.content.includes('[AntigravityAdapter]') && !payload.content.includes('Initializing Antigravity')) {
+            tmuxSession.writeToPane(tmuxSessionName, 1, payload.content).catch(() => {});
+          }
         }
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();
@@ -286,13 +277,8 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
 
         if (screenshareLog) {
           try {
-            fs.appendFileSync(
-              screenshareLog,
-              `\n\x1b[32m✓ Stream Finished (${payload.durationMs}ms)\x1b[0m\n\n`
-            );
+            fs.appendFileSync(screenshareLog, '\n\n');
           } catch {}
-        } else if (tmuxSessionName && tmuxSession) {
-          tmuxSession.writeToPane(tmuxSessionName, 1, `\n--- Stream Finished (${payload.durationMs}ms) ---\n\n`).catch(() => {});
         }
 
         if (splitRenderer) {

@@ -166,11 +166,6 @@ export class AntigravityAIAdapter extends BaseAdapter {
         let stdoutDiagnosticTimer: NodeJS.Timeout | null = setTimeout(() => {
           if (!receivedStdout && !isSettled) {
             console.warn('[AntigravityAdapter] Warning: agy spawned but no stdout received after 5000ms. Checking stdin/process status...');
-            this.emitParsedEvent({
-              type: 'TEXT',
-              content: '▸ [AntigravityAdapter] Warning: agy spawned but no stdout received after 5000ms. Checking stdin/process status...',
-              metadata: { warning: 'STDOUT_DELAYED' },
-            });
           }
         }, 5000);
 
