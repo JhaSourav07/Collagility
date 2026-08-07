@@ -1,6 +1,6 @@
 {
   "name": "@collagility/sdk",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "description": "Client connection SDK for Collagility real-time communication",
   "type": "module",

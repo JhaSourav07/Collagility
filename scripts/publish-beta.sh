@@ -5,7 +5,7 @@ set -e
 # Releases collagility under the 'beta' dist-tag on NPM
 
 echo "========================================="
-echo "  Publishing Collagility 0.1.3"
+echo "  Publishing Collagility 0.1.4"
 echo "========================================="
 
 if [ "$1" != "--skip-build" ]; then

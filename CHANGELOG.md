@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [v0.1.4] - 2026-08-07
+
+### Fixed
+- **NPM Package Publishing Fix**: Moved `@collagility/*` monorepo packages to `devDependencies` in `apps/cli/package.json` to prevent NPM `EUNSUPPORTEDPROTOCOL` errors on `workspace:*` dependencies during `npm install -g collagility`.
+- **Session Type Safety**: Added missing `workspacePath` requirement to mock Session instances in server unit tests to ensure strict TypeScript type compliance.
+
+---
+
 ## [v0.1.3] - 2026-08-07
 
 ### Fixed

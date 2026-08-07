@@ -47,27 +47,6 @@ importers:
 
   apps/cli:
     dependencies:
-      '@collagility/adapters':
-        specifier: workspace:*
-        version: link:../../packages/adapters
-      '@collagility/protocol':
-        specifier: workspace:*
-        version: link:../../packages/protocol
-      '@collagility/renderer':
-        specifier: workspace:*
-        version: link:../../packages/renderer
-      '@collagility/sdk':
-        specifier: workspace:*
-        version: link:../../packages/sdk
-      '@collagility/server':
-        specifier: workspace:*
-        version: link:../server
-      '@collagility/stream':
-        specifier: workspace:*
-        version: link:../../packages/stream
-      '@collagility/types':
-        specifier: workspace:*
-        version: link:../../packages/types
       '@fastify/websocket':
         specifier: ^11.0.1
         version: 11.3.0
@@ -99,6 +78,27 @@ importers:
         specifier: ^3.24.1
         version: 3.25.76
     devDependencies:
+      '@collagility/adapters':
+        specifier: workspace:*
+        version: link:../../packages/adapters
+      '@collagility/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+      '@collagility/renderer':
+        specifier: workspace:*
+        version: link:../../packages/renderer
+      '@collagility/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+      '@collagility/server':
+        specifier: workspace:*
+        version: link:../server
+      '@collagility/stream':
+        specifier: workspace:*
+        version: link:../../packages/stream
+      '@collagility/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@types/node':
         specifier: ^22.10.2
         version: 22.20.1
