@@ -23,6 +23,7 @@ import { createStreamChunk } from '@collagility/stream';
 import { TmuxPromptRouter, isAiPrompt } from '../terminal/tmux/tmux-prompt-router.js';
 import { TmuxSession } from '../terminal/tmux/tmux-session.js';
 import { SessionHostBroadcaster } from '../terminal/session-host.js';
+import { PtyTerminalHost } from '../terminal/pty-terminal-host.js';
 
 export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
   const logger = new CLILogger(options.verbose);
@@ -452,8 +453,24 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
           },
         });
 
+        const isPtyMirrorEnabled =
+          process.env['COLLAGILITY_TERMINAL_MIRROR'] === 'pty' ||
+          process.env['COLLAGILITY_TERMINAL_MIRROR'] === '1' ||
+          process.env['COLLAGILITY_EXPERIMENTAL_PTY'] === '1';
+
+        const ptyHost = isPtyMirrorEnabled
+          ? new PtyTerminalHost({
+              sessionId: currentSessionId,
+              wsClient: client,
+              flushIntervalMs: 16,
+            })
+          : null;
+
         const onStdoutData = (data: string) => {
           hostBroadcaster.processStdout(data);
+          if (ptyHost) {
+            ptyHost.writeRawData(data);
+          }
         };
 
         targetAdapter.on('chunk' as any, onChunk);
@@ -467,6 +484,9 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
           .sendPrompt(payload.prompt)
           .then((resEnvelope: any) => {
             terminalStreamer.destroy();
+            if (ptyHost) {
+              ptyHost.destroy();
+            }
             targetAdapter.off('chunk' as any, onChunk);
             targetAdapter.off('plan' as any, onPlan);
             targetAdapter.off('question' as any, onQuestion);
@@ -503,6 +523,9 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
           })
           .catch((err: unknown) => {
             terminalStreamer.destroy();
+            if (ptyHost) {
+              ptyHost.destroy();
+            }
             targetAdapter.off('chunk' as any, onChunk);
             targetAdapter.off('plan' as any, onPlan);
             targetAdapter.off('question' as any, onQuestion);
