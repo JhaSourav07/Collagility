@@ -328,7 +328,14 @@ export class InkTerminalRenderer {
           onClearScreen: () => {
             this.clearScreen();
           },
-        })
+        }),
+        {
+          // Do NOT let Ink exit the process on Ctrl+C — we own SIGINT.
+          // Do NOT patch console.log — avoid double-rendering bugs during
+          // tmux pane resize / terminal tab switches.
+          exitOnCtrlC: false,
+          patchConsole: false,
+        }
       );
     } else {
       this.rerender();

@@ -770,6 +770,25 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
 
     process.on('SIGINT', handleExit);
     process.on('SIGTERM', handleExit);
+
+    // SIGWINCH is fired on every terminal resize and on tmux tab switch.
+    // Node's default behaviour is to do nothing (it's not fatal), but some
+    // versions of Ink or readline internals re-throw on a zero-column resize.
+    // Explicitly no-op this signal so the left pane never dies from a resize.
+    process.on('SIGWINCH', () => {
+      // Ink's useStdout() picks up the new dimensions automatically on the
+      // next render cycle — no manual action needed here.
+    });
+
+    // Guard stdout/stderr against EPIPE (e.g. when tmux temporarily detaches
+    // the pseudo-terminal during a tab switch). Without this, Node throws an
+    // uncaught EPIPE error which kills the process and closes the left pane.
+    process.stdout.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code !== 'EPIPE') throw err;
+    });
+    process.stderr.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code !== 'EPIPE') throw err;
+    });
   } catch (error) {
     logger.error('Failed to start session', error);
     process.exit(1);

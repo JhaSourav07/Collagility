@@ -492,6 +492,19 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
 
     process.on('SIGINT', handleExit);
     process.on('SIGTERM', handleExit);
+
+    // Suppress SIGWINCH (terminal resize / tmux tab switch) so the left pane
+    // process never crashes from a zero-column resize event.
+    process.on('SIGWINCH', () => {});
+
+    // Swallow EPIPE on stdout/stderr — tmux briefly disconnects the pty on
+    // tab switch, which can trigger an EPIPE that would otherwise kill the process.
+    process.stdout.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code !== 'EPIPE') throw err;
+    });
+    process.stderr.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code !== 'EPIPE') throw err;
+    });
   } catch (error) {
     logger.error('Failed to join session', error);
     process.exit(1);
