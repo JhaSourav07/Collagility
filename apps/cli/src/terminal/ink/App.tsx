@@ -55,29 +55,35 @@ export const App: React.FC<AppProps> = ({
 }) => {
   const [activeOverlay, setActiveOverlay] = useState<OverlayType>(propOverlay);
 
-  // Global keybinding handler for Antigravity shortcuts
+  // Keybinding handler for global shortcuts
   useInput((input, key) => {
-    // Ctrl + K: Toggle subagents overview drawer
     if (key.ctrl && input.toLowerCase() === 'k') {
       setActiveOverlay((prev) => (prev === 'agents' ? 'none' : 'agents'));
       return;
     }
 
-    // Ctrl + L: Clear screen
     if (key.ctrl && input.toLowerCase() === 'l') {
       if (onClearScreen) onClearScreen();
       return;
     }
 
-    // Ctrl + D: Terminate session
     if (key.ctrl && input.toLowerCase() === 'd') {
       if (onExitSession) onExitSession();
       else onCommand('/leave');
       return;
     }
 
-    // Ctrl + C or Esc: Close overlays if open
-    if ((key.ctrl && input.toLowerCase() === 'c') || key.escape) {
+    if (key.ctrl && input.toLowerCase() === 'c') {
+      if (activeOverlay !== 'none') {
+        setActiveOverlay('none');
+      } else {
+        if (onExitSession) onExitSession();
+        else onCommand('/leave');
+      }
+      return;
+    }
+
+    if (key.escape) {
       if (activeOverlay !== 'none') {
         setActiveOverlay('none');
       }
@@ -109,7 +115,7 @@ export const App: React.FC<AppProps> = ({
       {/* Header Info Banner */}
       <Header session={session} aiDriver={aiDriver} subagents={subagents} />
 
-      {/* Active Overlay Modal / Subagent Drawer (if triggered via slash commands or shortcuts) */}
+      {/* Active Overlay Modal / Subagent Drawer */}
       {activeOverlay === 'config' && (
         <ConfigOverlay onClose={() => setActiveOverlay('none')} />
       )}
@@ -126,8 +132,8 @@ export const App: React.FC<AppProps> = ({
         <MCPOverlay onClose={() => setActiveOverlay('none')} />
       )}
 
-      {/* Single Continuous Terminal Timeline Stream */}
-      <Box flexDirection="column" width="100%" paddingY={1} minHeight={14}>
+      {/* Chat Pane */}
+      <Box flexDirection="column" width="100%" paddingY={1}>
         <ChatPane
           messages={messages}
           activities={activities}
@@ -136,20 +142,21 @@ export const App: React.FC<AppProps> = ({
           isOwner={session.userRole === 'owner'}
           queueCount={queueCount}
           onEditCommand={(cmd) => {
-            // Edit command feedback
             onCommand(`/edit-cmd ${cmd}`);
           }}
         />
+        <InputBar
+          onSubmit={handleCommandWrapped}
+          isDisabled={isInputBlocked}
+        />
       </Box>
 
-      {/* Bottom Developer Input Box */}
-      <InputBar onSubmit={handleCommandWrapped} isDisabled={isInputBlocked} />
-
-      {/* Bottom Status Bar with Live Security Mode & Token Badge */}
+      {/* Bottom Status Bar */}
       <Footer
         modelName={`${aiDriver.name} ${aiDriver.model}`}
         securityMode={aiDriver.securityMode || 'manual'}
         tokenStatus={aiDriver.tokenStatus}
+        isVisitor={session.userRole !== 'owner'}
         onCycleSecurityMode={onCycleSecurityMode}
       />
     </Box>

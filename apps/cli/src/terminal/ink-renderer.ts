@@ -31,6 +31,15 @@ export interface InkRendererOptions {
 export class InkTerminalRenderer {
   private instance: Instance | null = null;
   private commandHandler: CommandHandler | null = null;
+  private onExitSessionCallback: (() => void) | null = null;
+
+  public setCommandHandler(handler: CommandHandler): void {
+    this.commandHandler = handler;
+  }
+
+  public setOnExitSession(handler: () => void): void {
+    this.onExitSessionCallback = handler;
+  }
 
   private session: SessionInfoState = {
     id: 'active-session',
@@ -83,10 +92,6 @@ export class InkTerminalRenderer {
     if (options.initialActivities) {
       this.activities = options.initialActivities;
     }
-  }
-
-  public setCommandHandler(handler: CommandHandler): void {
-    this.commandHandler = handler;
   }
 
   public setSessionInfo(
@@ -328,7 +333,23 @@ export class InkTerminalRenderer {
           onClearScreen: () => {
             this.clearScreen();
           },
-        })
+          onExitSession: () => {
+            if (this.onExitSessionCallback) {
+              this.onExitSessionCallback();
+            } else if (this.commandHandler) {
+              this.commandHandler('/leave');
+            } else {
+              process.exit(0);
+            }
+          },
+        }),
+        {
+          // Do NOT let Ink exit the process on Ctrl+C — we own SIGINT.
+          // Do NOT patch console.log — avoid double-rendering bugs during
+          // tmux pane resize / terminal tab switches.
+          exitOnCtrlC: false,
+          patchConsole: false,
+        }
       );
     } else {
       this.rerender();
@@ -362,6 +383,15 @@ export class InkTerminalRenderer {
           },
           onClearScreen: () => {
             this.clearScreen();
+          },
+          onExitSession: () => {
+            if (this.onExitSessionCallback) {
+              this.onExitSessionCallback();
+            } else if (this.commandHandler) {
+              this.commandHandler('/leave');
+            } else {
+              process.exit(0);
+            }
           },
         })
       );

@@ -88,9 +88,6 @@ export class SplitTerminalRenderer {
   }
 
   public setFocus(_focus: PaneFocus): void {}
-  public toggleFocus(): PaneFocus {
-    return 'chat';
-  }
 
   public renderHeader(): void {
     if (this.headerRendered) return;

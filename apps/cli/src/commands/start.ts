@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import type { CLIConfig } from '../config/config.js';
 import { establishConnection } from '../client/connection.js';
 import { CLIProgressSpinner } from '../terminal/spinner.js';
@@ -19,6 +20,8 @@ import {
   AdapterRegistry,
 } from '@collagility/adapters';
 import { createStreamChunk } from '@collagility/stream';
+import { TmuxPromptRouter, isAiPrompt } from '../terminal/tmux/tmux-prompt-router.js';
+import { TmuxSession } from '../terminal/tmux/tmux-session.js';
 
 export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
   const logger = new CLILogger(options.verbose);
@@ -72,6 +75,14 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
     process.exit(1);
   }
 
+  const tmuxSessionName = process.env['COLLAGILITY_TMUX_SESSION'];
+  const tmuxSession = tmuxSessionName ? new TmuxSession() : null;
+  const promptRouter = tmuxSessionName ? new TmuxPromptRouter(tmuxSessionName, tmuxSession!) : null;
+
+  if (tmuxSessionName && adapter) {
+    adapter.setTmuxSession(tmuxSessionName, (s, p, k) => tmuxSession!.sendKeys(s, p, k));
+  }
+
   const spinner = new CLIProgressSpinner('Initializing multiplayer server connection...');
   const streamAccumulator = new Map<string, string>();
   spinner.start();
@@ -84,6 +95,37 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
         const sessionId = String(session['id']);
         const activeWorkspace = String(session['workspacePath'] || (session['metadata'] as any)?.['workspacePath'] || workspacePath);
 
+        const hostRightLog = process.env['COLLAGILITY_HOST_RIGHT_LOG'];
+        if (hostRightLog) {
+          let filePosition = 0;
+          if (fs.existsSync(hostRightLog)) {
+            try {
+              filePosition = fs.statSync(hostRightLog).size;
+            } catch {}
+          }
+
+          const logWatcherInterval = setInterval(() => {
+            if (!fs.existsSync(hostRightLog)) return;
+            try {
+              const stats = fs.statSync(hostRightLog);
+              if (stats.size > filePosition) {
+                const buffer = Buffer.alloc(stats.size - filePosition);
+                const fd = fs.openSync(hostRightLog, 'r');
+                fs.readSync(fd, buffer, 0, buffer.length, filePosition);
+                fs.closeSync(fd);
+                filePosition = stats.size;
+
+                const rawChunk = buffer.toString('utf-8');
+                if (rawChunk) {
+                  client.sendStreamChunk('host-right-terminal', rawChunk, binaryLabel);
+                }
+              }
+            } catch {}
+          }, 80);
+
+          process.on('exit', () => clearInterval(logWatcherInterval));
+        }
+
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();
           if (ink) {
@@ -95,6 +137,10 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
             ink.setAiDriverInfo(binaryLabel, defaultModel, 'Code');
             ink.appendMessage({ content: `Connected to server`, sender: 'System', senderRole: 'system' });
             ink.appendMessage({ content: `Session created: ${sessionId}`, sender: 'System', senderRole: 'system' });
+
+            ink.setOnExitSession(() => {
+              handleExit();
+            });
 
             ink.setCommandHandler((input: string) => {
               const trimmed = input.trim();
@@ -175,6 +221,10 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
                     return;
                   }
                 }
+              }
+
+              if (promptRouter && isAiPrompt(trimmed)) {
+                promptRouter.forwardPrompt(trimmed).catch(() => {});
               }
 
               if (trimmed.startsWith('/leave')) {
@@ -293,11 +343,9 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
 
       onStreamStarted: (payload) => {
         streamRenderer.onStreamStarted(payload.streamId, payload.adapterName, payload.prompt);
-        if (splitRenderer) {
-          const ink = splitRenderer.getInkRenderer();
-          if (ink) {
-            ink.startStreamMessage(payload.streamId, payload.adapterName || 'Gemini');
-          }
+
+        if (promptRouter && payload.prompt) {
+          promptRouter.forwardPrompt(payload.prompt).catch(() => {});
         }
 
         const reqName = payload.adapterName?.toLowerCase();
@@ -690,32 +738,34 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
       },
 
       onMemberJoined: (sessionId, memberId) => {
+        const displayId = memberId.includes('-') ? memberId.split('-')[0] : memberId.slice(0, 8);
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();
           if (ink) {
-            ink.appendActivity(`${memberId} joined`, 'join');
-            ink.addUser({ name: memberId });
+            ink.appendActivity(`${displayId} joined`, 'join');
+            ink.addUser({ name: displayId });
           }
         } else if (chatPrompt) {
-          const notice = TerminalRenderer.renderSystemMessage(`Member ${memberId} joined the session`);
+          const notice = TerminalRenderer.renderSystemMessage(`Member ${displayId} joined the session`);
           chatPrompt.printAbovePrompt(notice);
         } else {
-          logger.success(`Member ${colors.cyan(memberId)} joined session ${colors.code(sessionId)}`);
+          logger.success(`Member ${colors.cyan(displayId)} joined session ${colors.code(sessionId)}`);
         }
       },
 
       onMemberLeft: (sessionId, memberId, _isOwner) => {
+        const displayId = memberId.includes('-') ? memberId.split('-')[0] : memberId.slice(0, 8);
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();
           if (ink) {
-            ink.appendActivity(`${memberId} left`, 'leave');
-            ink.removeUser(memberId);
+            ink.appendActivity(`${displayId} left`, 'leave');
+            ink.removeUser(displayId);
           }
         } else if (chatPrompt) {
-          const notice = TerminalRenderer.renderSystemMessage(`Member ${memberId} left the session`);
+          const notice = TerminalRenderer.renderSystemMessage(`Member ${displayId} left the session`);
           chatPrompt.printAbovePrompt(notice);
         } else {
-          logger.info(`Member ${colors.cyan(memberId)} left session ${colors.code(sessionId)}`);
+          logger.info(`Member ${colors.cyan(displayId)} left session ${colors.code(sessionId)}`);
         }
       },
 
@@ -758,6 +808,25 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
 
     process.on('SIGINT', handleExit);
     process.on('SIGTERM', handleExit);
+
+    // SIGWINCH is fired on every terminal resize and on tmux tab switch.
+    // Node's default behaviour is to do nothing (it's not fatal), but some
+    // versions of Ink or readline internals re-throw on a zero-column resize.
+    // Explicitly no-op this signal so the left pane never dies from a resize.
+    process.on('SIGWINCH', () => {
+      // Ink's useStdout() picks up the new dimensions automatically on the
+      // next render cycle — no manual action needed here.
+    });
+
+    // Guard stdout/stderr against EPIPE (e.g. when tmux temporarily detaches
+    // the pseudo-terminal during a tab switch). Without this, Node throws an
+    // uncaught EPIPE error which kills the process and closes the left pane.
+    process.stdout.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code !== 'EPIPE') throw err;
+    });
+    process.stderr.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code !== 'EPIPE') throw err;
+    });
   } catch (error) {
     logger.error('Failed to start session', error);
     process.exit(1);

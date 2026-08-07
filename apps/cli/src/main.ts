@@ -9,7 +9,12 @@ import { leaveCommand } from './commands/leave.js';
 import { serverCommand } from './commands/server.js';
 import { sessionsCommand } from './commands/sessions.js';
 import { versionCommand } from './commands/version.js';
+import path from 'node:path';
+import os from 'node:os';
+import fs from 'node:fs';
 import { handleConfigCommand, handleConfigSetCommand } from './commands/config.js';
+import { checkTmuxAvailable } from './terminal/tmux/tmux-guard.js';
+import { TmuxSession } from './terminal/tmux/tmux-session.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -30,31 +35,152 @@ export function createProgram(): Command {
     .option('--cli-version <ver>', 'Specify or override AI CLI version')
     .option('-r, --resume <session>', 'Resume an existing collaboration session from disk checkpoint')
     .option('-m, --mock', 'Run in mock AI mode without spawning real CLI process')
+    .option('--pane <type>', 'Internal pane type identifier (e.g., chat)')
+    .option('--session-name <name>', 'Tmux session name')
     .action(async (cmdOpts) => {
+      if (cmdOpts.sessionName) {
+        process.env['COLLAGILITY_TMUX_SESSION'] = cmdOpts.sessionName;
+      }
+
+      if (cmdOpts.pane === 'chat' || process.env['COLLAGILITY_INTERNAL_PANE'] === 'chat') {
+        const opts = program.opts();
+        const config = createConfig({
+          serverUrl: opts.server,
+          verbose: opts.verbose,
+          autoReconnect: opts.reconnect,
+          cliBinary: cmdOpts.cli,
+          cliVersion: cmdOpts.cliVersion,
+          resumeSessionId: cmdOpts.resume,
+          mockMode: cmdOpts.mock,
+        });
+        await startCommand(config);
+        return;
+      }
+
+      const tmuxCheck = await checkTmuxAvailable();
+      if (!tmuxCheck.ok) {
+        console.error(`\n✖ ${tmuxCheck.reason}\n`);
+        process.exit(1);
+      }
+
       const opts = program.opts();
-      const config = createConfig({
-        serverUrl: opts.server,
-        verbose: opts.verbose,
-        autoReconnect: opts.reconnect,
-        cliBinary: cmdOpts.cli,
-        cliVersion: cmdOpts.cliVersion,
-        resumeSessionId: cmdOpts.resume,
-        mockMode: cmdOpts.mock,
-      });
-      await startCommand(config);
+      const sessionId =
+        cmdOpts.resume ||
+        `sess-${Math.random().toString(36).substring(2, 8)}`;
+      const sessionName = `collagility-${sessionId}`;
+      process.env['COLLAGILITY_TMUX_SESSION'] = sessionName;
+      const targetBinary = cmdOpts.cli || 'agy';
+      const logPath = path.join(os.tmpdir(), `${sessionName}-right.log`);
+      process.env['COLLAGILITY_HOST_RIGHT_LOG'] = logPath;
+
+      try {
+        fs.writeFileSync(logPath, '');
+      } catch {
+        // Ignore log file creation error
+      }
+
+      const leftCommand = [
+        process.argv[0],
+        process.argv[1],
+        'start',
+        '--pane',
+        'chat',
+        '--session-name',
+        sessionName,
+        ...(cmdOpts.cli ? ['--cli', cmdOpts.cli] : []),
+        ...(cmdOpts.cliVersion ? ['--cli-version', cmdOpts.cliVersion] : []),
+        ...(cmdOpts.resume ? ['--resume', cmdOpts.resume] : []),
+        ...(cmdOpts.mock ? ['--mock'] : []),
+        ...(opts.server ? ['--server', opts.server] : []),
+        ...(opts.verbose ? ['--verbose'] : []),
+      ];
+
+      const rightCommand = [targetBinary];
+
+      const tmuxSession = new TmuxSession();
+      try {
+        await tmuxSession.createSplitSession(sessionName, leftCommand, rightCommand, 62);
+        await tmuxSession.pipePane(sessionName, 1, logPath);
+        await tmuxSession.attach(sessionName);
+      } catch (err) {
+        console.error(`✖ Failed to start tmux session: ${err instanceof Error ? err.message : String(err)}`);
+        process.exit(1);
+      }
     });
 
   program
     .command('join <session>')
     .description('Join an existing active collaboration session by ID')
-    .action(async (sessionId: string) => {
+    .option('--pane <type>', 'Internal pane type identifier (e.g., chat)')
+    .option('--session-name <name>', 'Tmux session name (set internally)')
+    .action(async (sessionId: string, cmdOpts: { pane?: string; sessionName?: string }) => {
       const opts = program.opts();
-      const config = createConfig({
-        serverUrl: opts.server,
-        verbose: opts.verbose,
-        autoReconnect: opts.reconnect,
-      });
-      await joinCommand(sessionId, config);
+
+      // ── Internal: chat pane already inside a tmux split ──────────────────
+      if (cmdOpts.sessionName) {
+        process.env['COLLAGILITY_TMUX_SESSION'] = cmdOpts.sessionName;
+      }
+      if (cmdOpts.pane === 'chat' || process.env['COLLAGILITY_INTERNAL_PANE'] === 'chat') {
+        const config = createConfig({
+          serverUrl: opts.server,
+          verbose: opts.verbose,
+          autoReconnect: opts.reconnect,
+        });
+        await joinCommand(sessionId, config);
+        return;
+      }
+
+      // ── Outer: create tmux split so the visitor also gets a right pane ───
+      const tmuxCheck = await checkTmuxAvailable();
+      if (!tmuxCheck.ok) {
+        // tmux not available — fall back to single-pane join
+        const config = createConfig({
+          serverUrl: opts.server,
+          verbose: opts.verbose,
+          autoReconnect: opts.reconnect,
+        });
+        await joinCommand(sessionId, config);
+        return;
+      }
+
+      const sessionName = `collagility-join-${sessionId}`;
+      const logPath = path.join(os.tmpdir(), `${sessionName}-screenshare.log`);
+      try {
+        fs.writeFileSync(
+          logPath,
+          '\x1b[1;36m📺 LIVE AI SCREENSHARE\x1b[0m\n\x1b[2m(Streaming from host — zero tokens used)\x1b[0m\n\n'
+        );
+      } catch {
+        // Ignore log creation error
+      }
+
+      process.env['COLLAGILITY_TMUX_SESSION'] = sessionName;
+      process.env['COLLAGILITY_SCREENSHARE_LOG'] = logPath;
+
+      const leftCommand = [
+        process.argv[0],
+        process.argv[1],
+        'join',
+        sessionId,
+        '--pane',
+        'chat',
+        '--session-name',
+        sessionName,
+        ...(opts.server ? ['--server', opts.server] : []),
+        ...(opts.verbose ? ['--verbose'] : []),
+      ];
+
+      // Right pane streams real-time AI chunk output directly from log file
+      const rightCommand = ['tail', '-f', '-n', '+1', logPath];
+
+      const tmuxSession = new TmuxSession();
+      try {
+        await tmuxSession.createSplitSession(sessionName, leftCommand, rightCommand, 62);
+        await tmuxSession.attach(sessionName);
+      } catch (err) {
+        console.error(`✖ Failed to start screenshare session: ${err instanceof Error ? err.message : String(err)}`);
+        process.exit(1);
+      }
     });
 
   program

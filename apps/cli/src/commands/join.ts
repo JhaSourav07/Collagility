@@ -12,7 +12,9 @@ import { InteractivePromptRenderer } from '../terminal/interactive-prompt-render
 import { readPlanArtifact } from '../terminal/plan-reader.js';
 import { DocumentRenderer } from '@collagility/renderer';
 
+import fs from 'node:fs';
 import { createConfig } from '../config/config.js';
+import { TmuxSession } from '../terminal/tmux/tmux-session.js';
 
 export async function joinCommand(rawTarget: string, options: Partial<CLIConfig> = {}): Promise<void> {
   let targetSessionId = rawTarget.trim();
@@ -39,6 +41,10 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
   let chatPrompt: ChatPrompt | null = null;
   const streamAccumulator = new Map<string, string>();
 
+  const tmuxSessionName = process.env['COLLAGILITY_TMUX_SESSION'];
+  const tmuxSession = tmuxSessionName ? new TmuxSession() : null;
+  const screenshareLog = process.env['COLLAGILITY_SCREENSHARE_LOG'];
+
   spinner.start();
 
   try {
@@ -60,11 +66,15 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
               ownerId,
               members.map((m) => ({ name: m, isOwner: m === ownerId, isSelf: m === memberId }))
             );
-            ink.setAiDriverInfo('Gemini CLI', 'gemini-2.5-pro', 'Connected');
+            ink.setAiDriverInfo('Host AI (Screenshare)', 'Gemini 3.5 Flash', 'Remote Stream');
             ink.appendMessage({
-              content: `Connected to session ${sessionId} as Visitor. Observing AI stream.`,
+              content: `📺 Joined session '${sessionId}' via Live AI Screenshare. Zero local tokens required.`,
               sender: 'System',
               senderRole: 'system',
+            });
+
+            ink.setOnExitSession(() => {
+              handleExit();
             });
 
             ink.setCommandHandler((input: string) => {
@@ -160,8 +170,8 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
                 const reqName = trimmed.startsWith('@agi')
                   ? 'agi'
                   : trimmed.startsWith('@agy')
-                  ? 'agy'
-                  : 'gemini';
+                    ? 'agy'
+                    : 'gemini';
                 const promptText = trimmed.replace(/^(@agi|@agy|@gemini|\/gemini)\s*/, '');
                 client.sendAIPrompt(promptText || 'Hello AI', reqName);
               } else {
@@ -181,6 +191,19 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
       },
 
       onChatMessage: (msg: ChatRenderMessage) => {
+        if (
+          screenshareLog &&
+          msg.text &&
+          (msg.text.startsWith('@agy') || msg.text.startsWith('@agi') || msg.text.startsWith('@gemini'))
+        ) {
+          try {
+            const senderName =
+              msg.senderName && msg.senderName.includes('-')
+                ? msg.senderName.split('-')[0]
+                : msg.senderName || 'User';
+            fs.appendFileSync(screenshareLog, `\x1b[33m\n> ${senderName}: ${msg.text}\x1b[0m\n`);
+          } catch { }
+        }
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();
           if (ink) {
@@ -215,6 +238,16 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
       },
 
       onStreamStarted: (payload) => {
+        if (screenshareLog) {
+          try {
+            fs.appendFileSync(
+              screenshareLog,
+              `\n\x1b[36m--- AI Stream Started (${payload.adapterName || 'Host AI'}) ---\x1b[0m\n`
+            );
+          } catch { }
+        } else if (tmuxSessionName && tmuxSession) {
+          tmuxSession.writeToPane(tmuxSessionName, 1, `\n\n--- AI Stream Started (${payload.adapterName || 'Host AI'}) ---\n`).catch(() => { });
+        }
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();
           if (ink) {
@@ -230,6 +263,13 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
           const current = streamAccumulator.get(payload.streamId) || '';
           streamAccumulator.set(payload.streamId, current + payload.content);
         }
+        if (screenshareLog && payload.content) {
+          try {
+            fs.appendFileSync(screenshareLog, payload.content);
+          } catch { }
+        } else if (tmuxSessionName && tmuxSession && payload.content) {
+          tmuxSession.writeToPane(tmuxSessionName, 1, payload.content).catch(() => { });
+        }
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();
           if (ink && payload.content) {
@@ -243,6 +283,17 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
       onStreamCompleted: (payload) => {
         const fullContent = streamAccumulator.get(payload.streamId) || '';
         streamAccumulator.delete(payload.streamId);
+
+        if (screenshareLog) {
+          try {
+            fs.appendFileSync(
+              screenshareLog,
+              `\n\x1b[32m✓ Stream Finished (${payload.durationMs}ms)\x1b[0m\n\n`
+            );
+          } catch { }
+        } else if (tmuxSessionName && tmuxSession) {
+          tmuxSession.writeToPane(tmuxSessionName, 1, `\n--- Stream Finished (${payload.durationMs}ms) ---\n\n`).catch(() => { });
+        }
 
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();
@@ -424,32 +475,34 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
       },
 
       onMemberJoined: (_sessionId, newMemberId) => {
+        const displayId = newMemberId.includes('-') ? newMemberId.split('-')[0] : newMemberId.slice(0, 8);
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();
           if (ink) {
-            ink.appendActivity(`${newMemberId} joined`, 'join');
-            ink.addUser({ name: newMemberId });
+            ink.appendActivity(`${displayId} joined`, 'join');
+            ink.addUser({ name: displayId });
           }
         } else if (chatPrompt) {
-          chatPrompt.printAbovePrompt(TerminalRenderer.renderSystemMessage(`Member ${newMemberId} joined the session`));
+          chatPrompt.printAbovePrompt(TerminalRenderer.renderSystemMessage(`Member ${displayId} joined the session`));
         } else {
-          logger.success(`Member ${colors.cyan(newMemberId)} joined the session`);
+          logger.success(`Member ${colors.cyan(displayId)} joined the session`);
         }
       },
 
       onMemberLeft: (_sessionId, leftMemberId, isOwner) => {
+        const displayId = leftMemberId.includes('-') ? leftMemberId.split('-')[0] : leftMemberId.slice(0, 8);
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();
           if (ink) {
-            ink.appendActivity(`${leftMemberId} left`, 'leave');
-            ink.removeUser(leftMemberId);
+            ink.appendActivity(`${displayId} left`, 'leave');
+            ink.removeUser(displayId);
           }
         } else if (chatPrompt) {
           const ownerNotice = isOwner ? ' (Owner)' : '';
-          chatPrompt.printAbovePrompt(TerminalRenderer.renderSystemMessage(`Member ${leftMemberId}${ownerNotice} left the session`));
+          chatPrompt.printAbovePrompt(TerminalRenderer.renderSystemMessage(`Member ${displayId}${ownerNotice} left the session`));
         } else {
           const ownerNotice = isOwner ? ' (Owner)' : '';
-          logger.info(`Member ${colors.cyan(leftMemberId)}${ownerNotice} left the session`);
+          logger.info(`Member ${colors.cyan(displayId)}${ownerNotice} left the session`);
         }
       },
 
@@ -492,6 +545,19 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
 
     process.on('SIGINT', handleExit);
     process.on('SIGTERM', handleExit);
+
+    // Suppress SIGWINCH (terminal resize / tmux tab switch) so the left pane
+    // process never crashes from a zero-column resize event.
+    process.on('SIGWINCH', () => { });
+
+    // Swallow EPIPE on stdout/stderr — tmux briefly disconnects the pty on
+    // tab switch, which can trigger an EPIPE that would otherwise kill the process.
+    process.stdout.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code !== 'EPIPE') throw err;
+    });
+    process.stderr.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code !== 'EPIPE') throw err;
+    });
   } catch (error) {
     logger.error('Failed to join session', error);
     process.exit(1);
