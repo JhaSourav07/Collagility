@@ -4,6 +4,8 @@ import { VirtualScreen } from '@collagility/renderer';
 
 export interface RemotePaneProps {
   screenData?: string;
+  ptyLines?: string[];
+  isPtyMode?: boolean;
   cols?: number;
   rows?: number;
   statusText?: string;
@@ -46,13 +48,18 @@ export function formatRemoteScreenLines(
 
 export const RemotePane: React.FC<RemotePaneProps> = ({
   screenData = '',
+  ptyLines,
+  isPtyMode = false,
   cols = 80,
   rows = 24,
   statusText = '[Listening for host process...]',
 }) => {
   const renderedLines = useMemo(() => {
+    if (isPtyMode || (Array.isArray(ptyLines) && ptyLines.length > 0)) {
+      return ptyLines || [];
+    }
     return formatRemoteScreenLines(screenData, cols, rows);
-  }, [screenData, cols, rows]);
+  }, [screenData, ptyLines, isPtyMode, cols, rows]);
 
   if (!screenData || renderedLines.length === 0) {
     return (

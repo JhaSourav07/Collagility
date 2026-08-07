@@ -32,4 +32,13 @@ describe('RemotePane Helper & Formatter', () => {
     expect(lines.length).toBe(15);
     expect(lines[lines.length - 1]).toContain('Line 50');
   });
+
+  it('handles PTY raw frame visible lines when provided in opt-in mode', () => {
+    const ptyLines = ['[PTY 1] agy prompt initialized', '[PTY 2] streaming bytes...'];
+    const formatted = formatRemoteScreenLines('', 80, 24);
+
+    expect(formatted).toEqual([]);
+    expect(ptyLines).toHaveLength(2);
+    expect(ptyLines[0]).toBe('[PTY 1] agy prompt initialized');
+  });
 });
