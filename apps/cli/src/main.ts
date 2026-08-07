@@ -9,7 +9,7 @@ import { leaveCommand } from './commands/leave.js';
 import { serverCommand } from './commands/server.js';
 import { sessionsCommand } from './commands/sessions.js';
 import { versionCommand } from './commands/version.js';
-import { handleConfigCommand, handleConfigSetCommand } from './commands/config.js';
+import { checkTmuxAvailable } from './terminal/tmux/tmux-guard.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -31,6 +31,11 @@ export function createProgram(): Command {
     .option('-r, --resume <session>', 'Resume an existing collaboration session from disk checkpoint')
     .option('-m, --mock', 'Run in mock AI mode without spawning real CLI process')
     .action(async (cmdOpts) => {
+      const tmuxCheck = await checkTmuxAvailable();
+      if (!tmuxCheck.ok) {
+        console.error(`\n✖ ${tmuxCheck.reason}\n`);
+        process.exit(1);
+      }
       const opts = program.opts();
       const config = createConfig({
         serverUrl: opts.server,
