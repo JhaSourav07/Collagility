@@ -82,6 +82,9 @@ The Security Engine automatically categorizes tool calls and terminal commands i
 - `MEDIUM`: Standard project modifications (`write_to_file`, `mkdir`, `npm install`, `git commit`).
 - `HIGH`: Destructive or sensitive system actions (`rm -rf`, `sudo`, `chmod`, `kill`, path traversal `../`, piping remote scripts to shell).
 
+> [!IMPORTANT]
+> **Security Notice**: Risk classification is best-effort text pattern matching and does not act as an isolated sandbox or execution guarantee. Command obfuscation, shell substitution, or multi-step execution can bypass pattern heuristics. Users should not treat `auto` security mode as a hard security boundary for untrusted prompts.
+
 ---
 
 ## ⌨️ Slash Commands & Keyboard Shortcuts

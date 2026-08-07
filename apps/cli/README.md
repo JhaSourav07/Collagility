@@ -36,10 +36,10 @@ iwr -useb https://raw.githubusercontent.com/JhaSourav07/Collagility/main/install
 ### Option 3: Global NPM or NPX
 ```bash
 # Global Install
-npm install -g collagility@beta
+npm install -g collagility
 
 # Run without installing
-npx collagility@beta start
+npx collagility start
 ```
 
 ---
@@ -81,6 +81,9 @@ The Security Engine automatically categorizes tool calls and terminal commands i
 - `LOW`: Safe read-only operations (`ls`, `cat`, `grep`, `git status`, `view_file`, `search_web`).
 - `MEDIUM`: Standard project modifications (`write_to_file`, `mkdir`, `npm install`, `git commit`).
 - `HIGH`: Destructive or sensitive system actions (`rm -rf`, `sudo`, `chmod`, `kill`, path traversal `../`, piping remote scripts to shell).
+
+> [!IMPORTANT]
+> **Security Notice**: Risk classification is best-effort text pattern matching and does not act as an isolated sandbox or execution guarantee. Command obfuscation, shell substitution, or multi-step execution can bypass pattern heuristics. Users should not treat `auto` security mode as a hard security boundary for untrusted prompts.
 
 ---
 

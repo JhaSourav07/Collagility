@@ -330,7 +330,7 @@ export class AntigravityAIAdapter extends BaseAdapter {
       // Direct mock response mode
       const responseText = `[Antigravity Mock Response]: Processed prompt "${prompt}"`;
       this.responseBuffer = responseText;
-      this.emit('chunk' as any, responseText);
+      this.emit('chunk', responseText);
       this._status = 'ready';
 
       const evt = createAICompletedEvent(this.name, responseText, { provider: 'google-antigravity', mock: true });
@@ -360,67 +360,60 @@ export class AntigravityAIAdapter extends BaseAdapter {
         (ev.type !== 'TEXT' || ev.content.startsWith('▸ ')) && !ev.content.endsWith('\n')
           ? ev.content + '\n'
           : ev.content;
-      this.emit('chunk' as any, chunkContent);
+      this.emit('chunk', chunkContent);
     }
 
     switch (ev.type) {
       case 'THOUGHT':
-        this.emit('thought' as any, { content: ev.content });
+        this.emit('thought', { content: ev.content });
         break;
       case 'TOOL_CALL': {
         const toolName = ev.metadata?.toolName || 'run_command';
-        const command = (ev.metadata?.toolArgs as any)?.CommandLine || (ev.metadata?.toolArgs as any)?.command || ev.content;
+        const toolArgs = ev.metadata?.toolArgs as Record<string, string> | undefined;
+        const command = toolArgs?.CommandLine || toolArgs?.command || ev.content;
         const riskLevel = this.evaluateCommandRisk(command, toolName);
 
         this.interceptCommandPermission(toolName, command, { ...ev.metadata, riskLevel })
           .then(() => {
-            this.emit('tool_call' as any, {
+            this.emit('tool_call', {
               toolName,
-              toolArgs: ev.metadata?.toolArgs,
-              content: ev.content,
+              command,
               riskLevel,
+              metadata: {
+                toolArgs: ev.metadata?.toolArgs,
+                content: ev.content,
+              },
             });
           })
           .catch((err) => {
-            this.emit('error' as any, {
-              errorCode: 'PERMISSION_DENIED',
-              content: err instanceof Error ? err.message : String(err),
+            this.emit('error', {
+              message: err instanceof Error ? err.message : String(err),
+              details: { errorCode: 'PERMISSION_DENIED' },
             });
           });
         break;
       }
       case 'TOOL_ANALYSIS':
-        this.emit('tool_analysis' as any, {
-          toolName: ev.metadata?.toolName,
-          filePath: ev.metadata?.filePath,
-          lineRange: ev.metadata?.lineRange,
-          query: ev.metadata?.query,
+        this.emit('tool_analysis', {
           content: ev.content,
         });
         break;
       case 'TOOL_FILE_EDIT':
-        this.emit('tool_file_edit' as any, {
-          toolName: ev.metadata?.toolName,
-          targetFile: ev.metadata?.targetFile,
-          filePath: ev.metadata?.filePath,
-          addedLines: ev.metadata?.addedLines,
-          deletedLines: ev.metadata?.deletedLines,
-          patch: ev.metadata?.patch,
-          diffLines: ev.metadata?.diffLines,
-          content: ev.content,
+        this.emit('tool_file_edit', {
+          path: ev.metadata?.filePath || ev.metadata?.targetFile || '',
+          instruction: ev.content,
         });
         break;
       case 'FILE_CHANGE':
-        this.emit('file_change' as any, {
-          filePath: ev.metadata?.filePath,
-          changeType: ev.metadata?.changeType,
-          content: ev.content,
+        this.emit('file_change', {
+          path: ev.metadata?.filePath || '',
+          action: ev.metadata?.changeType || 'modified',
         });
         break;
       case 'ERROR':
-        this.emit('error' as any, {
-          errorCode: ev.metadata?.errorCode,
-          content: ev.content,
+        this.emit('error', {
+          message: ev.content,
+          details: ev.metadata,
         });
         break;
     }
@@ -453,7 +446,7 @@ export class AntigravityAIAdapter extends BaseAdapter {
       const line = text.endsWith('\n') ? text : `${text}\n`;
       this.childProcess.stdin.write(line);
     } else {
-      this.emit('chunk' as any, `[Antigravity Input]: ${text}\n`);
+      this.emit('chunk', `[Antigravity Input]: ${text}\n`);
     }
   }
 

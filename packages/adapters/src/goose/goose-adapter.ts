@@ -55,7 +55,7 @@ export class GooseAIAdapter extends AIAdapter {
   }
 
   public async sendInput(text: string): Promise<void> {
-    this.emit('chunk' as any, `[Goose Input]: ${text}\n`);
+    this.emit('chunk', `[Goose Input]: ${text}\n`);
   }
 
   public async cancel(): Promise<void> {

@@ -4,7 +4,7 @@
 $ErrorActionPreference = "Stop"
 
 Write-Host ""
-Write-Host "  ⚡ Collagility Beta Installer" -ForegroundColor Cyan
+Write-Host " Collagility Installer" -ForegroundColor Cyan
 Write-Host "  The Realtime Agentic Terminal for Collaborative AI Pair Programming" -ForegroundColor Cyan
 Write-Host ""
 

@@ -75,7 +75,6 @@ export abstract class AIAdapter extends EventEmitter {
   public isPermissionRequired(riskLevel: RiskLevel): boolean {
     switch (this._securityMode) {
       case 'auto':
-        return false;
       case 'accept-edits':
         return riskLevel === 'HIGH';
       case 'plan-only':
@@ -159,8 +158,8 @@ export abstract class AIAdapter extends EventEmitter {
     });
 
     // Emit typed permission required events
-    this.emit('permission_required' as any, envelope);
-    this.emit('PERMISSION_REQUIRED' as any, envelope);
+    this.emit('permission_required', envelope);
+    this.emit('PERMISSION_REQUIRED', envelope);
 
     const decision = await new Promise<PermissionDecision>((resolve) => {
       this._pendingPermissions.set(id, resolve);

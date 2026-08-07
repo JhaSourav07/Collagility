@@ -214,6 +214,9 @@ Cycle between modes with `Shift+Tab` (order: `manual` → `accept-edits` → `pl
 
 When your local mode allows a `HIGH`-risk action to auto-proceed only under explicit approval, Collagility shows a permission card you can answer with `y` (approve) / `n` (deny) / `e` (edit before approving). If a remote collaborator's turn requires approval, their answer is relayed back to your local session and Collagility injects the corresponding keystroke into the right pane on their behalf — they still never touch the pane directly. Full technical detail: [RFC-0009](RFC-0009-SECURITY-AND-PERMISSION-ENGINE.md).
 
+> [!IMPORTANT]
+> **Security Notice**: Risk classification is best-effort text pattern matching and does not act as an isolated sandbox or execution guarantee. Command obfuscation, shell substitution, or multi-step execution can bypass pattern heuristics. Users should not treat `auto` security mode as a hard security boundary for untrusted prompts.
+
 ---
 
 ## 8. Keyboard Shortcuts & Slash Commands

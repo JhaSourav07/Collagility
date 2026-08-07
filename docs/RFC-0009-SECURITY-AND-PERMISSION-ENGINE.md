@@ -31,7 +31,7 @@ graph TD
     LowCheck -- Yes --> Low["LOW RISK"]
     LowCheck -- No --> MedCheck{"File Edit / Safe Build CMD?"}
     MedCheck -- Yes --> Med["MEDIUM RISK"]
-    MedCheck -- No --> MedFallback["MEDIUM RISK (Default)"]
+    MedCheck -- No --> HighFallback["HIGH RISK (Default Fallback)"]
 ```
 
 ### Risk Level Definitions

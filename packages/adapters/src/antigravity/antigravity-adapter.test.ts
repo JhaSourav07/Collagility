@@ -85,10 +85,10 @@ describe('AntigravityAIAdapter', () => {
       const fileChangeListener = vi.fn();
       const chunkListener = vi.fn();
 
-      mockAdapter.on('thought' as any, thoughtListener);
-      mockAdapter.on('tool_call' as any, toolCallListener);
-      mockAdapter.on('file_change' as any, fileChangeListener);
-      mockAdapter.on('chunk' as any, chunkListener);
+      mockAdapter.on('thought', thoughtListener);
+      mockAdapter.on('tool_call', toolCallListener);
+      mockAdapter.on('file_change', fileChangeListener);
+      mockAdapter.on('chunk', chunkListener);
 
       const promptPromise = mockAdapter.sendPrompt('Refactor index.ts');
 
@@ -127,15 +127,17 @@ describe('AntigravityAIAdapter', () => {
       expect(thoughtListener).toHaveBeenCalledWith({ content: '> _Analyzing project structure..._' });
       expect(toolCallListener).toHaveBeenCalledWith({
         toolName: 'run_command',
-        toolArgs: { CommandLine: 'pnpm test' },
-        content: 'Executing command pnpm test',
+        command: 'pnpm test',
         riskLevel: 'MEDIUM',
+        metadata: {
+          toolArgs: { CommandLine: 'pnpm test' },
+          content: 'Executing command pnpm test',
+        },
       });
 
       expect(fileChangeListener).toHaveBeenCalledWith({
-        filePath: 'src/index.ts',
-        changeType: 'modified',
-        content: 'Updated index.ts file',
+        path: 'src/index.ts',
+        action: 'modified',
       });
       expect(chunkListener).toHaveBeenCalled();
       expect(result.type).toBe('ai.completed');
@@ -143,7 +145,7 @@ describe('AntigravityAIAdapter', () => {
 
     it('should send user input to stdin', async () => {
       const chunkListener = vi.fn();
-      adapter.on('chunk' as any, chunkListener);
+      adapter.on('chunk', chunkListener);
 
       await adapter.sendInput('yes');
 
@@ -236,8 +238,8 @@ describe('AntigravityAIAdapter', () => {
 
       const toolEditListener = vi.fn();
       const chunkListener = vi.fn();
-      mockAdapter.on('tool_file_edit' as any, toolEditListener);
-      mockAdapter.on('chunk' as any, chunkListener);
+      mockAdapter.on('tool_file_edit', toolEditListener);
+      mockAdapter.on('chunk', chunkListener);
 
       const promptPromise = mockAdapter.sendPrompt('Create hello.txt file edit');
 

@@ -23,7 +23,7 @@ describe('Tmux Permission Bridge & Risk Evaluator Integration', () => {
     adapter.setTmuxSession('collagility-test-session', mockSendKeys);
 
     let permId = '';
-    adapter.on('PERMISSION_REQUIRED' as any, (evt: any) => {
+    adapter.on('PERMISSION_REQUIRED', (evt) => {
       permId = evt.payload.id;
     });
 
@@ -46,7 +46,7 @@ describe('Tmux Permission Bridge & Risk Evaluator Integration', () => {
     adapter.setTmuxSession('collagility-test-session', mockSendKeys);
 
     let permId = '';
-    adapter.on('PERMISSION_REQUIRED' as any, (evt: any) => {
+    adapter.on('PERMISSION_REQUIRED', (evt) => {
       permId = evt.payload.id;
     });
 
