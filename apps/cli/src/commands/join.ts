@@ -13,6 +13,7 @@ import { readPlanArtifact } from '../terminal/plan-reader.js';
 import { DocumentRenderer } from '@collagility/renderer';
 
 import { createConfig } from '../config/config.js';
+import { TmuxSession } from '../terminal/tmux/tmux-session.js';
 
 export async function joinCommand(rawTarget: string, options: Partial<CLIConfig> = {}): Promise<void> {
   let targetSessionId = rawTarget.trim();
@@ -38,6 +39,9 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
   const spinner = new CLIProgressSpinner(`Connecting to ${config.serverUrl} to join session '${targetSessionId}'...`);
   let chatPrompt: ChatPrompt | null = null;
   const streamAccumulator = new Map<string, string>();
+
+  const tmuxSessionName = process.env['COLLAGILITY_TMUX_SESSION'];
+  const tmuxSession = tmuxSessionName ? new TmuxSession() : null;
 
   spinner.start();
 
@@ -215,6 +219,9 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
       },
 
       onStreamStarted: (payload) => {
+        if (tmuxSessionName && tmuxSession) {
+          tmuxSession.writeToPane(tmuxSessionName, 1, `\n\n--- AI Stream Started (${payload.adapterName || 'Host AI'}) ---\n`).catch(() => {});
+        }
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();
           if (ink) {
@@ -230,6 +237,9 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
           const current = streamAccumulator.get(payload.streamId) || '';
           streamAccumulator.set(payload.streamId, current + payload.content);
         }
+        if (tmuxSessionName && tmuxSession && payload.content) {
+          tmuxSession.writeToPane(tmuxSessionName, 1, payload.content).catch(() => {});
+        }
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();
           if (ink && payload.content) {
@@ -243,6 +253,10 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
       onStreamCompleted: (payload) => {
         const fullContent = streamAccumulator.get(payload.streamId) || '';
         streamAccumulator.delete(payload.streamId);
+
+        if (tmuxSessionName && tmuxSession) {
+          tmuxSession.writeToPane(tmuxSessionName, 1, `\n--- Stream Finished (${payload.durationMs}ms) ---\n\n`).catch(() => {});
+        }
 
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();

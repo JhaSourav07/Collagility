@@ -110,14 +110,74 @@ export function createProgram(): Command {
   program
     .command('join <session>')
     .description('Join an existing active collaboration session by ID')
-    .action(async (sessionId: string) => {
+    .option('--pane <type>', 'Internal pane type identifier (e.g., chat)')
+    .option('--session-name <name>', 'Tmux session name (set internally)')
+    .action(async (sessionId: string, cmdOpts: { pane?: string; sessionName?: string }) => {
       const opts = program.opts();
-      const config = createConfig({
-        serverUrl: opts.server,
-        verbose: opts.verbose,
-        autoReconnect: opts.reconnect,
-      });
-      await joinCommand(sessionId, config);
+
+      // ── Internal: chat pane already inside a tmux split ──────────────────
+      if (cmdOpts.sessionName) {
+        process.env['COLLAGILITY_TMUX_SESSION'] = cmdOpts.sessionName;
+      }
+      if (cmdOpts.pane === 'chat' || process.env['COLLAGILITY_INTERNAL_PANE'] === 'chat') {
+        const config = createConfig({
+          serverUrl: opts.server,
+          verbose: opts.verbose,
+          autoReconnect: opts.reconnect,
+        });
+        await joinCommand(sessionId, config);
+        return;
+      }
+
+      // ── Outer: create tmux split so the visitor also gets a right pane ───
+      const tmuxCheck = await checkTmuxAvailable();
+      if (!tmuxCheck.ok) {
+        // tmux not available — fall back to single-pane join
+        const config = createConfig({
+          serverUrl: opts.server,
+          verbose: opts.verbose,
+          autoReconnect: opts.reconnect,
+        });
+        await joinCommand(sessionId, config);
+        return;
+      }
+
+      const sessionName = `collagility-join-${sessionId}`;
+      process.env['COLLAGILITY_TMUX_SESSION'] = sessionName;
+
+      const leftCommand = [
+        process.argv[0],
+        process.argv[1],
+        'join',
+        sessionId,
+        '--pane',
+        'chat',
+        '--session-name',
+        sessionName,
+        ...(opts.server ? ['--server', opts.server] : []),
+        ...(opts.verbose ? ['--verbose'] : []),
+      ];
+
+      // Right pane: display a static header then block — the join command
+      // will echo live AI stream chunks into this pane via tmux send-keys -l.
+      const rightCommand = [
+        'bash',
+        '-c',
+        [
+          `printf '\\033[1;36m📺 LIVE AI SCREENSHARE\\033[0m\\n'`,
+          `printf '\\033[2m(Streaming from host — zero tokens used)\\033[0m\\n\\n'`,
+          `cat`,   // keep pane open and accepting input from send-keys -l
+        ].join(' && '),
+      ];
+
+      const tmuxSession = new TmuxSession();
+      try {
+        await tmuxSession.createSplitSession(sessionName, leftCommand, rightCommand, 62);
+        await tmuxSession.attach(sessionName);
+      } catch (err) {
+        console.error(`✖ Failed to start screenshare session: ${err instanceof Error ? err.message : String(err)}`);
+        process.exit(1);
+      }
     });
 
   program

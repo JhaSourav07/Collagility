@@ -97,6 +97,15 @@ export class TmuxSession {
     await this.runTmux(['send-keys', '-t', `${name}.${paneIndex}`, 'Enter']);
   }
 
+  /**
+   * Write raw text into a pane without pressing Enter.
+   * Used to stream AI output chunks into the visitor's right screenshare pane
+   * one chunk at a time, building up the response progressively.
+   */
+  public async writeToPane(name: string, paneIndex: 0 | 1, text: string): Promise<void> {
+    await this.runTmux(['send-keys', '-t', `${name}.${paneIndex}`, '-l', text]);
+  }
+
   public async pipePane(name: string, paneIndex: 0 | 1, targetPath: string): Promise<void> {
     await this.runTmux(['pipe-pane', '-t', `${name}.${paneIndex}`, '-O', `cat >> ${targetPath}`]);
   }
@@ -105,3 +114,4 @@ export class TmuxSession {
     await this.runTmux(['kill-session', '-t', name]);
   }
 }
+
