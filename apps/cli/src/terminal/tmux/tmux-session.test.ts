@@ -22,7 +22,7 @@ describe('TmuxSession', () => {
     expect(mockExecFile).toHaveBeenCalledWith('tmux', ['has-session', '-t', 'demo-session']);
   });
 
-  it('createSplitSession executes correct new-session and split-window argument arrays', async () => {
+  it('createSplitSession executes correct new-session, split-window with -d, and mouse off option', async () => {
     const mockExecFile = vi.fn().mockResolvedValue({ stdout: '', stderr: '' });
     const session = new TmuxSession(mockExecFile);
 
@@ -45,6 +45,7 @@ describe('TmuxSession', () => {
 
     expect(mockExecFile).toHaveBeenNthCalledWith(2, 'tmux', [
       'split-window',
+      '-d',
       '-h',
       '-t',
       'collagility-123',
@@ -53,6 +54,14 @@ describe('TmuxSession', () => {
       'agy',
       '--mode',
       'code',
+    ]);
+
+    expect(mockExecFile).toHaveBeenNthCalledWith(3, 'tmux', [
+      'set-window-option',
+      '-t',
+      'collagility-123',
+      'mouse',
+      'off',
     ]);
   });
 

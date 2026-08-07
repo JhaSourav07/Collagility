@@ -57,6 +57,7 @@ export class TmuxSession {
     await this.runTmux(['new-session', '-d', '-s', name, ...leftCommand]);
     await this.runTmux([
       'split-window',
+      '-d',
       '-h',
       '-t',
       name,
@@ -64,6 +65,11 @@ export class TmuxSession {
       String(rightPanePercent),
       ...rightCommand,
     ]);
+    // UX discouragement: Disable mouse selection so accidental clicks into the right pane
+    // do not grab focus away from the chat pane. This is not a hard security boundary —
+    // users with physical attach access can still switch panes via tmux prefix shortcuts
+    // (e.g. Ctrl+B Arrow), which is an accepted limitation for v1.
+    await this.runTmux(['set-window-option', '-t', name, 'mouse', 'off']);
   }
 
   public attach(name: string): Promise<number | null> {
