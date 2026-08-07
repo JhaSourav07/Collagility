@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "bin": {
-    "collagility": "./apps/cli/dist/main.js"
+    "collagility": "apps/cli/dist/main.js"
   },
   "description": "The Multiplayer Workspace for AI Coding Agents - Monorepo Root",
   "packageManager": "pnpm@9.15.4",

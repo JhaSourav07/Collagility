@@ -7,7 +7,7 @@
   "description": "Terminal CLI application for Collagility host and participant sessions",
   "type": "module",
   "bin": {
-    "collagility": "./dist/main.js"
+    "collagility": "dist/main.js"
   },
   "main": "./dist/main.js",
   "files": [
