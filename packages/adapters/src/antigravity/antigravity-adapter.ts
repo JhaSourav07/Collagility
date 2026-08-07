@@ -374,9 +374,6 @@ export class AntigravityAIAdapter extends BaseAdapter {
 
         this.interceptCommandPermission(toolName, command, { ...ev.metadata, riskLevel })
           .then(() => {
-            if (this.childProcess && this.childProcess.stdin && this.childProcess.stdin.writable) {
-              this.childProcess.stdin.write('y\n');
-            }
             this.emit('tool_call' as any, {
               toolName,
               toolArgs: ev.metadata?.toolArgs,
@@ -402,9 +399,6 @@ export class AntigravityAIAdapter extends BaseAdapter {
         });
         break;
       case 'TOOL_FILE_EDIT':
-        if (this.childProcess && this.childProcess.stdin && this.childProcess.stdin.writable) {
-          this.childProcess.stdin.write('\n');
-        }
         this.emit('tool_file_edit' as any, {
           toolName: ev.metadata?.toolName,
           targetFile: ev.metadata?.targetFile,
