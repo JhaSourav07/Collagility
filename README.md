@@ -8,6 +8,8 @@
 
 Collagility is an open-source multiplayer terminal workspace that turns local AI coding agents into real-time collaborative pair programming sessions. Connect your local CLI tools (`agy`, `gemini`, `claude`, `aider`, `goose`, `codex`) with remote collaborators, stream multi-step AI execution output token-by-token across every participant's terminal simultaneously, and manage security permissions with a built-in risk evaluation engine.
 
+📖 **New here?** This README is the quick pitch — [`docs/GUIDE.md`](docs/GUIDE.md) is the full manual: every command, every flag, security modes, LAN setup, and troubleshooting.
+
 ---
 
 ## ⚡ System Requirements
@@ -112,7 +114,7 @@ The Security Engine automatically categorizes tool calls and terminal commands i
 
 ## 🚀 Quick Start (Local Development)
 
-Ensure you have Node.js >=18 and pnpm >=8 installed.
+Ensure you have Node.js >=22 and pnpm >=9 installed (`corepack enable` will get you the right pnpm automatically).
 
 ```bash
 # 1. Clone repository
@@ -128,6 +130,10 @@ pnpm --filter @collagility/server start
 
 # 4. Host a new AI pair programming session (in another terminal)
 npx collagility start
+# 'host' also works as an alias: npx collagility host
+
+# No AI CLI installed yet? Try it with a simulated driver:
+npx collagility start --mock
 ```
 
 ## 🌐 User-Friendly Multi-Device LAN Setup

@@ -7,8 +7,8 @@ This guide provides instructions for installing, building, and configuring Colla
 ## 📋 Prerequisites
 
 ### Required Runtimes
-- **Node.js**: `>=18.0.0` (LTS recommended)
-- **pnpm**: `>=8.0.0` (`corepack enable` or `npm install -g pnpm`)
+- **Node.js**: `>=22.0.0`
+- **pnpm**: `>=9.0.0` (`corepack enable` or `npm install -g pnpm`)
 
 ### Optional AI Agent Executables
 Collagility includes a built-in mock mode (`--mock`), but for live AI pair programming you should have at least one AI CLI tool installed and accessible in your system `PATH`:
@@ -62,7 +62,7 @@ pnpm build
 ```bash
 pnpm --filter @collagility/server start
 ```
-By default, the server listens on `ws://127.0.0.1:8080/ws` (HTTP health check at `http://127.0.0.1:8080/health`).
+By default, the server binds to `0.0.0.0:8080` — it's already reachable on your LAN out of the box (`ws://<your-ip>:8080/ws`, HTTP health check at `http://<your-ip>:8080/health`). The `HOST`/`PORT` env vars below are only needed if you want to change that, not to enable LAN access in the first place.
 
 ### 2. Host a Session (Session Owner)
 In a new terminal window:

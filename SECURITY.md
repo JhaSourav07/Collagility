@@ -14,7 +14,7 @@
 We take the security of Collagility seriously. If you discover a security vulnerability, please follow our responsible disclosure process:
 
 1. **Do not create a public GitHub issue.**
-2. Send a detailed report to `security@collagility.dev` containing:
+2. Use GitHub's private vulnerability reporting: go to the [Security tab](https://github.com/JhaSourav07/Collagility/security) on this repository and select "Report a vulnerability." Include:
    - Description of the vulnerability.
    - Steps or proof-of-concept to reproduce.
    - Potential impact.

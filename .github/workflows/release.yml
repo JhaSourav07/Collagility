@@ -100,14 +100,5 @@ jobs:
 
             ---
 
-            ## Release Assets
-
-            | Platform | Architecture | File |
-            |---|---|---|
-            | Linux | x64 (AMD64) | `collagility-linux-x64.tar.gz` |
-            | Linux | arm64 (AArch64) | `collagility-linux-arm64.tar.gz` |
-            | macOS | Intel x64 | `collagility-macos-x64.tar.gz` |
-            | macOS | Apple Silicon (M1/M2/M3) | `collagility-macos-arm64.tar.gz` |
-            | Windows | x64 | `collagility-windows-x64.zip` |
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
