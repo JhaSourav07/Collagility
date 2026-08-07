@@ -45,6 +45,7 @@ export const EVENT_TYPES = {
   PTY_RESIZE: 'pty.resize',
   PTY_INPUT: 'pty.input',
   TERMINAL_SCREEN_STREAM: 'terminal.screen.stream',
+  TERMINAL_PTY_FRAME: 'terminal.pty.frame',
 
   // Interactive AI Agent Event Types
   AI_QUESTION: 'ai.question',

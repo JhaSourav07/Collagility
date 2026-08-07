@@ -1,5 +1,5 @@
-import { BaseEnvelopeSchema, TerminalScreenStreamPayloadSchema } from './schemas.js';
-import type { EventEnvelope, TerminalScreenStreamPayload } from './types.js';
+import { BaseEnvelopeSchema, TerminalScreenStreamPayloadSchema, TerminalPtyFramePayloadSchema } from './schemas.js';
+import type { EventEnvelope, TerminalScreenStreamPayload, TerminalPtyFramePayload } from './types.js';
 
 export interface ValidationResult<T = unknown> {
   success: boolean;
@@ -46,3 +46,17 @@ export function validateTerminalScreenStreamPayload(raw: unknown): { success: bo
   }
   return { success: true, data: result.data as TerminalScreenStreamPayload };
 }
+
+export function isTerminalPtyFramePayload(raw: unknown): raw is TerminalPtyFramePayload {
+  return TerminalPtyFramePayloadSchema.safeParse(raw).success;
+}
+
+export function validateTerminalPtyFramePayload(raw: unknown): { success: boolean; data?: TerminalPtyFramePayload; error?: string } {
+  const result = TerminalPtyFramePayloadSchema.safeParse(raw);
+  if (!result.success) {
+    const formatted = result.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
+    return { success: false, error: `Invalid terminal PTY frame payload: ${formatted}` };
+  }
+  return { success: true, data: result.data as TerminalPtyFramePayload };
+}
+

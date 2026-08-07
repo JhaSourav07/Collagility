@@ -80,3 +80,16 @@ export const TerminalScreenStreamPayloadSchema = z.object({
   rows: z.number().optional(),
   timestamp: z.number(),
 });
+
+export const TerminalPtyFramePayloadSchema = z.object({
+  sessionId: z.string(),
+  paneId: z.string().default('main'),
+  seq: z.number(),
+  encoding: z.enum(['utf8', 'base64']).default('utf8'),
+  data: z.string(),
+  isSnapshot: z.boolean().default(false),
+  cols: z.number().optional(),
+  rows: z.number().optional(),
+  timestamp: z.number(),
+});
+

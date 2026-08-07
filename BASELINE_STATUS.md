@@ -13,7 +13,7 @@
 |---|---|---|---|---|
 | **Install** | `pnpm install` | **PASS** | 10 workspace packages | Resolution up to date |
 | **Build** | `pnpm build` | **PASS** | 9 build targets | Clean build across all packages |
-| **Test** | `pnpm test` | **PASS** | 18 test files, 67 tests | 0 failing tests |
+| **Test** | `pnpm test` | **PASS** | 19 test files, 71 tests | 0 failing tests |
 | **Lint** | `pnpm lint` | **PASS** | 15 lint targets | 0 errors, 78 warnings (`@typescript-eslint/no-unused-vars`, `no-explicit-any`) |
 | **Coverage** | `pnpm test:coverage` | **PASS** | Configured via `@vitest/coverage-v8` | Tested on `apps/cli`, `packages/adapters`, `packages/renderer` |
 
@@ -44,15 +44,15 @@ Cached:    0 cached, 9 total
 ```text
 packages/types: 1 passed (1 test)
 packages/renderer: 1 passed (4 tests)
-packages/protocol: 17 passed (59 tests)
+packages/protocol: 2 passed (8 tests)
 packages/stream: 6 passed (16 tests)
 packages/adapters: 8 passed (64 tests)
 packages/sdk: 1 passed (1 test)
 apps/server: 9 passed (28 tests)
 apps/cli (collagility): 18 passed (67 tests)
 
-Test Files  18 passed (18)
-     Tests  67 passed (67)
+Test Files  19 passed (19)
+     Tests  71 passed (71)
   Duration  6.14s
 ```
 

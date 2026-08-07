@@ -25,6 +25,7 @@ import type {
   SessionPermissionRequestPayload,
   SessionPermissionResponsePayload,
   TerminalScreenStreamPayload,
+  TerminalPtyFramePayload,
 } from './types.js';
 
 
@@ -404,4 +405,16 @@ export function createSessionStreamHistoryEvent(
     sessionId: payload.sessionId,
   });
 }
+
+export function createTerminalPtyFrameEvent(
+  payload: TerminalPtyFramePayload,
+  sessionId?: string
+): EventEnvelope<TerminalPtyFramePayload> {
+  return createEnvelope(EVENT_TYPES.TERMINAL_PTY_FRAME, payload, {
+    sessionId: sessionId || payload.sessionId,
+    seq: payload.seq,
+    sender: { id: payload.paneId || 'main', name: 'Host PTY' },
+  });
+}
+
 

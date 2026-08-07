@@ -164,6 +164,18 @@ export interface TerminalScreenStreamPayload {
   timestamp: number;
 }
 
+export interface TerminalPtyFramePayload {
+  sessionId: string;
+  paneId?: string;
+  seq: number;
+  encoding?: 'utf8' | 'base64';
+  data: string;
+  isSnapshot?: boolean;
+  cols?: number;
+  rows?: number;
+  timestamp: number;
+}
+
 // Interactive AI Event Payloads
 export interface AIQuestionPayload {
   questionId: string;
