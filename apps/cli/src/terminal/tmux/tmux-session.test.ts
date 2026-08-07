@@ -22,7 +22,7 @@ describe('TmuxSession', () => {
     expect(mockExecFile).toHaveBeenCalledWith('tmux', ['has-session', '-t', 'demo-session']);
   });
 
-  it('createSplitSession executes correct new-session, split-window with -d, mouse off, and clean status line options', async () => {
+  it('createSplitSession executes correct new-session, split-window with -d, history-limit, mouse on, and clean status line options', async () => {
     const mockExecFile = vi.fn().mockResolvedValue({ stdout: '', stderr: '' });
     const session = new TmuxSession(mockExecFile);
 
@@ -57,14 +57,22 @@ describe('TmuxSession', () => {
     ]);
 
     expect(mockExecFile).toHaveBeenNthCalledWith(3, 'tmux', [
-      'set-window-option',
+      'set-option',
       '-t',
       'collagility-123',
-      'mouse',
-      'off',
+      'history-limit',
+      '50000',
     ]);
 
     expect(mockExecFile).toHaveBeenNthCalledWith(4, 'tmux', [
+      'set-option',
+      '-t',
+      'collagility-123',
+      'mouse',
+      'on',
+    ]);
+
+    expect(mockExecFile).toHaveBeenNthCalledWith(5, 'tmux', [
       'set-option',
       '-t',
       'collagility-123',
@@ -72,7 +80,7 @@ describe('TmuxSession', () => {
       ' ⚡ COLLAGILITY ',
     ]);
 
-    expect(mockExecFile).toHaveBeenNthCalledWith(5, 'tmux', [
+    expect(mockExecFile).toHaveBeenNthCalledWith(6, 'tmux', [
       'set-option',
       '-t',
       'collagility-123',

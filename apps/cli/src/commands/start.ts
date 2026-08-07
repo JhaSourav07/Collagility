@@ -307,12 +307,6 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
 
       onStreamStarted: (payload) => {
         streamRenderer.onStreamStarted(payload.streamId, payload.adapterName, payload.prompt);
-        if (splitRenderer) {
-          const ink = splitRenderer.getInkRenderer();
-          if (ink) {
-            ink.startStreamMessage(payload.streamId, payload.adapterName || 'Gemini');
-          }
-        }
 
         if (promptRouter && payload.prompt && isAiPrompt(payload.prompt)) {
           promptRouter.forwardPrompt(payload.prompt).catch(() => {});

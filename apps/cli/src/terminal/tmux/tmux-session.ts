@@ -65,11 +65,9 @@ export class TmuxSession {
       String(rightPanePercent),
       ...rightCommand,
     ]);
-    // UX discouragement: Disable mouse selection so accidental clicks into the right pane
-    // do not grab focus away from the chat pane. This is not a hard security boundary —
-    // users with physical attach access can still switch panes via tmux prefix shortcuts
-    // (e.g. Ctrl+B Arrow), which is an accepted limitation for v1.
-    await this.runTmux(['set-window-option', '-t', name, 'mouse', 'off']);
+    // Enable history scrollback limit and mouse support for pane scrolling
+    await this.runTmux(['set-option', '-t', name, 'history-limit', '50000']);
+    await this.runTmux(['set-option', '-t', name, 'mouse', 'on']);
     await this.runTmux(['set-option', '-t', name, 'status-left', ' ⚡ COLLAGILITY ']);
     await this.runTmux(['set-option', '-t', name, 'status-right', ' Ctrl+B D to detach ']);
   }
