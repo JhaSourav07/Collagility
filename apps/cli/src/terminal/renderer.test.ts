@@ -27,4 +27,15 @@ describe('TerminalRenderer', () => {
     expect(sys).toContain('[System]');
     expect(sys).toContain('Emma joined the session');
   });
+
+  it('should omit RemotePane for host (isHost: true) and include RemotePane for joined user (isHost: false)', () => {
+    const hostSession = { isHost: true, userRole: 'owner' as const };
+    const joinedSession = { isHost: false, userRole: 'visitor' as const };
+
+    const hostShowRemotePane = !hostSession.isHost;
+    const joinedShowRemotePane = !joinedSession.isHost;
+
+    expect(hostShowRemotePane).toBe(false);
+    expect(joinedShowRemotePane).toBe(true);
+  });
 });

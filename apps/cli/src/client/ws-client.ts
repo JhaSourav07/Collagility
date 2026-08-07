@@ -51,6 +51,8 @@ export interface WSClientEvents {
   onSelection?: (payload: any) => void;
   onConfirmation?: (payload: any) => void;
   onToolRequest?: (payload: any) => void;
+  onTerminalScreenStream?: (payload: any) => void;
+  onTerminalResize?: (payload: any) => void;
   onFrame?: (frame: IncomingFrame) => void;
   onError?: (error: string, code?: string) => void;
   onDisconnect?: (reason: string) => void;
@@ -292,6 +294,18 @@ export class WebSocketClient extends EventEmitter {
         break;
       }
 
+      case 'terminal.screen.stream':
+      case 'TERMINAL_SCREEN_STREAM': {
+        if (this.events.onTerminalScreenStream) this.events.onTerminalScreenStream(frame.payload);
+        break;
+      }
+
+      case 'pty.resize':
+      case 'TERMINAL_RESIZE': {
+        if (this.events.onTerminalResize) this.events.onTerminalResize(frame.payload);
+        break;
+      }
+
       case 'system.error':
       case 'session.error': {
         const payload = frame.payload as { error: string; code?: string };
@@ -299,6 +313,8 @@ export class WebSocketClient extends EventEmitter {
         break;
       }
     }
+
+    this.emit(frame.type, frame.payload);
   }
 
   public send(type: string, payload?: unknown): void {

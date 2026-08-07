@@ -9,6 +9,7 @@ import { PermissionsOverlay } from './overlays/PermissionsOverlay.js';
 import { SubagentDrawer } from './SubagentDrawer.js';
 import { ResumeOverlay } from './overlays/ResumeOverlay.js';
 import { MCPOverlay } from './overlays/MCPOverlay.js';
+import { RemotePane } from './RemotePane.js';
 import type {
   SessionInfoState,
   AIDriverState,
@@ -32,6 +33,9 @@ export interface AppProps {
   permissionPrompt?: PermissionPromptState | null;
   queueCount?: number;
   activeOverlay?: OverlayType;
+  remoteScreenData?: string;
+  remoteCols?: number;
+  remoteRows?: number;
   onCommand: CommandHandler;
   onCycleSecurityMode?: () => void;
   onClearScreen?: () => void;
@@ -48,6 +52,9 @@ export const App: React.FC<AppProps> = ({
   permissionPrompt,
   queueCount = 1,
   activeOverlay: propOverlay = 'none',
+  remoteScreenData,
+  remoteCols,
+  remoteRows,
   onCommand,
   onCycleSecurityMode,
   onClearScreen,
@@ -108,6 +115,8 @@ export const App: React.FC<AppProps> = ({
   };
 
   const isInputBlocked = Boolean(permissionPrompt) || activeOverlay !== 'none';
+  const isHost = session.isHost ?? (session.userRole === 'owner');
+  const showRemotePane = !isHost;
 
   return (
     <Box flexDirection="column" width="100%" paddingX={0}>
@@ -131,24 +140,56 @@ export const App: React.FC<AppProps> = ({
         <MCPOverlay onClose={() => setActiveOverlay('none')} />
       )}
 
-      {/* Chat Pane */}
-      <Box flexDirection="column" width="100%" paddingY={1}>
-        <ChatPane
-          messages={messages}
-          activities={activities}
-          interactivePrompt={interactivePrompt}
-          permissionPrompt={permissionPrompt}
-          isOwner={session.userRole === 'owner'}
-          queueCount={queueCount}
-          onEditCommand={(cmd) => {
-            onCommand(`/edit-cmd ${cmd}`);
-          }}
-        />
-        <InputBar
-          onSubmit={handleCommandWrapped}
-          isDisabled={isInputBlocked}
-        />
-      </Box>
+      {/* Main Split / Full Content Pane */}
+      {showRemotePane ? (
+        <Box flexDirection="row" width="100%" flexGrow={1} paddingY={1}>
+          {/* Left Chat Pane */}
+          <Box flexDirection="column" width="50%" paddingRight={1}>
+            <ChatPane
+              messages={messages}
+              activities={activities}
+              interactivePrompt={interactivePrompt}
+              permissionPrompt={permissionPrompt}
+              isOwner={session.userRole === 'owner'}
+              queueCount={queueCount}
+              onEditCommand={(cmd) => {
+                onCommand(`/edit-cmd ${cmd}`);
+              }}
+            />
+            <InputBar
+              onSubmit={handleCommandWrapped}
+              isDisabled={isInputBlocked}
+            />
+          </Box>
+
+          {/* Right Live Remote Terminal Pane */}
+          <Box flexDirection="column" width="50%" paddingLeft={1}>
+            <RemotePane
+              screenData={remoteScreenData}
+              cols={remoteCols}
+              rows={remoteRows}
+            />
+          </Box>
+        </Box>
+      ) : (
+        <Box flexDirection="column" width="100%" paddingY={1}>
+          <ChatPane
+            messages={messages}
+            activities={activities}
+            interactivePrompt={interactivePrompt}
+            permissionPrompt={permissionPrompt}
+            isOwner={session.userRole === 'owner'}
+            queueCount={queueCount}
+            onEditCommand={(cmd) => {
+              onCommand(`/edit-cmd ${cmd}`);
+            }}
+          />
+          <InputBar
+            onSubmit={handleCommandWrapped}
+            isDisabled={isInputBlocked}
+          />
+        </Box>
+      )}
 
       {/* Bottom Status Bar */}
       <Footer

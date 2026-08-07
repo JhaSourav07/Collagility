@@ -11,6 +11,7 @@ export interface SessionInfoState {
   ownerName: string;
   createdAgo: string;
   userRole: 'owner' | 'visitor';
+  isHost?: boolean;
   users: UserMember[];
   workspacePath?: string;
   version?: string;

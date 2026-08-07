@@ -438,6 +438,13 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
 
         const onStdoutData = (data: string) => {
           terminalStreamer.push(data);
+          if (splitRenderer) {
+            const ink = splitRenderer.getInkRenderer();
+            if (ink && data) {
+              const current = ink.getRemoteTerminalScreen();
+              ink.setRemoteTerminalScreen((current.data || '') + data);
+            }
+          }
         };
 
         targetAdapter.on('chunk' as any, onChunk);

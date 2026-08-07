@@ -46,6 +46,7 @@ export class InkTerminalRenderer {
     ownerName: process.env.USER || 'Sourav',
     createdAgo: 'Just now',
     userRole: 'owner',
+    isHost: true,
     users: [],
     workspacePath: process.cwd(),
     version: 'v2.0',
@@ -66,11 +67,15 @@ export class InkTerminalRenderer {
   private promptQueue: InteractivePromptState[] = [];
   private permissionQueue: PermissionPromptState[] = [];
   private subagents: SubagentTask[] = [];
+  private remoteScreenData = '';
+  private remoteCols = 80;
+  private remoteRows = 24;
 
   constructor(options: InkRendererOptions = {}) {
     if (options.sessionId) this.session.id = options.sessionId;
     if (options.isOwner !== undefined) {
       this.session.userRole = options.isOwner ? 'owner' : 'visitor';
+      this.session.isHost = options.isOwner;
     }
     if (options.ownerName) this.session.ownerName = options.ownerName;
     if (options.aiDriverName) this.aiDriver.name = options.aiDriverName;
@@ -102,6 +107,7 @@ export class InkTerminalRenderer {
   ): void {
     this.session.id = sessionId;
     this.session.userRole = isOwner ? 'owner' : 'visitor';
+    this.session.isHost = isOwner;
     this.session.ownerName = ownerName;
     if (users) {
       this.session.users = users;
@@ -152,6 +158,23 @@ export class InkTerminalRenderer {
   public setSubagents(tasks: SubagentTask[]): void {
     this.subagents = tasks;
     this.rerender();
+  }
+
+  public setRemoteTerminalScreen(data: string, cols?: number, rows?: number): void {
+    if (data) {
+      this.remoteScreenData = data;
+    }
+    if (cols) this.remoteCols = cols;
+    if (rows) this.remoteRows = rows;
+    this.rerender();
+  }
+
+  public getRemoteTerminalScreen(): { data: string; cols: number; rows: number } {
+    return {
+      data: this.remoteScreenData,
+      cols: this.remoteCols,
+      rows: this.remoteRows,
+    };
   }
 
   public pushPermissionPrompt(
@@ -326,6 +349,9 @@ export class InkTerminalRenderer {
           interactivePrompt: currentPrompt,
           permissionPrompt: currentPermission,
           queueCount: Math.max(this.promptQueue.length, this.permissionQueue.length),
+          remoteScreenData: this.remoteScreenData,
+          remoteCols: this.remoteCols,
+          remoteRows: this.remoteRows,
           onCommand: (input: string) => {
             if (this.commandHandler) {
               this.commandHandler(input);
@@ -377,6 +403,9 @@ export class InkTerminalRenderer {
           interactivePrompt: currentPrompt,
           permissionPrompt: currentPermission,
           queueCount: Math.max(this.promptQueue.length, this.permissionQueue.length),
+          remoteScreenData: this.remoteScreenData,
+          remoteCols: this.remoteCols,
+          remoteRows: this.remoteRows,
           onCommand: (input: string) => {
             if (this.commandHandler) {
               this.commandHandler(input);

@@ -96,8 +96,19 @@ function parseOrGenerateDiff(
     }
     patch = patchParts.join('\n');
   }
-
   return { patch, addedLines, deletedLines, diffLines };
+}
+
+function tryParseJsonWithExtraBraces(input: string): any | null {
+  let str = input.trim();
+  while (str.length > 0 && str.startsWith('{')) {
+    try {
+      return JSON.parse(str);
+    } catch {
+      str = str.slice(0, -1).trim();
+    }
+  }
+  return null;
 }
 
 export class AntigravityOutputParser {
@@ -117,24 +128,42 @@ export class AntigravityOutputParser {
    * Parse a single line from stdout or stderr with JSON filtering and event deduplication.
    */
   public parseLine(line: string): AntigravityParsedEvent {
-    const trimmed = line.trim();
-    if (!trimmed) {
+    let trimmed = line.trim();
+    if (!trimmed || /^\s*[\}\]\,\;]+\s*$/.test(trimmed)) {
       return { type: 'TEXT', content: '' };
     }
 
-    // Filter out unparsed or raw internal step_update/telemetry JSON lines
-    if (trimmed.includes('{"event":"step_update"') || trimmed.includes('{"event":"telemetry"')) {
-      if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
-        // Embedded raw JSON inside text line — strip JSON block
-        const cleaned = trimmed.replace(/\{"event":"(?:step_update|telemetry)".*?\}/g, '').trim();
-        if (!cleaned) {
-          return { type: 'TEXT', content: '' };
-        }
-        line = cleaned;
-      }
-    }
+    let event: AntigravityParsedEvent;
 
-    const event = this.parseLineInternal(line);
+    // Try extracting JSON payload if line starts with {
+    if (trimmed.startsWith('{')) {
+      const json = tryParseJsonWithExtraBraces(trimmed);
+      if (json) {
+        event = this.parseJsonObject(json);
+      } else {
+        event = this.parseLineInternal(trimmed);
+      }
+    } else if (trimmed.includes('{"event":') || trimmed.includes('{"step_type":') || trimmed.includes('{"type":')) {
+      const jsonMatch = trimmed.match(/\{"(?:event|step_type|type)":.*/);
+      if (jsonMatch) {
+        const json = tryParseJsonWithExtraBraces(jsonMatch[0]);
+        if (json) {
+          event = this.parseJsonObject(json);
+        } else {
+          const cleaned = trimmed
+            .replace(/\{"(?:event|step_type|type)":.*/, '')
+            .replace(/[\}\]\,]+$/, '')
+            .trim();
+          event = cleaned && !/^\s*[\}\]\,\;]+\s*$/.test(cleaned)
+            ? this.parseLineInternal(cleaned)
+            : { type: 'TEXT', content: '' };
+        }
+      } else {
+        event = this.parseLineInternal(trimmed);
+      }
+    } else {
+      event = this.parseLineInternal(trimmed);
+    }
 
     // Deduplicate consecutive identical structured events (excluding TEXT stream deltas)
     if (
@@ -157,451 +186,457 @@ export class AntigravityOutputParser {
     return event;
   }
 
+  private parseJsonObject(json: any): AntigravityParsedEvent {
+    // Handle agy stream-json top-level events: init, step_update, result
+    if (json.event === 'init') {
+      return {
+        type: 'TEXT',
+        content: '▸ Initializing Antigravity AI Session...',
+        metadata: { raw: json },
+      };
+    }
+
+    if (json.event === 'result' && json.result) {
+      const res = json.result;
+      const status = res.status || 'SUCCESS';
+      const responseText = res.response || '';
+      return {
+        type: 'COMPLETION',
+        content: responseText,
+        metadata: { status, usage: res.usage, raw: json },
+      };
+    }
+
+    if (json.event === 'step_update' && json.step_update) {
+      const su = json.step_update;
+      const stepType = su.step_type;
+      const state = su.state;
+      const toolInfo = su.tool_info || {};
+      const toolName = String(su.tool_name || toolInfo.name || toolInfo.tool_name || '').toLowerCase();
+      const params = toolInfo.parameters || su.parameters || {};
+
+      if (state === 'ERROR') {
+        const errObj = toolInfo.error || su.error || {};
+        const errorMsg = typeof errObj === 'string' ? errObj : (errObj.message || 'Tool execution error');
+        return {
+          type: 'ERROR',
+          content: `✖ Tool Error [${toolName || 'tool'}]: ${errorMsg}`,
+          metadata: { errorCode: 'TOOL_ERROR', raw: json },
+        };
+      }
+
+      if (stepType === 'tool') {
+        // File Analysis (view_file, grep_search, list_dir)
+        if (toolName === 'view_file' || toolName === 'grep_search' || toolName === 'list_dir' || toolName === 'list_directory' || toolName === 'read_url_content') {
+          const filePath = params.AbsolutePath || params.filePath || params.file || params.path || params.SearchPath;
+          const query = params.Query || params.query || params.term;
+          const startLine = params.StartLine || params.startLine;
+          const endLine = params.EndLine || params.endLine;
+          let lineRange: string | undefined;
+          if (startLine !== undefined || endLine !== undefined) {
+            lineRange = startLine !== undefined && endLine !== undefined ? `lines ${startLine}–${endLine}` : `line ${startLine}+`;
+          }
+          let content = '';
+          if (toolName.includes('grep') || toolName.includes('search')) {
+            content = `🔎 Searched workspace for "${query || ''}"`;
+          } else if (toolName.includes('list')) {
+            content = `📁 Listed directory ${filePath || 'workspace'}`;
+          } else {
+            content = `🔍 Analyzed ${filePath || 'file'}${lineRange ? ` (${lineRange})` : ''}`;
+          }
+          return {
+            type: 'TOOL_ANALYSIS',
+            content,
+            metadata: { toolName, filePath, startLine, endLine, lineRange, query, toolArgs: params, raw: json },
+          };
+        }
+
+        // File Edit (write_to_file, replace_file_content, multi_replace_file_content, edit_file)
+        if (toolName === 'write_to_file' || toolName === 'replace_file_content' || toolName === 'multi_replace_file_content' || toolName === 'edit_file' || toolName === 'write_file') {
+          const targetFile = params.TargetFile || params.targetFile || params.filePath || params.path || 'file';
+          const targetContent = params.TargetContent || params.targetContent;
+          const replacementContent = params.ReplacementContent || params.replacementContent || params.CodeContent || params.codeContent;
+          const patchInput = params.patch || params.diff;
+
+          const { patch, addedLines, deletedLines, diffLines } = parseOrGenerateDiff(
+            patchInput,
+            targetContent,
+            replacementContent,
+            params.addedLines,
+            params.deletedLines
+          );
+
+          return {
+            type: 'TOOL_FILE_EDIT',
+            content: `✏️ Edited ${targetFile} (+${addedLines} lines, -${deletedLines} lines)`,
+            metadata: { toolName, targetFile, filePath: targetFile, addedLines, deletedLines, patch, diffLines, toolArgs: params, raw: json },
+          };
+        }
+
+        // Command / General Tool Call (run_command)
+        const cmd = params.CommandLine || params.command || toolName;
+        return {
+          type: 'TOOL_CALL',
+          content: `Tool Call [${toolName}]: ${cmd}`,
+          metadata: { toolName, toolArgs: params, raw: json },
+        };
+      }
+
+      if (stepType === 'agent_response') {
+        const textDelta = su.text_delta || su.delta || su.content || su.text;
+        if (textDelta) {
+          return {
+            type: 'TEXT',
+            content: String(textDelta),
+            metadata: { raw: json },
+          };
+        }
+        if (su.usage && su.usage.thinking_tokens > 0) {
+          return {
+            type: 'THOUGHT',
+            content: `> _Multi-step reasoning (${su.usage.thinking_tokens} tokens)_`,
+            metadata: { raw: json },
+          };
+        }
+        return {
+          type: 'TEXT',
+          content: '',
+          metadata: { raw: json },
+        };
+      }
+
+      return {
+        type: 'TEXT',
+        content: '',
+        metadata: { raw: json },
+      };
+    }
+
+    const eventTypeStr = String(
+      json.type || json.event || json.kind || json.action || json.status || ''
+    ).toLowerCase();
+    const toolNameRaw = String(
+      json.toolName || json.tool_name || json.tool || json.name || ''
+    ).toLowerCase();
+
+    // SUBAGENT_SPAWNED
+    if (
+      eventTypeStr === 'subagent_spawned' ||
+      eventTypeStr === 'subagent_spawn' ||
+      eventTypeStr === 'subagent_start' ||
+      (json.subagentId && (json.action === 'spawn' || json.action === 'start' || json.event === 'spawned'))
+    ) {
+      const subagentId = json.subagentId || json.subagent_id || json.id || `subagent-${Date.now()}`;
+      const taskDescription = json.taskDescription || json.task || json.description || json.message || 'Background reasoning task';
+      const activeTool = json.activeTool || json.toolName || json.tool;
+
+      const workerState: SubagentWorkerState = {
+        id: subagentId,
+        taskDescription,
+        status: 'running',
+        activeTool,
+        progress: json.progress || 0,
+        outputLogs: [json.message || `Subagent ${subagentId} spawned for task: ${taskDescription}`],
+      };
+      this.subagentsMap.set(subagentId, workerState);
+
+      return {
+        type: 'SUBAGENT_SPAWNED',
+        content: `🤖 [Subagent ${subagentId}] Spawned: ${taskDescription}`,
+        metadata: {
+          subagentId,
+          taskDescription,
+          activeTool,
+          status: 'running',
+          progress: workerState.progress,
+          outputLogs: workerState.outputLogs,
+          raw: json,
+        },
+      };
+    }
+
+    // SUBAGENT_PROGRESS
+    if (
+      eventTypeStr === 'subagent_progress' ||
+      eventTypeStr === 'subagent_update' ||
+      (json.subagentId && (json.progress !== undefined || json.activeTool || json.log))
+    ) {
+      const subagentId = json.subagentId || json.subagent_id || json.id;
+      const existing: SubagentWorkerState = this.subagentsMap.get(subagentId) || {
+        id: subagentId,
+        taskDescription: json.taskDescription || json.task || 'Background task',
+        status: 'running',
+        outputLogs: [],
+      };
+
+      if (json.activeTool || json.toolName || json.tool) {
+        existing.activeTool = json.activeTool || json.toolName || json.tool;
+      }
+      if (json.progress !== undefined) {
+        existing.progress = json.progress;
+      }
+      if (json.log || json.message || json.output) {
+        existing.outputLogs.push(json.log || json.message || json.output);
+      }
+      existing.status = json.status || existing.status;
+      this.subagentsMap.set(subagentId, existing);
+
+      return {
+        type: 'SUBAGENT_PROGRESS',
+        content: `🤖 [Subagent ${subagentId}] ${existing.activeTool ? `Tool: ${existing.activeTool}` : 'Progressing...'}`,
+        metadata: {
+          subagentId,
+          taskDescription: existing.taskDescription,
+          activeTool: existing.activeTool,
+          status: existing.status,
+          progress: existing.progress,
+          outputLogs: existing.outputLogs,
+          raw: json,
+        },
+      };
+    }
+
+    // SUBAGENT_COMPLETED
+    if (
+      eventTypeStr === 'subagent_completed' ||
+      eventTypeStr === 'subagent_done' ||
+      eventTypeStr === 'subagent_finish' ||
+      (json.subagentId && (json.action === 'complete' || json.action === 'done' || json.status === 'completed'))
+    ) {
+      const subagentId = json.subagentId || json.subagent_id || json.id;
+      const existing: SubagentWorkerState = this.subagentsMap.get(subagentId) || {
+        id: subagentId,
+        taskDescription: json.taskDescription || json.task || 'Background task',
+        status: 'completed',
+        outputLogs: [],
+      };
+
+      existing.status = json.status === 'failed' ? 'failed' : 'completed';
+      existing.progress = 100;
+      if (json.result || json.message) {
+        existing.outputLogs.push(json.result || json.message);
+      }
+      this.subagentsMap.set(subagentId, existing);
+
+      return {
+        type: 'SUBAGENT_COMPLETED',
+        content: `✓ [Subagent ${subagentId}] Completed task: ${existing.taskDescription}`,
+        metadata: {
+          subagentId,
+          taskDescription: existing.taskDescription,
+          status: existing.status,
+          progress: 100,
+          outputLogs: existing.outputLogs,
+          raw: json,
+        },
+      };
+    }
+
+    // TOOL_ANALYSIS (file reading, searching, listing)
+    if (
+      eventTypeStr === 'tool_analysis' ||
+      eventTypeStr === 'file_read' ||
+      toolNameRaw === 'view_file' ||
+      toolNameRaw === 'viewfile' ||
+      toolNameRaw === 'grep_search' ||
+      toolNameRaw === 'grepsearch' ||
+      toolNameRaw === 'list_directory' ||
+      toolNameRaw === 'list_dir' ||
+      toolNameRaw === 'listdir' ||
+      toolNameRaw === 'search_web' ||
+      toolNameRaw === 'web_search'
+    ) {
+      const toolName = json.toolName || json.tool_name || json.tool || toolNameRaw || 'view_file';
+      const filePath = json.filePath || json.file_path || json.file || json.path || json.AbsolutePath || json.targetFile;
+      const startLine = json.startLine ?? json.StartLine ?? json.start_line;
+      const endLine = json.endLine ?? json.EndLine ?? json.end_line;
+      let lineRange = json.lineRange || json.line_range;
+      if (!lineRange && (startLine !== undefined || endLine !== undefined)) {
+        lineRange = startLine !== undefined && endLine !== undefined ? `lines ${startLine}–${endLine}` : `line ${startLine}+`;
+      }
+      const query = json.query || json.Query || json.search_path || json.term;
+
+      let content = json.content;
+      if (!content) {
+        if (toolName.includes('grep') || toolName.includes('search')) {
+          content = `🔎 Searched workspace for "${query || ''}"`;
+        } else if (toolName.includes('list')) {
+          content = `📁 Listed directory ${filePath || 'workspace'}`;
+        } else {
+          content = `🔍 Analyzed ${filePath || 'file'}${lineRange ? ` (${lineRange})` : ''}`;
+        }
+      }
+
+      return {
+        type: 'TOOL_ANALYSIS',
+        content,
+        metadata: {
+          toolName,
+          filePath,
+          startLine,
+          endLine,
+          lineRange,
+          query,
+          toolArgs: json.toolArgs || json.args || json.parameters || json,
+          raw: json,
+        },
+      };
+    }
+
+    // TOOL_FILE_EDIT (file modifications, edits, writes)
+    if (
+      eventTypeStr === 'tool_file_edit' ||
+      eventTypeStr === 'file_edit' ||
+      eventTypeStr === 'file_modification' ||
+      toolNameRaw === 'edit_file' ||
+      toolNameRaw === 'editfile' ||
+      toolNameRaw === 'write_file' ||
+      toolNameRaw === 'writefile' ||
+      toolNameRaw === 'replace_file' ||
+      toolNameRaw === 'replacefile' ||
+      toolNameRaw === 'write_to_file' ||
+      toolNameRaw === 'replace_file_content' ||
+      toolNameRaw === 'multi_replace_file_content'
+    ) {
+      const toolName = json.toolName || json.tool_name || json.tool || toolNameRaw || 'edit_file';
+      const targetFile = json.targetFile || json.TargetFile || json.filePath || json.file_path || json.file || json.path || 'file';
+      const targetContent = json.TargetContent || json.targetContent;
+      const replacementContent = json.ReplacementContent || json.replacementContent || json.CodeContent || json.codeContent;
+      const patchInput = json.patch || json.diff;
+
+      const { patch, addedLines, deletedLines, diffLines } = parseOrGenerateDiff(
+        patchInput,
+        targetContent,
+        replacementContent,
+        json.addedLines || json.additions,
+        json.deletedLines || json.deletions
+      );
+
+      const content = json.content || `✏️ Edited ${targetFile} (+${addedLines} lines, -${deletedLines} lines)`;
+
+      return {
+        type: 'TOOL_FILE_EDIT',
+        content,
+        metadata: {
+          toolName,
+          targetFile,
+          filePath: targetFile,
+          addedLines,
+          deletedLines,
+          patch,
+          diffLines,
+          toolArgs: json.toolArgs || json.args || json.parameters || json,
+          raw: json,
+        },
+      };
+    }
+
+    // THOUGHT
+    if (
+      eventTypeStr === 'thought' ||
+      eventTypeStr === 'thinking' ||
+      eventTypeStr === 'reasoning' ||
+      eventTypeStr === 'thought_chunk' ||
+      json.thought !== undefined ||
+      json.thinking !== undefined
+    ) {
+      const rawThought = json.content || json.thought || json.thinking || json.message || '';
+      const formattedThought = rawThought.startsWith('>') ? rawThought : `> _${rawThought}_`;
+
+      return {
+        type: 'THOUGHT',
+        content: formattedThought,
+        metadata: { rawThought, raw: json },
+      };
+    }
+
+    // TOOL_CALL (other tools, e.g. run_command)
+    if (
+      eventTypeStr === 'tool_call' ||
+      eventTypeStr === 'tool_use' ||
+      eventTypeStr === 'tool_request' ||
+      eventTypeStr === 'tool_execution' ||
+      eventTypeStr === 'tool' ||
+      json.toolName ||
+      json.tool_name ||
+      json.tool
+    ) {
+      const toolName = json.toolName || json.tool_name || json.tool || 'unknown_tool';
+      const toolArgs = json.toolArgs || json.args || json.input || json.parameters || {};
+      return {
+        type: 'TOOL_CALL',
+        content: json.content || `Tool Call: ${toolName}`,
+        metadata: { toolName, toolArgs, raw: json },
+      };
+    }
+
+    // FILE_CHANGE
+    if (
+      eventTypeStr === 'file_change' ||
+      eventTypeStr === 'file_mutation' ||
+      eventTypeStr === 'file_create' ||
+      eventTypeStr === 'file_delete'
+    ) {
+      const filePath = json.filePath || json.file_path || json.file || json.path;
+      let changeType: 'created' | 'modified' | 'deleted' = 'modified';
+      if (eventTypeStr.includes('create') || json.action === 'created') changeType = 'created';
+      if (eventTypeStr.includes('delete') || json.action === 'deleted') changeType = 'deleted';
+
+      return {
+        type: 'FILE_CHANGE',
+        content: json.content || `File Change [${changeType}]: ${filePath}`,
+        metadata: { filePath, changeType, raw: json },
+      };
+    }
+
+    // ERROR
+    if (
+      eventTypeStr === 'error' ||
+      eventTypeStr === 'err' ||
+      eventTypeStr === 'exception' ||
+      eventTypeStr === 'failure' ||
+      json.error !== undefined
+    ) {
+      const errorMsg = json.error || json.message || '';
+      let errorCode = json.errorCode || json.code || 'AGY_ERROR';
+      const errStr = typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg);
+      if (errStr.includes('Eligibility check failed') || errStr.includes('i/o timeout')) {
+        errorCode = 'NETWORK_ELIGIBILITY_ERROR';
+      }
+      return {
+        type: 'ERROR',
+        content: errStr,
+        metadata: { errorCode, raw: json },
+      };
+    }
+
+    // COMPLETION
+    if (eventTypeStr === 'completion' || eventTypeStr === 'done' || eventTypeStr === 'finished') {
+      return {
+        type: 'COMPLETION',
+        content: json.content || json.message || '',
+        metadata: { raw: json },
+      };
+    }
+
+    return {
+      type: 'TEXT',
+      content: json.content || json.text || json.text_delta || json.delta || '',
+      metadata: { raw: json },
+    };
+  }
+
   private parseLineInternal(line: string): AntigravityParsedEvent {
     const trimmed = line.trim();
     if (!trimmed) {
       return { type: 'TEXT', content: '' };
     }
 
-    // 1. Try parsing JSON stream event (e.g. from agy --output-format stream-json)
-    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-      try {
-        const json = JSON.parse(trimmed);
-
-        // Handle agy stream-json top-level events: init, step_update, result
-        if (json.event === 'init') {
-          return {
-            type: 'TEXT',
-            content: '▸ Initializing Antigravity AI Session...',
-            metadata: { raw: json },
-          };
-        }
-
-        if (json.event === 'result' && json.result) {
-          const res = json.result;
-          const status = res.status || 'SUCCESS';
-          const responseText = res.response || '';
-          return {
-            type: 'COMPLETION',
-            content: responseText,
-            metadata: { status, usage: res.usage, raw: json },
-          };
-        }
-
-        if (json.event === 'step_update' && json.step_update) {
-          const su = json.step_update;
-          const stepType = su.step_type;
-          const state = su.state;
-          const toolInfo = su.tool_info || {};
-          const toolName = String(su.tool_name || toolInfo.name || toolInfo.tool_name || '').toLowerCase();
-          const params = toolInfo.parameters || su.parameters || {};
-
-          if (state === 'ERROR') {
-            const errObj = toolInfo.error || su.error || {};
-            const errorMsg = typeof errObj === 'string' ? errObj : (errObj.message || 'Tool execution error');
-            return {
-              type: 'ERROR',
-              content: `✖ Tool Error [${toolName || 'tool'}]: ${errorMsg}`,
-              metadata: { errorCode: 'TOOL_ERROR', raw: json },
-            };
-          }
-
-          if (stepType === 'tool') {
-            // File Analysis (view_file, grep_search, list_dir)
-            if (toolName === 'view_file' || toolName === 'grep_search' || toolName === 'list_dir' || toolName === 'list_directory' || toolName === 'read_url_content') {
-              const filePath = params.AbsolutePath || params.filePath || params.file || params.path || params.SearchPath;
-              const query = params.Query || params.query || params.term;
-              const startLine = params.StartLine || params.startLine;
-              const endLine = params.EndLine || params.endLine;
-              let lineRange: string | undefined;
-              if (startLine !== undefined || endLine !== undefined) {
-                lineRange = startLine !== undefined && endLine !== undefined ? `lines ${startLine}–${endLine}` : `line ${startLine}+`;
-              }
-              let content = '';
-              if (toolName.includes('grep') || toolName.includes('search')) {
-                content = `🔎 Searched workspace for "${query || ''}"`;
-              } else if (toolName.includes('list')) {
-                content = `📁 Listed directory ${filePath || 'workspace'}`;
-              } else {
-                content = `🔍 Analyzed ${filePath || 'file'}${lineRange ? ` (${lineRange})` : ''}`;
-              }
-              return {
-                type: 'TOOL_ANALYSIS',
-                content,
-                metadata: { toolName, filePath, startLine, endLine, lineRange, query, toolArgs: params, raw: json },
-              };
-            }
-
-            // File Edit (write_to_file, replace_file_content, multi_replace_file_content, edit_file)
-            if (toolName === 'write_to_file' || toolName === 'replace_file_content' || toolName === 'multi_replace_file_content' || toolName === 'edit_file' || toolName === 'write_file') {
-              const targetFile = params.TargetFile || params.targetFile || params.filePath || params.path || 'file';
-              const targetContent = params.TargetContent || params.targetContent;
-              const replacementContent = params.ReplacementContent || params.replacementContent || params.CodeContent || params.codeContent;
-              const patchInput = params.patch || params.diff;
-
-              const { patch, addedLines, deletedLines, diffLines } = parseOrGenerateDiff(
-                patchInput,
-                targetContent,
-                replacementContent,
-                params.addedLines,
-                params.deletedLines
-              );
-
-              return {
-                type: 'TOOL_FILE_EDIT',
-                content: `✏️ Edited ${targetFile} (+${addedLines} lines, -${deletedLines} lines)`,
-                metadata: { toolName, targetFile, filePath: targetFile, addedLines, deletedLines, patch, diffLines, toolArgs: params, raw: json },
-              };
-            }
-
-            // Command / General Tool Call (run_command)
-            const cmd = params.CommandLine || params.command || toolName;
-            return {
-              type: 'TOOL_CALL',
-              content: `Tool Call [${toolName}]: ${cmd}`,
-              metadata: { toolName, toolArgs: params, raw: json },
-            };
-          }
-
-          if (stepType === 'agent_response') {
-            const textDelta = su.text_delta || su.delta || su.content || su.text;
-            if (textDelta) {
-              return {
-                type: 'TEXT',
-                content: String(textDelta),
-                metadata: { raw: json },
-              };
-            }
-            if (su.usage && su.usage.thinking_tokens > 0) {
-              return {
-                type: 'THOUGHT',
-                content: `> _Multi-step reasoning (${su.usage.thinking_tokens} tokens)_`,
-                metadata: { raw: json },
-              };
-            }
-            return {
-              type: 'TEXT',
-              content: '',
-              metadata: { raw: json },
-            };
-          }
-
-          // Any other step_update without matched tool/agent_response should yield empty TEXT
-          return {
-            type: 'TEXT',
-            content: '',
-            metadata: { raw: json },
-          };
-        }
-
-        const eventTypeStr = String(
-          json.type || json.event || json.kind || json.action || json.status || ''
-        ).toLowerCase();
-        const toolNameRaw = String(
-          json.toolName || json.tool_name || json.tool || json.name || ''
-        ).toLowerCase();
-
-        // SUBAGENT_SPAWNED
-        if (
-          eventTypeStr === 'subagent_spawned' ||
-          eventTypeStr === 'subagent_spawn' ||
-          eventTypeStr === 'subagent_start' ||
-          (json.subagentId && (json.action === 'spawn' || json.action === 'start' || json.event === 'spawned'))
-        ) {
-          const subagentId = json.subagentId || json.subagent_id || json.id || `subagent-${Date.now()}`;
-          const taskDescription = json.taskDescription || json.task || json.description || json.message || 'Background reasoning task';
-          const activeTool = json.activeTool || json.toolName || json.tool;
-
-          const workerState: SubagentWorkerState = {
-            id: subagentId,
-            taskDescription,
-            status: 'running',
-            activeTool,
-            progress: json.progress || 0,
-            outputLogs: [json.message || `Subagent ${subagentId} spawned for task: ${taskDescription}`],
-          };
-          this.subagentsMap.set(subagentId, workerState);
-
-          return {
-            type: 'SUBAGENT_SPAWNED',
-            content: `🤖 [Subagent ${subagentId}] Spawned: ${taskDescription}`,
-            metadata: {
-              subagentId,
-              taskDescription,
-              activeTool,
-              status: 'running',
-              progress: workerState.progress,
-              outputLogs: workerState.outputLogs,
-              raw: json,
-            },
-          };
-        }
-
-        // SUBAGENT_PROGRESS
-        if (
-          eventTypeStr === 'subagent_progress' ||
-          eventTypeStr === 'subagent_update' ||
-          (json.subagentId && (json.progress !== undefined || json.activeTool || json.log))
-        ) {
-          const subagentId = json.subagentId || json.subagent_id || json.id;
-          const existing: SubagentWorkerState = this.subagentsMap.get(subagentId) || {
-            id: subagentId,
-            taskDescription: json.taskDescription || json.task || 'Background task',
-            status: 'running',
-            outputLogs: [],
-          };
-
-          if (json.activeTool || json.toolName || json.tool) {
-            existing.activeTool = json.activeTool || json.toolName || json.tool;
-          }
-          if (json.progress !== undefined) {
-            existing.progress = json.progress;
-          }
-          if (json.log || json.message || json.output) {
-            existing.outputLogs.push(json.log || json.message || json.output);
-          }
-          existing.status = json.status || existing.status;
-          this.subagentsMap.set(subagentId, existing);
-
-          return {
-            type: 'SUBAGENT_PROGRESS',
-            content: `🤖 [Subagent ${subagentId}] ${existing.activeTool ? `Tool: ${existing.activeTool}` : 'Progressing...'}`,
-            metadata: {
-              subagentId,
-              taskDescription: existing.taskDescription,
-              activeTool: existing.activeTool,
-              status: existing.status,
-              progress: existing.progress,
-              outputLogs: existing.outputLogs,
-              raw: json,
-            },
-          };
-        }
-
-        // SUBAGENT_COMPLETED
-        if (
-          eventTypeStr === 'subagent_completed' ||
-          eventTypeStr === 'subagent_done' ||
-          eventTypeStr === 'subagent_finish' ||
-          (json.subagentId && (json.action === 'complete' || json.action === 'done' || json.status === 'completed'))
-        ) {
-          const subagentId = json.subagentId || json.subagent_id || json.id;
-          const existing: SubagentWorkerState = this.subagentsMap.get(subagentId) || {
-            id: subagentId,
-            taskDescription: json.taskDescription || json.task || 'Background task',
-            status: 'completed',
-            outputLogs: [],
-          };
-
-          existing.status = json.status === 'failed' ? 'failed' : 'completed';
-          existing.progress = 100;
-          if (json.result || json.message) {
-            existing.outputLogs.push(json.result || json.message);
-          }
-          this.subagentsMap.set(subagentId, existing);
-
-          return {
-            type: 'SUBAGENT_COMPLETED',
-            content: `✓ [Subagent ${subagentId}] Completed task: ${existing.taskDescription}`,
-            metadata: {
-              subagentId,
-              taskDescription: existing.taskDescription,
-              status: existing.status,
-              progress: 100,
-              outputLogs: existing.outputLogs,
-              raw: json,
-            },
-          };
-        }
-
-        // TOOL_ANALYSIS (file reading, searching, listing)
-        if (
-          eventTypeStr === 'tool_analysis' ||
-          eventTypeStr === 'file_read' ||
-          toolNameRaw === 'view_file' ||
-          toolNameRaw === 'viewfile' ||
-          toolNameRaw === 'grep_search' ||
-          toolNameRaw === 'grepsearch' ||
-          toolNameRaw === 'list_directory' ||
-          toolNameRaw === 'list_dir' ||
-          toolNameRaw === 'listdir' ||
-          toolNameRaw === 'search_web' ||
-          toolNameRaw === 'web_search'
-        ) {
-          const toolName = json.toolName || json.tool_name || json.tool || toolNameRaw || 'view_file';
-          const filePath = json.filePath || json.file_path || json.file || json.path || json.AbsolutePath || json.targetFile;
-          const startLine = json.startLine ?? json.StartLine ?? json.start_line;
-          const endLine = json.endLine ?? json.EndLine ?? json.end_line;
-          let lineRange = json.lineRange || json.line_range;
-          if (!lineRange && (startLine !== undefined || endLine !== undefined)) {
-            lineRange = startLine !== undefined && endLine !== undefined ? `lines ${startLine}–${endLine}` : `line ${startLine}+`;
-          }
-          const query = json.query || json.Query || json.search_path || json.term;
-
-          let content = json.content;
-          if (!content) {
-            if (toolName.includes('grep') || toolName.includes('search')) {
-              content = `🔎 Searched workspace for "${query || ''}"`;
-            } else if (toolName.includes('list')) {
-              content = `📁 Listed directory ${filePath || 'workspace'}`;
-            } else {
-              content = `🔍 Analyzed ${filePath || 'file'}${lineRange ? ` (${lineRange})` : ''}`;
-            }
-          }
-
-          return {
-            type: 'TOOL_ANALYSIS',
-            content,
-            metadata: {
-              toolName,
-              filePath,
-              startLine,
-              endLine,
-              lineRange,
-              query,
-              toolArgs: json.toolArgs || json.args || json.parameters || json,
-              raw: json,
-            },
-          };
-        }
-
-        // TOOL_FILE_EDIT (file modifications, edits, writes)
-        if (
-          eventTypeStr === 'tool_file_edit' ||
-          eventTypeStr === 'file_edit' ||
-          eventTypeStr === 'file_modification' ||
-          toolNameRaw === 'edit_file' ||
-          toolNameRaw === 'editfile' ||
-          toolNameRaw === 'write_file' ||
-          toolNameRaw === 'writefile' ||
-          toolNameRaw === 'replace_file' ||
-          toolNameRaw === 'replacefile' ||
-          toolNameRaw === 'write_to_file' ||
-          toolNameRaw === 'replace_file_content' ||
-          toolNameRaw === 'multi_replace_file_content'
-        ) {
-          const toolName = json.toolName || json.tool_name || json.tool || toolNameRaw || 'edit_file';
-          const targetFile = json.targetFile || json.TargetFile || json.filePath || json.file_path || json.file || json.path || 'file';
-          const targetContent = json.TargetContent || json.targetContent;
-          const replacementContent = json.ReplacementContent || json.replacementContent || json.CodeContent || json.codeContent;
-          const patchInput = json.patch || json.diff;
-
-          const { patch, addedLines, deletedLines, diffLines } = parseOrGenerateDiff(
-            patchInput,
-            targetContent,
-            replacementContent,
-            json.addedLines || json.additions,
-            json.deletedLines || json.deletions
-          );
-
-          const content = json.content || `✏️ Edited ${targetFile} (+${addedLines} lines, -${deletedLines} lines)`;
-
-          return {
-            type: 'TOOL_FILE_EDIT',
-            content,
-            metadata: {
-              toolName,
-              targetFile,
-              filePath: targetFile,
-              addedLines,
-              deletedLines,
-              patch,
-              diffLines,
-              toolArgs: json.toolArgs || json.args || json.parameters || json,
-              raw: json,
-            },
-          };
-        }
-
-        // THOUGHT
-        if (
-          eventTypeStr === 'thought' ||
-          eventTypeStr === 'thinking' ||
-          eventTypeStr === 'reasoning' ||
-          eventTypeStr === 'thought_chunk' ||
-          json.thought !== undefined ||
-          json.thinking !== undefined
-        ) {
-          const rawThought = json.content || json.thought || json.thinking || json.message || trimmed;
-          const formattedThought = rawThought.startsWith('>') ? rawThought : `> _${rawThought}_`;
-
-          return {
-            type: 'THOUGHT',
-            content: formattedThought,
-            metadata: { rawThought, raw: json },
-          };
-        }
-
-        // TOOL_CALL (other tools, e.g. run_command)
-        if (
-          eventTypeStr === 'tool_call' ||
-          eventTypeStr === 'tool_use' ||
-          eventTypeStr === 'tool_request' ||
-          eventTypeStr === 'tool_execution' ||
-          eventTypeStr === 'tool' ||
-          json.toolName ||
-          json.tool_name ||
-          json.tool
-        ) {
-          const toolName = json.toolName || json.tool_name || json.tool || 'unknown_tool';
-          const toolArgs = json.toolArgs || json.args || json.input || json.parameters || {};
-          return {
-            type: 'TOOL_CALL',
-            content: json.content || `Tool Call: ${toolName}`,
-            metadata: { toolName, toolArgs, raw: json },
-          };
-        }
-
-        // FILE_CHANGE
-        if (
-          eventTypeStr === 'file_change' ||
-          eventTypeStr === 'file_mutation' ||
-          eventTypeStr === 'file_create' ||
-          eventTypeStr === 'file_delete'
-        ) {
-          const filePath = json.filePath || json.file_path || json.file || json.path;
-          let changeType: 'created' | 'modified' | 'deleted' = 'modified';
-          if (eventTypeStr.includes('create') || json.action === 'created') changeType = 'created';
-          if (eventTypeStr.includes('delete') || json.action === 'deleted') changeType = 'deleted';
-
-          return {
-            type: 'FILE_CHANGE',
-            content: json.content || `File Change [${changeType}]: ${filePath}`,
-            metadata: { filePath, changeType, raw: json },
-          };
-        }
-
-        // ERROR
-        if (
-          eventTypeStr === 'error' ||
-          eventTypeStr === 'err' ||
-          eventTypeStr === 'exception' ||
-          eventTypeStr === 'failure' ||
-          json.error !== undefined
-        ) {
-          const errorMsg = json.error || json.message || trimmed;
-          let errorCode = json.errorCode || json.code || 'AGY_ERROR';
-          const errStr = typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg);
-          if (errStr.includes('Eligibility check failed') || errStr.includes('i/o timeout')) {
-            errorCode = 'NETWORK_ELIGIBILITY_ERROR';
-          }
-          return {
-            type: 'ERROR',
-            content: errStr,
-            metadata: { errorCode, raw: json },
-          };
-        }
-
-        // COMPLETION
-        if (eventTypeStr === 'completion' || eventTypeStr === 'done' || eventTypeStr === 'finished') {
-          return {
-            type: 'COMPLETION',
-            content: json.content || json.message || trimmed,
-            metadata: { raw: json },
-          };
-        }
-      } catch {
-        // Fall back to plain text parsing if JSON parse fails
+    // 1. Try parsing JSON stream event
+    if (trimmed.startsWith('{')) {
+      const json = tryParseJsonWithExtraBraces(trimmed);
+      if (json) {
+        return this.parseJsonObject(json);
       }
     }
 

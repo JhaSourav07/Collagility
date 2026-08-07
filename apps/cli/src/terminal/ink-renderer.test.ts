@@ -47,4 +47,19 @@ describe('InkTerminalRenderer', () => {
 
     expect(renderer).toBeDefined();
   });
+
+  it('should accept and store incoming remote terminal screen data and dimensions', () => {
+    const renderer = new InkTerminalRenderer({
+      sessionId: 'test-session',
+      isOwner: false,
+    });
+
+    const ansiData = '\x1b[32m[agy]\x1b[0m Running build task...\n✓ Done in 1.2s';
+    renderer.setRemoteTerminalScreen(ansiData, 100, 30);
+
+    const screenState = renderer.getRemoteTerminalScreen();
+    expect(screenState.data).toBe(ansiData);
+    expect(screenState.cols).toBe(100);
+    expect(screenState.rows).toBe(30);
+  });
 });

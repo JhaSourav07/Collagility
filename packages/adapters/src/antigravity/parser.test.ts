@@ -170,6 +170,16 @@ describe('AntigravityOutputParser Subagent & Tool Events', () => {
     expect(parsed.content).toBe('');
   });
 
+  it('should strip raw step_update JSON chunks with trailing braces without leaving orphan closing braces', () => {
+    const parser = new AntigravityOutputParser();
+
+    const rawChunkWithExtraBraces = '{"event":"step_update","step_update":{"step_type":"system"}}}}\n   }}\n';
+    const parsed = parser.parseLine(rawChunkWithExtraBraces);
+
+    expect(parsed.content).toBe('');
+    expect(parsed.content).not.toContain('}}');
+  });
+
   it('should extract text_delta from agent_response step_update', () => {
     const parser = new AntigravityOutputParser();
 

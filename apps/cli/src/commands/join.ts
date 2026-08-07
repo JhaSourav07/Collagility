@@ -68,7 +68,7 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
             );
             ink.setAiDriverInfo('Host AI (Screenshare)', 'Gemini 3.5 Flash', 'Remote Stream');
             ink.appendMessage({
-              content: `📺 Joined session '${sessionId}' via Live AI Screenshare. Zero local tokens required.`,
+              content: `📺 Joined session '${sessionId}'. Live AI Mirror active.`,
               sender: 'System',
               senderRole: 'system',
             });
@@ -509,6 +509,25 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
         } else {
           const ownerNotice = isOwner ? ' (Owner)' : '';
           logger.info(`Member ${colors.cyan(displayId)}${ownerNotice} left the session`);
+        }
+      },
+
+      onTerminalScreenStream: (payload) => {
+        if (splitRenderer) {
+          const ink = splitRenderer.getInkRenderer();
+          if (ink && payload?.data) {
+            ink.setRemoteTerminalScreen(payload.data, payload.cols, payload.rows);
+          }
+        }
+      },
+
+      onTerminalResize: (payload) => {
+        if (splitRenderer) {
+          const ink = splitRenderer.getInkRenderer();
+          if (ink && payload?.cols && payload?.rows) {
+            const current = ink.getRemoteTerminalScreen();
+            ink.setRemoteTerminalScreen(current.data, payload.cols, payload.rows);
+          }
         }
       },
 

@@ -263,10 +263,12 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
         }
 
         // User Chat Message
-        const displaySender =
-          event.sender && event.sender.includes('-')
+        const rawSender =
+          (event.sender && event.sender.includes('-')
             ? event.sender.split('-')[0]
-            : event.sender;
+            : event.sender) || 'User';
+        const displaySender =
+          rawSender.length > 8 ? rawSender.slice(0, 8) : rawSender;
 
         return (
           <Box key={event.id} gap={1} marginY={0.2}>
