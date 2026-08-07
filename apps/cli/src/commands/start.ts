@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import type { CLIConfig } from '../config/config.js';
 import { establishConnection } from '../client/connection.js';
 import { CLIProgressSpinner } from '../terminal/spinner.js';
@@ -93,6 +94,37 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
         const members = Array.isArray(session['members']) ? session['members'] : [];
         const sessionId = String(session['id']);
         const activeWorkspace = String(session['workspacePath'] || (session['metadata'] as any)?.['workspacePath'] || workspacePath);
+
+        const hostRightLog = process.env['COLLAGILITY_HOST_RIGHT_LOG'];
+        if (hostRightLog) {
+          let filePosition = 0;
+          if (fs.existsSync(hostRightLog)) {
+            try {
+              filePosition = fs.statSync(hostRightLog).size;
+            } catch {}
+          }
+
+          const logWatcherInterval = setInterval(() => {
+            if (!fs.existsSync(hostRightLog)) return;
+            try {
+              const stats = fs.statSync(hostRightLog);
+              if (stats.size > filePosition) {
+                const buffer = Buffer.alloc(stats.size - filePosition);
+                const fd = fs.openSync(hostRightLog, 'r');
+                fs.readSync(fd, buffer, 0, buffer.length, filePosition);
+                fs.closeSync(fd);
+                filePosition = stats.size;
+
+                const rawChunk = buffer.toString('utf-8');
+                if (rawChunk) {
+                  client.sendStreamChunk('host-right-terminal', rawChunk, binaryLabel);
+                }
+              }
+            } catch {}
+          }, 80);
+
+          process.on('exit', () => clearInterval(logWatcherInterval));
+        }
 
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();

@@ -71,6 +71,7 @@ export function createProgram(): Command {
       process.env['COLLAGILITY_TMUX_SESSION'] = sessionName;
       const targetBinary = cmdOpts.cli || 'agy';
       const logPath = path.join(os.tmpdir(), `${sessionName}-right.log`);
+      process.env['COLLAGILITY_HOST_RIGHT_LOG'] = logPath;
 
       try {
         fs.writeFileSync(logPath, '');
