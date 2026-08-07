@@ -60,11 +60,19 @@ describe('TmuxSession', () => {
       'set-option',
       '-t',
       'collagility-123',
+      'remain-on-exit',
+      'on',
+    ]);
+
+    expect(mockExecFile).toHaveBeenNthCalledWith(4, 'tmux', [
+      'set-option',
+      '-t',
+      'collagility-123',
       'history-limit',
       '50000',
     ]);
 
-    expect(mockExecFile).toHaveBeenNthCalledWith(4, 'tmux', [
+    expect(mockExecFile).toHaveBeenNthCalledWith(5, 'tmux', [
       'set-option',
       '-t',
       'collagility-123',
@@ -72,7 +80,7 @@ describe('TmuxSession', () => {
       'on',
     ]);
 
-    expect(mockExecFile).toHaveBeenNthCalledWith(5, 'tmux', [
+    expect(mockExecFile).toHaveBeenNthCalledWith(6, 'tmux', [
       'set-option',
       '-t',
       'collagility-123',
@@ -80,7 +88,7 @@ describe('TmuxSession', () => {
       ' ⚡ COLLAGILITY ',
     ]);
 
-    expect(mockExecFile).toHaveBeenNthCalledWith(6, 'tmux', [
+    expect(mockExecFile).toHaveBeenNthCalledWith(7, 'tmux', [
       'set-option',
       '-t',
       'collagility-123',

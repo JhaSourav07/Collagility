@@ -70,3 +70,13 @@ export const AIChunkPayloadSchema = z.object({
   content: z.string(),
   isFinal: z.boolean(),
 });
+
+export const TerminalScreenStreamPayloadSchema = z.object({
+  sessionId: z.string(),
+  senderId: z.string(),
+  pane: z.enum(['right', 'left', 'main']),
+  data: z.string(),
+  cols: z.number().optional(),
+  rows: z.number().optional(),
+  timestamp: z.number(),
+});

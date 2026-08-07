@@ -114,4 +114,20 @@ export class SessionManager {
     this.logger.info({ sessionId }, 'Session closed explicitly');
     return session;
   }
+
+  public getStore(): SessionStore {
+    return this.store;
+  }
+
+  public appendTerminalBuffer(sessionId: string, chunk: string): string {
+    return this.store.appendTerminalBuffer(sessionId, chunk);
+  }
+
+  public getTerminalBuffer(sessionId: string): string {
+    return this.store.getTerminalBuffer(sessionId);
+  }
+
+  public setTerminalBuffer(sessionId: string, content: string): void {
+    this.store.setTerminalBuffer(sessionId, content);
+  }
 }

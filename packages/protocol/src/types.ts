@@ -154,6 +154,16 @@ export interface PTYInputPayload {
   data: string;
 }
 
+export interface TerminalScreenStreamPayload {
+  sessionId: string;
+  senderId: string;
+  pane: 'right' | 'left' | 'main';
+  data: string;
+  cols?: number;
+  rows?: number;
+  timestamp: number;
+}
+
 // Interactive AI Event Payloads
 export interface AIQuestionPayload {
   questionId: string;

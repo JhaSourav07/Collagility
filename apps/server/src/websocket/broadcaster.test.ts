@@ -58,4 +58,46 @@ describe('Broadcaster', () => {
     expect(sent).toBe(true);
     expect(socket.send).toHaveBeenCalledWith(JSON.stringify({ type: 'ping' }));
   });
+
+  it('should broadcast TERMINAL_SCREEN_STREAM strictly to session members excluding the sender', async () => {
+    const connectionManager = new ConnectionManager(logger);
+    const broadcaster = new Broadcaster(connectionManager, logger);
+
+    const socketHost = createMockSocket();
+    const socketVisitor1 = createMockSocket();
+    const socketVisitor2 = createMockSocket();
+
+    const clientHost = connectionManager.registerClient(socketHost);
+    const clientVisitor1 = connectionManager.registerClient(socketVisitor1);
+    const clientVisitor2 = connectionManager.registerClient(socketVisitor2);
+
+    const mockSessionManager = {
+      getSession: vi.fn().mockResolvedValue({
+        id: 'sess-abc',
+        ownerId: clientHost.id,
+        members: new Set([clientHost.id, clientVisitor1.id, clientVisitor2.id]),
+      }),
+    } as any;
+
+    broadcaster.setSessionManager(mockSessionManager);
+
+    const screenPayload = {
+      type: 'terminal.screen.stream',
+      sessionId: 'sess-abc',
+      payload: {
+        sessionId: 'sess-abc',
+        senderId: clientHost.id,
+        pane: 'right',
+        data: '\x1b[32mStreaming live PTY\x1b[0m',
+        timestamp: Date.now(),
+      },
+    };
+
+    const count = await broadcaster.broadcastToSession('sess-abc', screenPayload, clientHost.id);
+
+    expect(count).toBe(2);
+    expect(socketHost.send).not.toHaveBeenCalled();
+    expect(socketVisitor1.send).toHaveBeenCalledWith(JSON.stringify(screenPayload));
+    expect(socketVisitor2.send).toHaveBeenCalledWith(JSON.stringify(screenPayload));
+  });
 });

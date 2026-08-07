@@ -146,4 +146,23 @@ describe('SessionStore', () => {
     expect(freshExists).toBe(true);
     expect(expiredExists).toBe(false);
   });
+
+  it('should maintain a rolling terminal buffer capped at 50KB for session late joiners', () => {
+    const store = new SessionStore({ storageDir: testStorageDir });
+    const sessionId = 'test-sess-100';
+
+    store.appendTerminalBuffer(sessionId, 'Hello ');
+    store.appendTerminalBuffer(sessionId, 'World!');
+
+    expect(store.getTerminalBuffer(sessionId)).toBe('Hello World!');
+
+    // Fill buffer beyond 50KB limit
+    const chunk50k = 'A'.repeat(50 * 1024);
+    store.appendTerminalBuffer(sessionId, chunk50k);
+    store.appendTerminalBuffer(sessionId, 'END');
+
+    const buffer = store.getTerminalBuffer(sessionId);
+    expect(buffer.length).toBe(50 * 1024);
+    expect(buffer.endsWith('END')).toBe(true);
+  });
 });

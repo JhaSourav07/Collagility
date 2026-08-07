@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   createChatMessageEvent,
   createChatSystemEvent,
+  createTerminalScreenStreamEvent,
+  isTerminalScreenStreamPayload,
   parseEnvelope,
   serializeEnvelope,
   validateEnvelope,
@@ -43,5 +45,27 @@ describe('@collagility/protocol', () => {
     expect(sysEvent.type).toBe(EVENT_TYPES.CHAT_SYSTEM);
     expect(sysEvent.sender?.role).toBe('system');
     expect(sysEvent.payload.message).toBe('Emma joined the session');
+  });
+
+  it('should create and validate TERMINAL_SCREEN_STREAM event envelope and payload', () => {
+    const payload = {
+      sessionId: 'sess-100',
+      senderId: 'host-1',
+      pane: 'right' as const,
+      data: '\x1b[31mHello ANSI\x1b[0m',
+      cols: 120,
+      rows: 40,
+      timestamp: Date.now(),
+    };
+    const streamEvent = createTerminalScreenStreamEvent(payload);
+
+    expect(streamEvent.type).toBe(EVENT_TYPES.TERMINAL_SCREEN_STREAM);
+    expect(streamEvent.sessionId).toBe('sess-100');
+    expect(streamEvent.payload).toEqual(payload);
+
+    const serialized = serializeEnvelope(streamEvent);
+    const parsed = parseEnvelope(serialized);
+    expect(parsed.success).toBe(true);
+    expect(isTerminalScreenStreamPayload(parsed.envelope?.payload)).toBe(true);
   });
 });

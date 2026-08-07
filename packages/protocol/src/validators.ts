@@ -1,5 +1,5 @@
-import { BaseEnvelopeSchema } from './schemas.js';
-import type { EventEnvelope } from './types.js';
+import { BaseEnvelopeSchema, TerminalScreenStreamPayloadSchema } from './schemas.js';
+import type { EventEnvelope, TerminalScreenStreamPayload } from './types.js';
 
 export interface ValidationResult<T = unknown> {
   success: boolean;
@@ -32,4 +32,17 @@ export function parseEnvelope<T = unknown>(jsonString: string): ValidationResult
 
 export function serializeEnvelope(envelope: EventEnvelope): string {
   return JSON.stringify(envelope);
+}
+
+export function isTerminalScreenStreamPayload(raw: unknown): raw is TerminalScreenStreamPayload {
+  return TerminalScreenStreamPayloadSchema.safeParse(raw).success;
+}
+
+export function validateTerminalScreenStreamPayload(raw: unknown): { success: boolean; data?: TerminalScreenStreamPayload; error?: string } {
+  const result = TerminalScreenStreamPayloadSchema.safeParse(raw);
+  if (!result.success) {
+    const formatted = result.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
+    return { success: false, error: `Invalid terminal screen stream payload: ${formatted}` };
+  }
+  return { success: true, data: result.data as TerminalScreenStreamPayload };
 }

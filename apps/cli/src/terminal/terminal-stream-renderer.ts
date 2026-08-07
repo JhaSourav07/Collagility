@@ -223,3 +223,49 @@ export class TerminalStreamRenderer {
     this.stdout.write(msg);
   }
 }
+
+export class ThrottledTerminalStreamer {
+  private buffer = '';
+  private timer: NodeJS.Timeout | null = null;
+  private intervalMs: number;
+  private onFlush: (data: string) => void;
+
+  constructor(onFlush: (data: string) => void, intervalMs = 25) {
+    this.onFlush = onFlush;
+    this.intervalMs = intervalMs;
+  }
+
+  public push(chunk: string): void {
+    if (typeof chunk !== 'string' || !chunk) return;
+    this.buffer += chunk;
+    if (!this.timer) {
+      this.timer = setTimeout(() => {
+        this.flush();
+      }, this.intervalMs);
+    }
+  }
+
+  public flush(): void {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    if (this.buffer.length > 0) {
+      const dataToEmit = this.buffer;
+      this.buffer = '';
+      try {
+        this.onFlush(dataToEmit);
+      } catch {
+        // Fail silently without crashing the primary execution loop
+      }
+    }
+  }
+
+  public destroy(): void {
+    this.flush();
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+  }
+}

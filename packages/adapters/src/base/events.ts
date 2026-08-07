@@ -32,6 +32,9 @@ export interface AdapterEventMap {
   'ai.error': EventEnvelope<ErrorPayload>;
   'permission_required': EventEnvelope<PermissionRequest>;
   'PERMISSION_REQUIRED': EventEnvelope<PermissionRequest>;
+  'stdout': string;
+  'stderr': string;
+  'pty.data': string;
 }
 
 

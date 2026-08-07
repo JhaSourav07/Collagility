@@ -221,6 +221,8 @@ export class AntigravityAIAdapter extends BaseAdapter {
             }
             resetProcTimeout();
             const str = chunk.toString('utf-8');
+            this.emit('stdout', str);
+            this.emit('pty.data', str);
             this.handleStreamChunk(str);
           });
         }
@@ -230,6 +232,8 @@ export class AntigravityAIAdapter extends BaseAdapter {
             resetProcTimeout();
             const errStr = chunk.toString('utf-8');
             stderrOutput += errStr;
+            this.emit('stderr', errStr);
+            this.emit('pty.data', errStr);
             this.handleStreamChunk(errStr);
           });
         }

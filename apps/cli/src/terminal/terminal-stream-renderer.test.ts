@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { TerminalStreamRenderer } from './terminal-stream-renderer.js';
+import { TerminalStreamRenderer, ThrottledTerminalStreamer } from './terminal-stream-renderer.js';
 import { createStreamChunk } from '@collagility/stream';
 
 describe('TerminalStreamRenderer', () => {
@@ -45,5 +45,23 @@ describe('TerminalStreamRenderer', () => {
     expect(output).toContain('┌── [typescript]');
     expect(output).toContain('const x = 1;');
     expect(output).toContain('└────');
+  });
+
+  it('should batch stdout chunks via ThrottledTerminalStreamer and emit to wsClient', async () => {
+    const emittedBatches: string[] = [];
+    const streamer = new ThrottledTerminalStreamer((data) => {
+      emittedBatches.push(data);
+    }, 10);
+
+    streamer.push('Hello ');
+    streamer.push('World!');
+
+    // Wait for 20ms for timer to flush
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    expect(emittedBatches.length).toBe(1);
+    expect(emittedBatches[0]).toBe('Hello World!');
+
+    streamer.destroy();
   });
 });

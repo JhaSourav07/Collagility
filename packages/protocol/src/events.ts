@@ -24,6 +24,7 @@ import type {
   PermissionDecision,
   SessionPermissionRequestPayload,
   SessionPermissionResponsePayload,
+  TerminalScreenStreamPayload,
 } from './types.js';
 
 
@@ -376,5 +377,15 @@ export function createSessionPermissionResponseEvent(
     { requestId, decision, userId, sessionId },
     { sessionId, sender: { id: userId, name: userId.slice(0, 8), role: 'owner' } }
   );
+}
+
+export function createTerminalScreenStreamEvent(
+  payload: TerminalScreenStreamPayload,
+  sessionId?: string
+): EventEnvelope<TerminalScreenStreamPayload> {
+  return createEnvelope(EVENT_TYPES.TERMINAL_SCREEN_STREAM, payload, {
+    sessionId: sessionId || payload.sessionId,
+    sender: { id: payload.senderId, name: payload.senderId.slice(0, 8) },
+  });
 }
 

@@ -20,6 +20,7 @@ export interface SessionStoreOptions {
 export class SessionStore {
   private sessions: Map<string, Session> = new Map();
   private clientSessionMap: Map<string, string> = new Map();
+  private terminalBuffers: Map<string, string> = new Map();
   private baseStorageDir: string;
   private maxAgeMs: number;
   private cleanupIntervalMs: number;
@@ -133,6 +134,7 @@ export class SessionStore {
         this.clientSessionMap.delete(memberId);
       }
     }
+    this.terminalBuffers.delete(sessionId);
     const removedMemory = this.sessions.delete(sessionId);
 
     try {
@@ -143,6 +145,29 @@ export class SessionStore {
     }
 
     return removedMemory;
+  }
+
+  public appendTerminalBuffer(sessionId: string, chunk: string): string {
+    const current = this.terminalBuffers.get(sessionId) || '';
+    const combined = current + chunk;
+    const maxBytes = 50 * 1024; // 50KB limit
+    const trimmed = combined.length > maxBytes ? combined.slice(-maxBytes) : combined;
+    this.terminalBuffers.set(sessionId, trimmed);
+    return trimmed;
+  }
+
+  public getTerminalBuffer(sessionId: string): string {
+    return this.terminalBuffers.get(sessionId) || '';
+  }
+
+  public setTerminalBuffer(sessionId: string, content: string): void {
+    const maxBytes = 50 * 1024;
+    const trimmed = content.length > maxBytes ? content.slice(-maxBytes) : content;
+    this.terminalBuffers.set(sessionId, trimmed);
+  }
+
+  public clearTerminalBuffer(sessionId: string): void {
+    this.terminalBuffers.delete(sessionId);
   }
 
   public async removeMember(sessionId: string, clientId: string): Promise<void> {

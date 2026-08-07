@@ -141,6 +141,24 @@ export class SplitTerminalRenderer {
 
   public setInput(_input: string): void {}
   public clearPty(): void {}
+  public handleResize(cols?: number, rows?: number, wsClient?: any, sessionId?: string): void {
+    const currentCols = cols || (process.stdout.isTTY ? process.stdout.columns : 80) || 80;
+    const currentRows = rows || (process.stdout.isTTY ? process.stdout.rows : 24) || 24;
+
+    if (wsClient && typeof wsClient.send === 'function') {
+      try {
+        wsClient.send('pty.resize', {
+          sessionId: sessionId || this.sessionId,
+          cols: currentCols,
+          rows: currentRows,
+          timestamp: Date.now(),
+        });
+      } catch {
+        // Fail silently without crashing host execution loop
+      }
+    }
+  }
+
   public render(): void {
     if (this.inkRenderer) {
       this.inkRenderer.renderApp();

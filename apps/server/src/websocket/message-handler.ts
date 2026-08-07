@@ -6,7 +6,13 @@ import { createPongEvent } from './events.js';
 import { handleCreateSession } from '../sessions/handlers/create-session.js';
 import { handleJoinSession } from '../sessions/handlers/join-session.js';
 import { handleLeaveSession } from '../sessions/handlers/leave-session.js';
-import { createChatMessageEvent, createAIStreamErrorEvent, EVENT_TYPES } from '@collagility/protocol';
+import {
+  createChatMessageEvent,
+  createAIStreamErrorEvent,
+  createTerminalScreenStreamEvent,
+  EVENT_TYPES,
+  type TerminalScreenStreamPayload,
+} from '@collagility/protocol';
 import { StreamManager } from '@collagility/stream';
 
 export class MessageHandler {
@@ -75,6 +81,19 @@ export class MessageHandler {
               payload: snapshot,
               timestamp: Date.now(),
             });
+          }
+
+          // Check for rolling terminal screen buffer and paint initial screen for late joiner
+          const terminalBuffer = this.sessionManager.getTerminalBuffer(joinPayload.sessionId);
+          if (terminalBuffer) {
+            const screenEvent = createTerminalScreenStreamEvent({
+              sessionId: joinPayload.sessionId,
+              senderId: 'system',
+              pane: 'right',
+              data: terminalBuffer,
+              timestamp: Date.now(),
+            });
+            this.broadcaster.sendToClient(clientId, screenEvent);
           }
         }
         break;
@@ -322,6 +341,42 @@ export class MessageHandler {
         );
 
         await this.broadcaster.broadcastToSession(session.id, permResEnvelope);
+        break;
+      }
+
+      case EVENT_TYPES.TERMINAL_SCREEN_STREAM:
+      case 'terminal.screen.stream':
+      case 'TERMINAL_SCREEN_STREAM': {
+        const session = await this.sessionManager.getClientSession(clientId);
+        const payloadObj = message.payload as any;
+        const targetSessionId = session?.id || payloadObj?.sessionId;
+
+        if (targetSessionId) {
+          const streamPayload: TerminalScreenStreamPayload = {
+            sessionId: targetSessionId,
+            senderId: clientId,
+            pane: payloadObj?.pane || 'right',
+            data: payloadObj?.data || '',
+            cols: payloadObj?.cols,
+            rows: payloadObj?.rows,
+            timestamp: payloadObj?.timestamp || Date.now(),
+          };
+
+          // Maintain lightweight rolling terminal buffer (last 50KB) for late joiners
+          if (streamPayload.data) {
+            this.sessionManager.appendTerminalBuffer(targetSessionId, streamPayload.data);
+          }
+
+          const eventEnvelope = createTerminalScreenStreamEvent(streamPayload);
+
+          this.logger.debug(
+            { clientId, sessionId: targetSessionId, pane: streamPayload.pane, bytes: streamPayload.data.length },
+            'Broadcasting TERMINAL_SCREEN_STREAM chunk to session peers'
+          );
+
+          // Broadcast to all clients in session EXCEPT the host sender (clientId)
+          await this.broadcaster.broadcastToSession(targetSessionId, eventEnvelope, clientId);
+        }
         break;
       }
 

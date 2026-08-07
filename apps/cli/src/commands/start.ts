@@ -6,7 +6,7 @@ import { CLILogger } from '../terminal/logger.js';
 import { colors } from '../terminal/colors.js';
 import { renderSessionHeader, TerminalRenderer, type ChatRenderMessage } from '../terminal/renderer.js';
 import { ChatPrompt } from '../terminal/chat-prompt.js';
-import { TerminalStreamRenderer } from '../terminal/terminal-stream-renderer.js';
+import { TerminalStreamRenderer, ThrottledTerminalStreamer } from '../terminal/terminal-stream-renderer.js';
 import { SplitTerminalRenderer } from '../terminal/split-pane-renderer.js';
 import { PlanRenderer } from '../terminal/plan-renderer.js';
 import { InteractivePromptRenderer } from '../terminal/interactive-prompt-renderer.js';
@@ -422,20 +422,43 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
           }
         };
 
+        const terminalStreamer = new ThrottledTerminalStreamer((batchedData) => {
+          try {
+            client.send('terminal.screen.stream', {
+              sessionId: currentSessionId,
+              senderId: client.getClientId() || 'host',
+              pane: 'right',
+              data: batchedData,
+              timestamp: Date.now(),
+            });
+          } catch {
+            // Fail silently without crashing host execution loop
+          }
+        }, 25);
+
+        const onStdoutData = (data: string) => {
+          terminalStreamer.push(data);
+        };
+
         targetAdapter.on('chunk' as any, onChunk);
         targetAdapter.on('plan' as any, onPlan);
         targetAdapter.on('question' as any, onQuestion);
         targetAdapter.on('confirmation' as any, onConfirmation);
         targetAdapter.on('PERMISSION_REQUIRED' as any, onPermissionRequired);
+        targetAdapter.on('stdout' as any, onStdoutData);
+        targetAdapter.on('pty.data' as any, onStdoutData);
 
         targetAdapter
           .sendPrompt(payload.prompt)
           .then((resEnvelope: any) => {
+            terminalStreamer.destroy();
             targetAdapter.off('chunk' as any, onChunk);
             targetAdapter.off('plan' as any, onPlan);
             targetAdapter.off('question' as any, onQuestion);
             targetAdapter.off('confirmation' as any, onConfirmation);
             targetAdapter.off('PERMISSION_REQUIRED' as any, onPermissionRequired);
+            targetAdapter.off('stdout' as any, onStdoutData);
+            targetAdapter.off('pty.data' as any, onStdoutData);
 
             const fullText = resEnvelope?.payload?.responseText || '';
 
@@ -465,11 +488,14 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
             client.send('ai.stream.chunk', finalChunk);
           })
           .catch((err: unknown) => {
+            terminalStreamer.destroy();
             targetAdapter.off('chunk' as any, onChunk);
             targetAdapter.off('plan' as any, onPlan);
             targetAdapter.off('question' as any, onQuestion);
             targetAdapter.off('confirmation' as any, onConfirmation);
             targetAdapter.off('PERMISSION_REQUIRED' as any, onPermissionRequired);
+            targetAdapter.off('stdout' as any, onStdoutData);
+            targetAdapter.off('pty.data' as any, onStdoutData);
             const errorMsg = err instanceof Error ? err.message : String(err);
 
             logger.error('Local AI execution failed', err);
@@ -836,7 +862,12 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
     // Explicitly no-op this signal so the left pane never dies from a resize.
     process.on('SIGWINCH', () => {
       // Ink's useStdout() picks up the new dimensions automatically on the
-      // next render cycle — no manual action needed here.
+      // next render cycle. Also notify remote session peers of terminal resize.
+      if (splitRenderer) {
+        const cols = process.stdout.columns || 80;
+        const rows = process.stdout.rows || 24;
+        splitRenderer.handleResize(cols, rows, client, client.getSessionId() || undefined);
+      }
     });
 
     // Guard process against uncaught exceptions and unhandled rejections so background errors never kill the process
