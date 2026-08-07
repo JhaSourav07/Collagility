@@ -165,4 +165,35 @@ describe('SessionStore', () => {
     expect(buffer.length).toBe(50 * 1024);
     expect(buffer.endsWith('END')).toBe(true);
   });
+
+  it('should store and append streamChunks in RAM streamHistory up to 1000 items', async () => {
+    const store = new SessionStore({ storageDir: testStorageDir });
+    const mockSession: Session = {
+      id: 'stream-hist-sess',
+      ownerId: 'client-1',
+      members: new Set(['client-1']),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      status: 'active',
+      workspacePath: '/test/path',
+      metadata: {},
+    };
+
+    await store.save(mockSession);
+
+    // Append 1005 chunks to test ring buffer cap of 1000
+    for (let i = 1; i <= 1005; i++) {
+      store.appendStreamChunk('stream-hist-sess', {
+        id: `chunk-${i}`,
+        type: 'TEXT',
+        content: `Stream line ${i}`,
+        timestamp: Date.now(),
+      });
+    }
+
+    const history = store.getStreamHistory('stream-hist-sess');
+    expect(history.length).toBe(1000);
+    expect(history[0].id).toBe('chunk-6');
+    expect(history[history.length - 1].id).toBe('chunk-1005');
+  });
 });

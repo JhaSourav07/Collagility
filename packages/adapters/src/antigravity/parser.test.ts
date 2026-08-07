@@ -223,4 +223,41 @@ describe('AntigravityOutputParser Subagent & Tool Events', () => {
     expect(second.type).toBe('TEXT');
     expect(second.content).toBe('Same text delta line');
   });
+
+  it('should emit formatted clean tool_use event text for ListDir and Read without trailing braces }}', () => {
+    const parser = new AntigravityOutputParser();
+    const emittedToolUse: any[] = [];
+
+    parser.on('tool_use', (tool) => {
+      emittedToolUse.push(tool);
+    });
+
+    parser.parseChunk(
+      JSON.stringify({
+        event: 'step_update',
+        step_update: {
+          step_type: 'tool',
+          tool_name: 'list_dir',
+          parameters: { SearchPath: '/run/media/sourav/Project' },
+        },
+      }) + '\n'
+    );
+
+    parser.parseChunk(
+      JSON.stringify({
+        event: 'step_update',
+        step_update: {
+          step_type: 'tool',
+          tool_name: 'view_file',
+          parameters: { AbsolutePath: '/run/media/sourav/Project/package.json' },
+        },
+      }) + '\n'
+    );
+
+    expect(emittedToolUse.length).toBe(2);
+    expect(emittedToolUse[0].content).toContain('• ListDir(/run/media/sourav/Project)');
+    expect(emittedToolUse[0].content).not.toContain('}}');
+    expect(emittedToolUse[1].content).toContain('• Read(/run/media/sourav/Project/package.json)');
+    expect(emittedToolUse[1].content).not.toContain('}}');
+  });
 });

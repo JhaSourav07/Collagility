@@ -230,12 +230,12 @@ export const Header: React.FC<HeaderProps> = ({ session, aiDriver, subagents = [
         paddingX={1}
         paddingY={0}
       >
-        <Box flexDirection="column" minWidth={22}>
-          <Box gap={1}>
+        <Box flexDirection="column" minWidth={28}>
+          <Box gap={1} justifyContent="space-between">
             <Text color="gray">Session:</Text>
             <Text color="blue" bold>{session.id}</Text>
           </Box>
-          <Box gap={1}>
+          <Box gap={1} justifyContent="space-between">
             <Text color="gray">Owner:</Text>
             <Text color="magenta" bold>{session.ownerName}</Text>
           </Box>
@@ -264,11 +264,11 @@ export const Header: React.FC<HeaderProps> = ({ session, aiDriver, subagents = [
           </Box>
         </Box>
 
-        <Box flexDirection="column" minWidth={26}>
+        <Box flexDirection="column" minWidth={28}>
           <Text color="gray" bold>Shortcuts</Text>
           <Box gap={2}>
-            <Text color="cyan">/config</Text>
-            <Text color="cyan">/agents</Text>
+            <Text color="cyan">/config </Text>
+            <Text color="cyan">/agents </Text>
             <Text color="cyan">/permissions</Text>
           </Box>
         </Box>

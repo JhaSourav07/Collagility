@@ -276,5 +276,24 @@ export interface SessionPermissionResponsePayload {
   sessionId?: string;
 }
 
+export interface StreamChunk {
+  id: string;
+  type: 'TEXT' | 'TOOL' | 'FILE';
+  content: string;
+  timestamp: number;
+}
+
+export interface SessionStreamBroadcastPayload {
+  sessionId: string;
+  chunk: StreamChunk;
+  timestamp: number;
+}
+
+export interface SessionStreamHistoryPayload {
+  sessionId: string;
+  history: StreamChunk[];
+}
+
+
 
 

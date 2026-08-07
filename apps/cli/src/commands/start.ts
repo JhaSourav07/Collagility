@@ -439,6 +439,7 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
 
         const hostBroadcaster = new SessionHostBroadcaster({
           sessionId: currentSessionId,
+          wsClient: client,
           onEmitStream: (payload) => {
             terminalStreamer.push(payload.data);
             if (splitRenderer) {

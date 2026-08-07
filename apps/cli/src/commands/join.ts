@@ -10,6 +10,7 @@ import { SplitTerminalRenderer } from '../terminal/split-pane-renderer.js';
 import { PlanRenderer } from '../terminal/plan-renderer.js';
 import { InteractivePromptRenderer } from '../terminal/interactive-prompt-renderer.js';
 import { readPlanArtifact } from '../terminal/plan-reader.js';
+import { SessionClientStreamHandler } from '../terminal/session-client.js';
 import { DocumentRenderer } from '@collagility/renderer';
 
 import fs from 'node:fs';
@@ -75,6 +76,17 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
 
             ink.setOnExitSession(() => {
               handleExit();
+            });
+
+            new SessionClientStreamHandler({
+              sessionId,
+              wsClient: client,
+              onUpdateScreen: (screenData) => {
+                const currentInk = splitRenderer.getInkRenderer();
+                if (currentInk && screenData) {
+                  currentInk.setRemoteTerminalScreen(screenData);
+                }
+              },
             });
 
             ink.setCommandHandler((input: string) => {

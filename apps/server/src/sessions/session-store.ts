@@ -147,6 +147,24 @@ export class SessionStore {
     return removedMemory;
   }
 
+  public appendStreamChunk(sessionId: string, chunk: import('@collagility/protocol').StreamChunk): import('@collagility/protocol').StreamChunk[] {
+    const session = this.sessions.get(sessionId);
+    if (!session) return [];
+    if (!session.streamHistory) {
+      session.streamHistory = [];
+    }
+    session.streamHistory.push(chunk);
+    if (session.streamHistory.length > 1000) {
+      session.streamHistory.shift();
+    }
+    return session.streamHistory;
+  }
+
+  public getStreamHistory(sessionId: string): import('@collagility/protocol').StreamChunk[] {
+    const session = this.sessions.get(sessionId);
+    return session?.streamHistory || [];
+  }
+
   public appendTerminalBuffer(sessionId: string, chunk: string): string {
     const current = this.terminalBuffers.get(sessionId) || '';
     const combined = current + chunk;

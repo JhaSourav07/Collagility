@@ -76,4 +76,26 @@ describe('InkTerminalRenderer', () => {
     expect(screenState.data).toContain('• Executing: list_dir');
     expect(screenState.data).not.toContain('}}');
   });
+
+  it('should render replayed SESSION_STREAM_HISTORY chunks in RemotePane without orphan braces }}', () => {
+    const renderer = new InkTerminalRenderer({
+      sessionId: 'test-session',
+      isOwner: false,
+    });
+
+    const streamHistoryChunks = [
+      { id: 'c1', type: 'TEXT' as const, content: '• ListDir(/src)', timestamp: 1000 },
+      { id: 'c2', type: 'TEXT' as const, content: '> _Multi-step reasoning_', timestamp: 1001 },
+      { id: 'c3', type: 'TEXT' as const, content: '• Read(/src/index.ts)', timestamp: 1002 },
+      { id: 'c4', type: 'TEXT' as const, content: '✓ Task Completed', timestamp: 1003 },
+    ];
+
+    const historyFormatted = streamHistoryChunks.map((c) => c.content).join('\n');
+    renderer.setRemoteTerminalScreen(historyFormatted, 80, 24);
+
+    const screenState = renderer.getRemoteTerminalScreen();
+    expect(screenState.data).toContain('• ListDir(/src)');
+    expect(screenState.data).toContain('• Read(/src/index.ts)');
+    expect(screenState.data).not.toContain('}}');
+  });
 });

@@ -10,8 +10,10 @@ import {
   createChatMessageEvent,
   createAIStreamErrorEvent,
   createTerminalScreenStreamEvent,
+  createSessionStreamBroadcastEvent,
   EVENT_TYPES,
   type TerminalScreenStreamPayload,
+  type StreamChunk,
 } from '@collagility/protocol';
 import { StreamManager } from '@collagility/stream';
 
@@ -375,6 +377,33 @@ export class MessageHandler {
           );
 
           // Broadcast to all clients in session EXCEPT the host sender (clientId)
+          await this.broadcaster.broadcastToSession(targetSessionId, eventEnvelope, clientId);
+        }
+        break;
+      }
+
+      case EVENT_TYPES.SESSION_STREAM_BROADCAST:
+      case 'session.stream.broadcast':
+      case 'SESSION_STREAM_BROADCAST': {
+        const session = await this.sessionManager.getClientSession(clientId);
+        const payloadObj = message.payload as any;
+        const targetSessionId = session?.id || payloadObj?.sessionId;
+
+        if (targetSessionId && payloadObj?.chunk) {
+          const chunk: StreamChunk = payloadObj.chunk;
+          this.sessionManager.appendStreamChunk(targetSessionId, chunk);
+
+          const eventEnvelope = createSessionStreamBroadcastEvent({
+            sessionId: targetSessionId,
+            chunk,
+            timestamp: payloadObj.timestamp || Date.now(),
+          });
+
+          this.logger.debug(
+            { clientId, sessionId: targetSessionId, chunkId: chunk.id, type: chunk.type },
+            'Broadcasting SESSION_STREAM_BROADCAST chunk to session peers'
+          );
+
           await this.broadcaster.broadcastToSession(targetSessionId, eventEnvelope, clientId);
         }
         break;

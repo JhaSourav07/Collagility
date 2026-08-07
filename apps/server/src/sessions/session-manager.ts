@@ -119,6 +119,14 @@ export class SessionManager {
     return this.store;
   }
 
+  public appendStreamChunk(sessionId: string, chunk: import('@collagility/protocol').StreamChunk): import('@collagility/protocol').StreamChunk[] {
+    return this.store.appendStreamChunk(sessionId, chunk);
+  }
+
+  public getStreamHistory(sessionId: string): import('@collagility/protocol').StreamChunk[] {
+    return this.store.getStreamHistory(sessionId);
+  }
+
   public appendTerminalBuffer(sessionId: string, chunk: string): string {
     return this.store.appendTerminalBuffer(sessionId, chunk);
   }

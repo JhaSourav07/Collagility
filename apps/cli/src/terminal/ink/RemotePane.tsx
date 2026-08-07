@@ -20,8 +20,16 @@ export function formatRemoteScreenLines(
   const screenWidth = Math.max(cols, 40);
   const screen = new VirtualScreen(screenWidth, screenHeight);
 
-  const rawLines = screenData.split(/\r?\n/).filter((l) => l.length > 0);
-  const visibleLines = rawLines.slice(-screenHeight);
+  // Split lines and deduplicate contiguous duplicates
+  const rawLines = screenData.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  const deduplicatedLines: string[] = [];
+  for (const line of rawLines) {
+    if (deduplicatedLines.length === 0 || deduplicatedLines[deduplicatedLines.length - 1] !== line) {
+      deduplicatedLines.push(line);
+    }
+  }
+
+  const visibleLines = deduplicatedLines.slice(-screenHeight);
 
   visibleLines.forEach((line, idx) => {
     // Strip ANSI escape control sequences for clean Ink string rendering
@@ -40,7 +48,7 @@ export const RemotePane: React.FC<RemotePaneProps> = ({
   screenData = '',
   cols = 80,
   rows = 24,
-  statusText = '[Waiting for host process...]',
+  statusText = '[Listening for host process...]',
 }) => {
   const renderedLines = useMemo(() => {
     return formatRemoteScreenLines(screenData, cols, rows);
@@ -58,8 +66,8 @@ export const RemotePane: React.FC<RemotePaneProps> = ({
         justifyContent="center"
         alignItems="center"
       >
-        <Text color="cyan" bold>
-          📺 Live Terminal Mirror (agy)
+        <Text color="green" bold>
+          🟢 [Live Terminal - agy]
         </Text>
         <Text color="gray">{statusText}</Text>
       </Box>
@@ -77,7 +85,7 @@ export const RemotePane: React.FC<RemotePaneProps> = ({
     >
       <Box marginBottom={1} justifyContent="space-between">
         <Text color="green" bold>
-          ● [Live Terminal - agy]
+          🟢 [Live Terminal - agy]
         </Text>
         <Text color="gray">
           {cols}x{rows}

@@ -389,3 +389,19 @@ export function createTerminalScreenStreamEvent(
   });
 }
 
+export function createSessionStreamBroadcastEvent(
+  payload: import('./types.js').SessionStreamBroadcastPayload
+): EventEnvelope<import('./types.js').SessionStreamBroadcastPayload> {
+  return createEnvelope(EVENT_TYPES.SESSION_STREAM_BROADCAST, payload, {
+    sessionId: payload.sessionId,
+  });
+}
+
+export function createSessionStreamHistoryEvent(
+  payload: import('./types.js').SessionStreamHistoryPayload
+): EventEnvelope<import('./types.js').SessionStreamHistoryPayload> {
+  return createEnvelope(EVENT_TYPES.SESSION_STREAM_HISTORY, payload, {
+    sessionId: payload.sessionId,
+  });
+}
+

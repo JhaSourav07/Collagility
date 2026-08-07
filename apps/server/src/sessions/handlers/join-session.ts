@@ -6,6 +6,7 @@ import {
   createMemberJoinedEvent,
   createSessionErrorEvent,
 } from '../session-events.js';
+import { createSessionStreamHistoryEvent } from '@collagility/protocol';
 import { SessionError } from '../session-errors.js';
 
 export async function handleJoinSession(
@@ -21,6 +22,16 @@ export async function handleJoinSession(
     // Send confirmation to joined client
     const joinedEvent = createSessionJoinedEvent(dto, clientId);
     broadcaster.sendToClient(clientId, joinedEvent);
+
+    // Replay session stream history stored in RAM directly to joined client
+    const history = sessionManager.getStreamHistory(session.id);
+    if (history && history.length > 0) {
+      const historyEvent = createSessionStreamHistoryEvent({
+        sessionId: session.id,
+        history,
+      });
+      broadcaster.sendToClient(clientId, historyEvent);
+    }
 
     // Notify peers in the session
     const memberJoinedEvent = createMemberJoinedEvent(session.id, clientId);

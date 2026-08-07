@@ -65,6 +65,10 @@ export const EVENT_TYPES = {
   // Realtime Permission Synchronization Event Types
   SESSION_PERMISSION_REQUEST: 'session.permission.request',
   SESSION_PERMISSION_RESPONSE: 'session.permission.response',
+
+  // Session Stream History & RAM Buffer Event Types
+  SESSION_STREAM_BROADCAST: 'session.stream.broadcast',
+  SESSION_STREAM_HISTORY: 'session.stream.history',
 } as const;
 
 

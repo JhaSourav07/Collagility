@@ -1,3 +1,5 @@
+import type { StreamChunk } from '@collagility/protocol';
+
 export type SessionStatus = 'active' | 'closed';
 
 export interface Session {
@@ -9,6 +11,7 @@ export interface Session {
   status: SessionStatus;
   workspacePath: string;
   metadata: Record<string, unknown>;
+  streamHistory?: StreamChunk[];
 }
 
 export interface SessionDTO {

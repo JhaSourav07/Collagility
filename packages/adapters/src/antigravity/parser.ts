@@ -885,9 +885,29 @@ export class AntigravityOutputParser extends EventEmitter {
     } else if (ev.type === 'THOUGHT' && ev.content) {
       this.emit('thought', ev.content);
     } else if (ev.type === 'TOOL_CALL' || ev.type === 'TOOL_ANALYSIS' || ev.type === 'TOOL_FILE_EDIT') {
+      const toolName = String(ev.metadata?.toolName || 'tool').toLowerCase();
+      const toolArgs = (ev.metadata?.toolArgs || {}) as any;
+      const filePath = ev.metadata?.filePath || ev.metadata?.targetFile || toolArgs.SearchPath || toolArgs.AbsolutePath;
+      const query = ev.metadata?.query || toolArgs.Query;
+
+      let formattedText = `• Executing: ${toolName}`;
+      if (toolName.includes('list')) {
+        formattedText = `• ListDir(${filePath || 'workspace'})`;
+      } else if (toolName.includes('view') || toolName.includes('read')) {
+        formattedText = `• Read(${filePath || 'file'})`;
+      } else if (toolName.includes('grep') || toolName.includes('search')) {
+        formattedText = `• Search("${query || ''}")`;
+      } else if (toolName.includes('write') || toolName.includes('edit') || toolName.includes('replace')) {
+        formattedText = `• Edit(${filePath || 'file'})`;
+      } else if (ev.content) {
+        formattedText = `• ${ev.content.replace(/^\[TOOL_\w+\]\s*/i, '').replace(/^[✏️🔍🔎📁]\s*/i, '')}`;
+      }
+
       this.emit('tool_use', {
-        name: ev.metadata?.toolName || 'tool',
-        content: ev.content,
+        name: toolName,
+        content: formattedText,
+        filePath,
+        query,
       });
     } else if (ev.type === 'COMPLETION') {
       this.emit('step_complete', ev.content);
