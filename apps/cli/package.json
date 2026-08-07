@@ -5,6 +5,15 @@
     "access": "public"
   },
   "description": "Terminal CLI application for Collagility host and participant sessions",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JhaSourav07/Collagility.git",
+    "directory": "apps/cli"
+  },
+  "homepage": "https://github.com/JhaSourav07/Collagility#readme",
+  "bugs": {
+    "url": "https://github.com/JhaSourav07/Collagility/issues"
+  },
   "type": "module",
   "bin": {
     "collagility": "dist/main.js"
