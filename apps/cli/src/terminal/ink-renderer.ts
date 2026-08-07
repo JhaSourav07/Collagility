@@ -2,7 +2,6 @@ import React from 'react';
 import { render, Instance } from 'ink';
 import { App } from './ink/App.js';
 import type { PermissionRequest, PermissionDecision, SecurityMode } from '@collagility/protocol';
-import { AgentPtyProcess, type StyledRun } from '@collagility/adapters';
 import type {
   SessionInfoState,
   AIDriverState,
@@ -33,9 +32,9 @@ export class InkTerminalRenderer {
   private instance: Instance | null = null;
   private commandHandler: CommandHandler | null = null;
 
-  private agentPty: AgentPtyProcess | null = null;
-  private renderTimer: ReturnType<typeof setTimeout> | null = null;
-  private ptySnapshot: StyledRun[][] = [];
+  public setCommandHandler(handler: CommandHandler): void {
+    this.commandHandler = handler;
+  }
 
   private session: SessionInfoState = {
     id: 'active-session',
@@ -88,57 +87,6 @@ export class InkTerminalRenderer {
     if (options.initialActivities) {
       this.activities = options.initialActivities;
     }
-  }
-
-  public setCommandHandler(handler: CommandHandler): void {
-    this.commandHandler = handler;
-  }
-
-  public setAgentPty(ptyProcess: AgentPtyProcess): void {
-    this.agentPty = ptyProcess;
-    this.ptySnapshot = ptyProcess.getScreenSnapshot();
-    this.agentPty.onData(() => {
-      this.scheduleThrottledRerender();
-    });
-    this.rerender();
-  }
-
-  public resizePty(cols: number, rows: number): void {
-    if (this.agentPty) {
-      this.agentPty.resize(cols, rows);
-      this.ptySnapshot = this.agentPty.getScreenSnapshot();
-      this.scheduleThrottledRerender();
-    }
-  }
-
-  public scrollPty(amount: number, unit: 'page' | 'line' = 'page'): void {
-    if (this.agentPty) {
-      if (unit === 'page') {
-        this.agentPty.scrollPages(amount);
-      } else {
-        this.agentPty.scrollLines(amount);
-      }
-      this.ptySnapshot = this.agentPty.getScreenSnapshot();
-      this.scheduleThrottledRerender();
-    }
-  }
-
-  public getPtySnapshot(): StyledRun[][] {
-    if (this.agentPty) {
-      this.ptySnapshot = this.agentPty.getScreenSnapshot();
-    }
-    return this.ptySnapshot;
-  }
-
-  private scheduleThrottledRerender(): void {
-    if (this.renderTimer) return;
-    this.renderTimer = setTimeout(() => {
-      this.renderTimer = null;
-      if (this.agentPty) {
-        this.ptySnapshot = this.agentPty.getScreenSnapshot();
-      }
-      this.rerender();
-    }, 20);
   }
 
   public setSessionInfo(
@@ -380,17 +328,6 @@ export class InkTerminalRenderer {
           onClearScreen: () => {
             this.clearScreen();
           },
-          onPtyWrite: (data: string) => {
-            if (this.agentPty) {
-              this.agentPty.write(data);
-            }
-          },
-          onPtyResize: (cols: number, rows: number) => {
-            this.resizePty(cols, rows);
-          },
-          onPtyScroll: (amount: number, unit?: 'page' | 'line') => {
-            this.scrollPty(amount, unit);
-          },
         })
       );
     } else {
@@ -413,7 +350,6 @@ export class InkTerminalRenderer {
           interactivePrompt: currentPrompt,
           permissionPrompt: currentPermission,
           queueCount: Math.max(this.promptQueue.length, this.permissionQueue.length),
-          ptySnapshot: this.getPtySnapshot(),
           onCommand: (input: string) => {
             if (this.commandHandler) {
               this.commandHandler(input);
@@ -426,17 +362,6 @@ export class InkTerminalRenderer {
           },
           onClearScreen: () => {
             this.clearScreen();
-          },
-          onPtyWrite: (data: string) => {
-            if (this.agentPty) {
-              this.agentPty.write(data);
-            }
-          },
-          onPtyResize: (cols: number, rows: number) => {
-            this.resizePty(cols, rows);
-          },
-          onPtyScroll: (amount: number, unit?: 'page' | 'line') => {
-            this.scrollPty(amount, unit);
           },
         })
       );
@@ -457,10 +382,6 @@ export class InkTerminalRenderer {
   }
 
   public unmount(): void {
-    if (this.renderTimer) {
-      clearTimeout(this.renderTimer);
-      this.renderTimer = null;
-    }
     if (this.instance) {
       this.instance.unmount();
       this.instance = null;
