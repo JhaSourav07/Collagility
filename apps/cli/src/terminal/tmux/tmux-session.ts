@@ -70,6 +70,8 @@ export class TmuxSession {
     // users with physical attach access can still switch panes via tmux prefix shortcuts
     // (e.g. Ctrl+B Arrow), which is an accepted limitation for v1.
     await this.runTmux(['set-window-option', '-t', name, 'mouse', 'off']);
+    await this.runTmux(['set-option', '-t', name, 'status-left', ' ⚡ COLLAGILITY ']);
+    await this.runTmux(['set-option', '-t', name, 'status-right', ' Ctrl+B D to detach ']);
   }
 
   public attach(name: string): Promise<number | null> {

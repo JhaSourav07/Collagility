@@ -22,7 +22,7 @@ describe('TmuxSession', () => {
     expect(mockExecFile).toHaveBeenCalledWith('tmux', ['has-session', '-t', 'demo-session']);
   });
 
-  it('createSplitSession executes correct new-session, split-window with -d, and mouse off option', async () => {
+  it('createSplitSession executes correct new-session, split-window with -d, mouse off, and clean status line options', async () => {
     const mockExecFile = vi.fn().mockResolvedValue({ stdout: '', stderr: '' });
     const session = new TmuxSession(mockExecFile);
 
@@ -62,6 +62,22 @@ describe('TmuxSession', () => {
       'collagility-123',
       'mouse',
       'off',
+    ]);
+
+    expect(mockExecFile).toHaveBeenNthCalledWith(4, 'tmux', [
+      'set-option',
+      '-t',
+      'collagility-123',
+      'status-left',
+      ' ⚡ COLLAGILITY ',
+    ]);
+
+    expect(mockExecFile).toHaveBeenNthCalledWith(5, 'tmux', [
+      'set-option',
+      '-t',
+      'collagility-123',
+      'status-right',
+      ' Ctrl+B D to detach ',
     ]);
   });
 
@@ -121,6 +137,28 @@ describe('TmuxSession', () => {
       '-t',
       'collagility-123.1',
       'y',
+      'Enter',
+    ]);
+  });
+
+  it('sendPrompt executes literal -l text send-keys followed by separate Enter send-keys in order', async () => {
+    const mockExecFile = vi.fn().mockResolvedValue({ stdout: '', stderr: '' });
+    const session = new TmuxSession(mockExecFile);
+
+    await session.sendPrompt('collagility-123', 1, 'explain PageUp/PageDown');
+
+    expect(mockExecFile).toHaveBeenNthCalledWith(1, 'tmux', [
+      'send-keys',
+      '-t',
+      'collagility-123.1',
+      '-l',
+      'explain PageUp/PageDown',
+    ]);
+
+    expect(mockExecFile).toHaveBeenNthCalledWith(2, 'tmux', [
+      'send-keys',
+      '-t',
+      'collagility-123.1',
       'Enter',
     ]);
   });
