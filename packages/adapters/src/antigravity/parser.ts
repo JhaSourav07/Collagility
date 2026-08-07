@@ -1,6 +1,8 @@
 export type InternalEventType =
   | 'THOUGHT'
   | 'TOOL_CALL'
+  | 'TOOL_ANALYSIS'
+  | 'TOOL_FILE_EDIT'
   | 'FILE_CHANGE'
   | 'ERROR'
   | 'SUBAGENT_SPAWNED'
@@ -23,21 +25,85 @@ export interface AntigravityParsedEvent {
     toolName?: string;
     toolArgs?: Record<string, unknown>;
     filePath?: string;
+    targetFile?: string;
+    startLine?: number;
+    endLine?: number;
+    lineRange?: string;
+    query?: string;
+    addedLines?: number;
+    deletedLines?: number;
+    patch?: string;
+    diffLines?: Array<{ type: 'add' | 'delete' | 'context'; line: string }>;
     changeType?: 'created' | 'modified' | 'deleted';
     errorCode?: string;
+    warning?: string;
     subagentId?: string;
     taskDescription?: string;
     activeTool?: string;
     status?: 'running' | 'completed' | 'failed' | 'idle';
     progress?: number;
     outputLogs?: string[];
+    rawThought?: string;
+    usage?: unknown;
     raw?: unknown;
   };
+}
+
+function parseOrGenerateDiff(
+  patchInput?: string,
+  targetContent?: string,
+  replacementContent?: string,
+  additions?: number,
+  deletions?: number
+) {
+  let patch = patchInput || '';
+  let addedLines = additions || 0;
+  let deletedLines = deletions || 0;
+  const diffLines: Array<{ type: 'add' | 'delete' | 'context'; line: string }> = [];
+
+  if (patch) {
+    const lines = patch.split(/\r?\n/);
+    let aCount = 0;
+    let dCount = 0;
+    for (const l of lines) {
+      if (l.startsWith('+') && !l.startsWith('+++')) {
+        aCount++;
+        diffLines.push({ type: 'add', line: l.slice(1) });
+      } else if (l.startsWith('-') && !l.startsWith('---')) {
+        dCount++;
+        diffLines.push({ type: 'delete', line: l.slice(1) });
+      } else if (!l.startsWith('@@') && !l.startsWith('diff')) {
+        diffLines.push({ type: 'context', line: l.startsWith(' ') ? l.slice(1) : l });
+      }
+    }
+    if (!additions) addedLines = aCount;
+    if (!deletions) deletedLines = dCount;
+  } else if (targetContent !== undefined || replacementContent !== undefined) {
+    const targetArr = targetContent ? targetContent.split(/\r?\n/) : [];
+    const replacementArr = replacementContent ? replacementContent.split(/\r?\n/) : [];
+
+    deletedLines = targetArr.length;
+    addedLines = replacementArr.length;
+
+    const patchParts: string[] = [];
+    for (const t of targetArr) {
+      patchParts.push(`- ${t}`);
+      diffLines.push({ type: 'delete', line: t });
+    }
+    for (const r of replacementArr) {
+      patchParts.push(`+ ${r}`);
+      diffLines.push({ type: 'add', line: r });
+    }
+    patch = patchParts.join('\n');
+  }
+
+  return { patch, addedLines, deletedLines, diffLines };
 }
 
 export class AntigravityOutputParser {
   private buffer = '';
   private subagentsMap = new Map<string, SubagentWorkerState>();
+  private lastEmittedEvent: { type: string; content: string } | null = null;
 
   public getSubagents(): SubagentWorkerState[] {
     return Array.from(this.subagentsMap.values());
@@ -48,7 +114,7 @@ export class AntigravityOutputParser {
   }
 
   /**
-   * Parse a single line from stdout or stderr.
+   * Parse a single line from stdout or stderr with JSON filtering and event deduplication.
    */
   public parseLine(line: string): AntigravityParsedEvent {
     const trimmed = line.trim();
@@ -56,12 +122,183 @@ export class AntigravityOutputParser {
       return { type: 'TEXT', content: '' };
     }
 
-    // 1. Try parsing JSON stream event (e.g. from agy --stream-json)
+    // Filter out unparsed or raw internal step_update/telemetry JSON lines
+    if (trimmed.includes('{"event":"step_update"') || trimmed.includes('{"event":"telemetry"')) {
+      if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+        // Embedded raw JSON inside text line — strip JSON block
+        const cleaned = trimmed.replace(/\{"event":"(?:step_update|telemetry)".*?\}/g, '').trim();
+        if (!cleaned) {
+          return { type: 'TEXT', content: '' };
+        }
+        line = cleaned;
+      }
+    }
+
+    const event = this.parseLineInternal(line);
+
+    // Deduplicate consecutive identical structured events (excluding TEXT stream deltas)
+    if (
+      event.content &&
+      (event.type === 'THOUGHT' ||
+        event.type === 'TOOL_ANALYSIS' ||
+        event.type === 'TOOL_FILE_EDIT' ||
+        event.type === 'FILE_CHANGE')
+    ) {
+      if (
+        this.lastEmittedEvent &&
+        this.lastEmittedEvent.type === event.type &&
+        this.lastEmittedEvent.content === event.content
+      ) {
+        return { type: 'TEXT', content: '' };
+      }
+      this.lastEmittedEvent = { type: event.type, content: event.content };
+    }
+
+    return event;
+  }
+
+  private parseLineInternal(line: string): AntigravityParsedEvent {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      return { type: 'TEXT', content: '' };
+    }
+
+    // 1. Try parsing JSON stream event (e.g. from agy --output-format stream-json)
     if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
       try {
         const json = JSON.parse(trimmed);
+
+        // Handle agy stream-json top-level events: init, step_update, result
+        if (json.event === 'init') {
+          return {
+            type: 'TEXT',
+            content: '▸ Initializing Antigravity AI Session...',
+            metadata: { raw: json },
+          };
+        }
+
+        if (json.event === 'result' && json.result) {
+          const res = json.result;
+          const status = res.status || 'SUCCESS';
+          const responseText = res.response || '';
+          return {
+            type: 'COMPLETION',
+            content: responseText,
+            metadata: { status, usage: res.usage, raw: json },
+          };
+        }
+
+        if (json.event === 'step_update' && json.step_update) {
+          const su = json.step_update;
+          const stepType = su.step_type;
+          const state = su.state;
+          const toolInfo = su.tool_info || {};
+          const toolName = String(su.tool_name || toolInfo.name || toolInfo.tool_name || '').toLowerCase();
+          const params = toolInfo.parameters || su.parameters || {};
+
+          if (state === 'ERROR') {
+            const errObj = toolInfo.error || su.error || {};
+            const errorMsg = typeof errObj === 'string' ? errObj : (errObj.message || 'Tool execution error');
+            return {
+              type: 'ERROR',
+              content: `✖ Tool Error [${toolName || 'tool'}]: ${errorMsg}`,
+              metadata: { errorCode: 'TOOL_ERROR', raw: json },
+            };
+          }
+
+          if (stepType === 'tool') {
+            // File Analysis (view_file, grep_search, list_dir)
+            if (toolName === 'view_file' || toolName === 'grep_search' || toolName === 'list_dir' || toolName === 'list_directory' || toolName === 'read_url_content') {
+              const filePath = params.AbsolutePath || params.filePath || params.file || params.path || params.SearchPath;
+              const query = params.Query || params.query || params.term;
+              const startLine = params.StartLine || params.startLine;
+              const endLine = params.EndLine || params.endLine;
+              let lineRange: string | undefined;
+              if (startLine !== undefined || endLine !== undefined) {
+                lineRange = startLine !== undefined && endLine !== undefined ? `lines ${startLine}–${endLine}` : `line ${startLine}+`;
+              }
+              let content = '';
+              if (toolName.includes('grep') || toolName.includes('search')) {
+                content = `🔎 Searched workspace for "${query || ''}"`;
+              } else if (toolName.includes('list')) {
+                content = `📁 Listed directory ${filePath || 'workspace'}`;
+              } else {
+                content = `🔍 Analyzed ${filePath || 'file'}${lineRange ? ` (${lineRange})` : ''}`;
+              }
+              return {
+                type: 'TOOL_ANALYSIS',
+                content,
+                metadata: { toolName, filePath, startLine, endLine, lineRange, query, toolArgs: params, raw: json },
+              };
+            }
+
+            // File Edit (write_to_file, replace_file_content, multi_replace_file_content, edit_file)
+            if (toolName === 'write_to_file' || toolName === 'replace_file_content' || toolName === 'multi_replace_file_content' || toolName === 'edit_file' || toolName === 'write_file') {
+              const targetFile = params.TargetFile || params.targetFile || params.filePath || params.path || 'file';
+              const targetContent = params.TargetContent || params.targetContent;
+              const replacementContent = params.ReplacementContent || params.replacementContent || params.CodeContent || params.codeContent;
+              const patchInput = params.patch || params.diff;
+
+              const { patch, addedLines, deletedLines, diffLines } = parseOrGenerateDiff(
+                patchInput,
+                targetContent,
+                replacementContent,
+                params.addedLines,
+                params.deletedLines
+              );
+
+              return {
+                type: 'TOOL_FILE_EDIT',
+                content: `✏️ Edited ${targetFile} (+${addedLines} lines, -${deletedLines} lines)`,
+                metadata: { toolName, targetFile, filePath: targetFile, addedLines, deletedLines, patch, diffLines, toolArgs: params, raw: json },
+              };
+            }
+
+            // Command / General Tool Call (run_command)
+            const cmd = params.CommandLine || params.command || toolName;
+            return {
+              type: 'TOOL_CALL',
+              content: `Tool Call [${toolName}]: ${cmd}`,
+              metadata: { toolName, toolArgs: params, raw: json },
+            };
+          }
+
+          if (stepType === 'agent_response') {
+            const textDelta = su.text_delta || su.delta || su.content || su.text;
+            if (textDelta) {
+              return {
+                type: 'TEXT',
+                content: String(textDelta),
+                metadata: { raw: json },
+              };
+            }
+            if (su.usage && su.usage.thinking_tokens > 0) {
+              return {
+                type: 'THOUGHT',
+                content: `> _Multi-step reasoning (${su.usage.thinking_tokens} tokens)_`,
+                metadata: { raw: json },
+              };
+            }
+            return {
+              type: 'TEXT',
+              content: '',
+              metadata: { raw: json },
+            };
+          }
+
+          // Any other step_update without matched tool/agent_response should yield empty TEXT
+          return {
+            type: 'TEXT',
+            content: '',
+            metadata: { raw: json },
+          };
+        }
+
         const eventTypeStr = String(
           json.type || json.event || json.kind || json.action || json.status || ''
+        ).toLowerCase();
+        const toolNameRaw = String(
+          json.toolName || json.tool_name || json.tool || json.name || ''
         ).toLowerCase();
 
         // SUBAGENT_SPAWNED
@@ -177,6 +414,105 @@ export class AntigravityOutputParser {
           };
         }
 
+        // TOOL_ANALYSIS (file reading, searching, listing)
+        if (
+          eventTypeStr === 'tool_analysis' ||
+          eventTypeStr === 'file_read' ||
+          toolNameRaw === 'view_file' ||
+          toolNameRaw === 'viewfile' ||
+          toolNameRaw === 'grep_search' ||
+          toolNameRaw === 'grepsearch' ||
+          toolNameRaw === 'list_directory' ||
+          toolNameRaw === 'list_dir' ||
+          toolNameRaw === 'listdir' ||
+          toolNameRaw === 'search_web' ||
+          toolNameRaw === 'web_search'
+        ) {
+          const toolName = json.toolName || json.tool_name || json.tool || toolNameRaw || 'view_file';
+          const filePath = json.filePath || json.file_path || json.file || json.path || json.AbsolutePath || json.targetFile;
+          const startLine = json.startLine ?? json.StartLine ?? json.start_line;
+          const endLine = json.endLine ?? json.EndLine ?? json.end_line;
+          let lineRange = json.lineRange || json.line_range;
+          if (!lineRange && (startLine !== undefined || endLine !== undefined)) {
+            lineRange = startLine !== undefined && endLine !== undefined ? `lines ${startLine}–${endLine}` : `line ${startLine}+`;
+          }
+          const query = json.query || json.Query || json.search_path || json.term;
+
+          let content = json.content;
+          if (!content) {
+            if (toolName.includes('grep') || toolName.includes('search')) {
+              content = `🔎 Searched workspace for "${query || ''}"`;
+            } else if (toolName.includes('list')) {
+              content = `📁 Listed directory ${filePath || 'workspace'}`;
+            } else {
+              content = `🔍 Analyzed ${filePath || 'file'}${lineRange ? ` (${lineRange})` : ''}`;
+            }
+          }
+
+          return {
+            type: 'TOOL_ANALYSIS',
+            content,
+            metadata: {
+              toolName,
+              filePath,
+              startLine,
+              endLine,
+              lineRange,
+              query,
+              toolArgs: json.toolArgs || json.args || json.parameters || json,
+              raw: json,
+            },
+          };
+        }
+
+        // TOOL_FILE_EDIT (file modifications, edits, writes)
+        if (
+          eventTypeStr === 'tool_file_edit' ||
+          eventTypeStr === 'file_edit' ||
+          eventTypeStr === 'file_modification' ||
+          toolNameRaw === 'edit_file' ||
+          toolNameRaw === 'editfile' ||
+          toolNameRaw === 'write_file' ||
+          toolNameRaw === 'writefile' ||
+          toolNameRaw === 'replace_file' ||
+          toolNameRaw === 'replacefile' ||
+          toolNameRaw === 'write_to_file' ||
+          toolNameRaw === 'replace_file_content' ||
+          toolNameRaw === 'multi_replace_file_content'
+        ) {
+          const toolName = json.toolName || json.tool_name || json.tool || toolNameRaw || 'edit_file';
+          const targetFile = json.targetFile || json.TargetFile || json.filePath || json.file_path || json.file || json.path || 'file';
+          const targetContent = json.TargetContent || json.targetContent;
+          const replacementContent = json.ReplacementContent || json.replacementContent || json.CodeContent || json.codeContent;
+          const patchInput = json.patch || json.diff;
+
+          const { patch, addedLines, deletedLines, diffLines } = parseOrGenerateDiff(
+            patchInput,
+            targetContent,
+            replacementContent,
+            json.addedLines || json.additions,
+            json.deletedLines || json.deletions
+          );
+
+          const content = json.content || `✏️ Edited ${targetFile} (+${addedLines} lines, -${deletedLines} lines)`;
+
+          return {
+            type: 'TOOL_FILE_EDIT',
+            content,
+            metadata: {
+              toolName,
+              targetFile,
+              filePath: targetFile,
+              addedLines,
+              deletedLines,
+              patch,
+              diffLines,
+              toolArgs: json.toolArgs || json.args || json.parameters || json,
+              raw: json,
+            },
+          };
+        }
+
         // THOUGHT
         if (
           eventTypeStr === 'thought' ||
@@ -186,14 +522,17 @@ export class AntigravityOutputParser {
           json.thought !== undefined ||
           json.thinking !== undefined
         ) {
+          const rawThought = json.content || json.thought || json.thinking || json.message || trimmed;
+          const formattedThought = rawThought.startsWith('>') ? rawThought : `> _${rawThought}_`;
+
           return {
             type: 'THOUGHT',
-            content: json.content || json.thought || json.thinking || json.message || trimmed,
-            metadata: { raw: json },
+            content: formattedThought,
+            metadata: { rawThought, raw: json },
           };
         }
 
-        // TOOL_CALL
+        // TOOL_CALL (other tools, e.g. run_command)
         if (
           eventTypeStr === 'tool_call' ||
           eventTypeStr === 'tool_use' ||
@@ -216,14 +555,9 @@ export class AntigravityOutputParser {
         // FILE_CHANGE
         if (
           eventTypeStr === 'file_change' ||
-          eventTypeStr === 'file_edit' ||
           eventTypeStr === 'file_mutation' ||
-          eventTypeStr === 'file_write' ||
           eventTypeStr === 'file_create' ||
-          eventTypeStr === 'file_delete' ||
-          json.filePath ||
-          json.file_path ||
-          json.file
+          eventTypeStr === 'file_delete'
         ) {
           const filePath = json.filePath || json.file_path || json.file || json.path;
           let changeType: 'created' | 'modified' | 'deleted' = 'modified';
@@ -246,10 +580,14 @@ export class AntigravityOutputParser {
           json.error !== undefined
         ) {
           const errorMsg = json.error || json.message || trimmed;
-          const errorCode = json.errorCode || json.code || 'AGY_ERROR';
+          let errorCode = json.errorCode || json.code || 'AGY_ERROR';
+          const errStr = typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg);
+          if (errStr.includes('Eligibility check failed') || errStr.includes('i/o timeout')) {
+            errorCode = 'NETWORK_ELIGIBILITY_ERROR';
+          }
           return {
             type: 'ERROR',
-            content: typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg),
+            content: errStr,
             metadata: { errorCode, raw: json },
           };
         }
@@ -337,7 +675,73 @@ export class AntigravityOutputParser {
       };
     }
 
-    // THOUGHT patterns
+    // TOOL_ANALYSIS plain text pattern
+    if (
+      trimmed.startsWith('[TOOL_ANALYSIS]') ||
+      trimmed.startsWith('🔍') ||
+      trimmed.startsWith('🔎') ||
+      trimmed.startsWith('📁') ||
+      trimmed.toLowerCase().startsWith('analyzed ') ||
+      trimmed.toLowerCase().startsWith('searched ') ||
+      trimmed.toLowerCase().startsWith('view_file') ||
+      trimmed.toLowerCase().startsWith('grep_search') ||
+      trimmed.toLowerCase().startsWith('list_directory')
+    ) {
+      const clean = trimmed.replace(/^\[TOOL_ANALYSIS\]\s*/i, '');
+      let toolName = 'view_file';
+      let filePath: string | undefined;
+      let lineRange: string | undefined;
+      let query: string | undefined;
+
+      if (clean.includes('Searched') || clean.includes('grep_search')) {
+        toolName = 'grep_search';
+        const qMatch = clean.match(/(?:for\s*"([^"]+)"|"([^"]+)"|grep_search\s+([^\s]+))/i);
+        query = qMatch ? (qMatch[1] || qMatch[2] || qMatch[3]) : undefined;
+      } else if (clean.includes('Listed') || clean.includes('list_directory')) {
+        toolName = 'list_directory';
+        const fMatch = clean.match(/(?:directory\s+([^\s]+)|list_directory\s+([^\s]+))/i);
+        filePath = fMatch ? (fMatch[1] || fMatch[2]) : undefined;
+      } else {
+        toolName = 'view_file';
+        const fMatch = clean.match(/(?:Analyzed\s+([^\s\()]+)|view_file\s+([^\s\()]+))/i);
+        filePath = fMatch ? (fMatch[1] || fMatch[2]) : undefined;
+        const rMatch = clean.match(/\((lines [^\)]+)\)/i);
+        lineRange = rMatch ? rMatch[1] : undefined;
+      }
+
+      return {
+        type: 'TOOL_ANALYSIS',
+        content: clean,
+        metadata: { toolName, filePath, lineRange, query },
+      };
+    }
+
+    // TOOL_FILE_EDIT plain text pattern
+    if (
+      trimmed.startsWith('[TOOL_FILE_EDIT]') ||
+      trimmed.startsWith('✏️') ||
+      trimmed.toLowerCase().startsWith('edited ') ||
+      trimmed.toLowerCase().startsWith('replace_file') ||
+      trimmed.toLowerCase().startsWith('write_file') ||
+      trimmed.toLowerCase().startsWith('edit_file')
+    ) {
+      const clean = trimmed.replace(/^\[TOOL_FILE_EDIT\]\s*/i, '');
+      const fMatch = clean.match(/(?:Edited\s+([^\s\()]+)|replace_file\s+([^\s]+)|write_file\s+([^\s]+)|edit_file\s+([^\s]+))/i);
+      const targetFile = fMatch ? (fMatch[1] || fMatch[2] || fMatch[3] || fMatch[4]) : 'file';
+
+      const addMatch = clean.match(/\+(\d+)\s*lines?/i);
+      const delMatch = clean.match(/\-(\d+)\s*lines?/i);
+      const addedLines = addMatch ? parseInt(addMatch[1], 10) : 0;
+      const deletedLines = delMatch ? parseInt(delMatch[1], 10) : 0;
+
+      return {
+        type: 'TOOL_FILE_EDIT',
+        content: clean,
+        metadata: { toolName: 'edit_file', targetFile, filePath: targetFile, addedLines, deletedLines },
+      };
+    }
+
+    // THOUGHT plain text pattern
     if (
       trimmed.startsWith('[THOUGHT]') ||
       trimmed.toLowerCase().startsWith('thought:') ||
@@ -349,8 +753,9 @@ export class AntigravityOutputParser {
       trimmed.startsWith('I have ') ||
       trimmed.startsWith('Analyzing ')
     ) {
-      const content = trimmed.replace(/^\[THOUGHT\]\s*/i, '');
-      return { type: 'THOUGHT', content };
+      const clean = trimmed.replace(/^\[THOUGHT\]\s*/i, '').replace(/^(thought|thinking|reasoning):\s*/i, '');
+      const formattedThought = clean.startsWith('>') ? clean : `> _${clean}_`;
+      return { type: 'THOUGHT', content: formattedThought, metadata: { rawThought: clean } };
     }
 
     // TOOL_CALL patterns
@@ -379,10 +784,9 @@ export class AntigravityOutputParser {
       trimmed.toLowerCase().startsWith('created file:') ||
       trimmed.toLowerCase().startsWith('modified file:') ||
       trimmed.toLowerCase().startsWith('deleted file:') ||
-      trimmed.toLowerCase().startsWith('writing file:') ||
-      trimmed.toLowerCase().startsWith('edited ')
+      trimmed.toLowerCase().startsWith('writing file:')
     ) {
-      const fileMatch = trimmed.match(/(?:file changed|created file|modified file|deleted file|writing file|edited file|file):\s*([^\s]+)/i);
+      const fileMatch = trimmed.match(/(?:file changed|created file|modified file|deleted file|writing file|file):\s*([^\s]+)/i);
       const filePath = fileMatch ? fileMatch[1] : undefined;
       let changeType: 'created' | 'modified' | 'deleted' = 'modified';
       if (trimmed.toLowerCase().includes('created')) changeType = 'created';
@@ -395,17 +799,33 @@ export class AntigravityOutputParser {
       };
     }
 
-    // ERROR patterns
+    // ERROR patterns & jetski permission notices
+    if (
+      trimmed.startsWith('jetski:') ||
+      trimmed.includes('User denied permission') ||
+      trimmed.includes('no output produced — a tool required')
+    ) {
+      return {
+        type: 'ERROR',
+        content: `⚠️ Permission Error: ${trimmed}`,
+        metadata: { errorCode: 'PERMISSION_REQUIRED' },
+      };
+    }
+
     if (
       trimmed.startsWith('[ERROR]') ||
       trimmed.startsWith('Error:') ||
       trimmed.startsWith('ERR:') ||
       trimmed.startsWith('Exception:')
     ) {
+      let errorCode = 'AGY_ERROR';
+      if (trimmed.includes('Eligibility check failed') || trimmed.includes('i/o timeout')) {
+        errorCode = 'NETWORK_ELIGIBILITY_ERROR';
+      }
       return {
         type: 'ERROR',
         content: trimmed,
-        metadata: { errorCode: 'AGY_ERROR' },
+        metadata: { errorCode },
       };
     }
 
@@ -444,6 +864,7 @@ export class AntigravityOutputParser {
 
   public reset(): void {
     this.buffer = '';
+    this.lastEmittedEvent = null;
     this.subagentsMap.clear();
   }
 }

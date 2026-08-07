@@ -25,13 +25,18 @@ export class ChunkParser {
   }
 
   public parseChunk(content: string, isFinal = false, metadata?: Record<string, unknown>): StreamChunk {
+    let cleanContent = content;
+    if (typeof cleanContent === 'string' && (cleanContent.includes('{"event":"step_update"') || cleanContent.includes('{"event":"telemetry"'))) {
+      cleanContent = cleanContent.replace(/\{"event":"(?:step_update|telemetry)".*?\}/g, '').trim();
+    }
+
     const seq = this.currentSequenceNumber++;
     return createStreamChunk({
       streamId: this.streamId,
       sequenceNumber: seq,
       sessionId: this.sessionId,
       sender: this.sender,
-      content,
+      content: cleanContent,
       isFinal,
       adapterName: this.adapterName,
       metadata,

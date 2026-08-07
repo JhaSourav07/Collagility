@@ -76,19 +76,25 @@ export function readPlanArtifact(
     const basename = path.basename(cleanPath);
     if (basename) {
       const homeDir = process.env.HOME || '/home/sourav';
-      const homeGeminiPath = path.join(homeDir, '.gemini', 'antigravity-cli', 'brain');
-      if (fs.existsSync(homeGeminiPath)) {
-        try {
-          const subdirs = fs.readdirSync(homeGeminiPath);
-          for (const sub of subdirs) {
-            const artifactFile = path.join(homeGeminiPath, sub, basename);
-            if (fs.existsSync(artifactFile)) {
-              const fileContent = fs.readFileSync(artifactFile, 'utf-8');
-              return { ok: true, filePath: artifactFile, content: fileContent };
+      const brainDirs = [
+        path.join(homeDir, '.gemini', 'antigravity-ide', 'brain'),
+        path.join(homeDir, '.gemini', 'antigravity-cli', 'brain'),
+      ];
+
+      for (const homeGeminiPath of brainDirs) {
+        if (fs.existsSync(homeGeminiPath)) {
+          try {
+            const subdirs = fs.readdirSync(homeGeminiPath);
+            for (const sub of subdirs) {
+              const artifactFile = path.join(homeGeminiPath, sub, basename);
+              if (fs.existsSync(artifactFile)) {
+                const fileContent = fs.readFileSync(artifactFile, 'utf-8');
+                return { ok: true, filePath: artifactFile, content: fileContent };
+              }
             }
+          } catch {
+            // Ignore directory search errors
           }
-        } catch {
-          // Ignore directory search errors
         }
       }
     }
@@ -98,6 +104,6 @@ export function readPlanArtifact(
   return {
     ok: false,
     filePath: filePathOrName,
-    content: rawContent || `Implementation Plan: ${filePathOrName || 'plan.md'}`,
+    content: `[Plan File Not Found]: Could not locate physical plan file "${filePathOrName || 'plan.md'}" on disk.`,
   };
 }

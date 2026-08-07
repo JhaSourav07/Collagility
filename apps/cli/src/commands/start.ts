@@ -11,7 +11,13 @@ import { PlanRenderer } from '../terminal/plan-renderer.js';
 import { InteractivePromptRenderer } from '../terminal/interactive-prompt-renderer.js';
 import { readPlanArtifact } from '../terminal/plan-reader.js';
 import { DocumentRenderer } from '@collagility/renderer';
-import { GeminiAIAdapter, GeminiHealthChecker, AdapterRegistry } from '@collagility/adapters';
+import {
+  GeminiAIAdapter,
+  GeminiHealthChecker,
+  AntigravityAIAdapter,
+  AntigravityHealthChecker,
+  AdapterRegistry,
+} from '@collagility/adapters';
 import { createStreamChunk } from '@collagility/stream';
 
 export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
@@ -27,7 +33,10 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
 
   // Step 1: Check AI CLI (agy / antigravity / gemini) availability & authentication
   console.log(colors.bold(`\nChecking AI CLI (${targetBinary})...`));
-  const healthChecker = new GeminiHealthChecker(targetBinary, isMock, options.cliVersion);
+  const isAntigravity = targetBinary.toLowerCase() === 'agy' || targetBinary.toLowerCase() === 'antigravity';
+  const healthChecker = isAntigravity
+    ? new AntigravityHealthChecker(targetBinary, isMock, options.cliVersion)
+    : new GeminiHealthChecker(targetBinary, isMock, options.cliVersion);
   const health = await healthChecker.checkDetailedHealth();
 
   if (!health.ok) {
@@ -45,7 +54,10 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
   logger.success(`✓ ${binaryLabel} ${health.version || '1.x'}\n`);
 
   // Step 2: Initialize AI Adapter with session workspacePath and Register in AdapterRegistry
-  const adapter = new GeminiAIAdapter({ binaryPath: binaryLabel, mockMode: isMock, cwd: workspacePath });
+  const isAntigravityAdapter = binaryLabel.toLowerCase() === 'agy' || binaryLabel.toLowerCase() === 'antigravity';
+  const adapter = isAntigravityAdapter
+    ? new AntigravityAIAdapter({ binaryPath: health.executable || binaryLabel, mockMode: isMock, cwd: workspacePath })
+    : new GeminiAIAdapter({ binaryPath: health.executable || binaryLabel, mockMode: isMock, cwd: workspacePath });
   const registry = new AdapterRegistry();
 
   try {
@@ -633,19 +645,47 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
       },
 
       onFrame: (frame) => {
+        const activeAdapterName = adapter.name || 'agy';
         if (frame.type === 'ai.plan.approve' || frame.type === 'ai.tool.approved') {
-          adapter.sendInput('y').catch(() => {});
+          if (adapter.status === 'processing') {
+            adapter.sendInput('y').catch(() => {});
+          } else {
+            client.sendAIPrompt(
+              'The implementation plan is APPROVED. Please execute the plan now step by step.',
+              activeAdapterName
+            );
+          }
         } else if (frame.type === 'ai.plan.reject' || frame.type === 'ai.tool.rejected') {
-          adapter.sendInput('n').catch(() => {});
+          if (adapter.status === 'processing') {
+            adapter.sendInput('n').catch(() => {});
+          } else {
+            const reason = (frame.payload as any)?.reason || 'Rejected by user';
+            client.sendAIPrompt(
+              `The implementation plan was REJECTED (${reason}). Please ask what changes should be made or update the plan.`,
+              activeAdapterName
+            );
+          }
         } else if (frame.type === 'ai.confirmation.response') {
           const approved = (frame.payload as any)?.approved !== false;
-          adapter.sendInput(approved ? 'y' : 'n').catch(() => {});
+          if (adapter.status === 'processing') {
+            adapter.sendInput(approved ? 'y' : 'n').catch(() => {});
+          } else {
+            client.sendAIPrompt(approved ? 'Yes' : 'No', activeAdapterName);
+          }
         } else if (frame.type === 'ai.selection.response') {
           const key = (frame.payload as any)?.selectedKey || '1';
-          adapter.sendInput(key).catch(() => {});
+          if (adapter.status === 'processing') {
+            adapter.sendInput(key).catch(() => {});
+          } else {
+            client.sendAIPrompt(`Option ${key} selected`, activeAdapterName);
+          }
         } else if (frame.type === 'ai.answer') {
           const ans = (frame.payload as any)?.answer || '';
-          adapter.sendInput(ans).catch(() => {});
+          if (adapter.status === 'processing') {
+            adapter.sendInput(ans).catch(() => {});
+          } else if (ans) {
+            client.sendAIPrompt(ans, activeAdapterName);
+          }
         }
       },
 

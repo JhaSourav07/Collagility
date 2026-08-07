@@ -8,6 +8,15 @@ import type {
   PermissionRequest,
   PermissionDecision,
 } from '@collagility/protocol';
+
+export type {
+  EventEnvelope,
+  AICompletedPayload,
+  SecurityMode,
+  RiskLevel,
+  PermissionRequest,
+  PermissionDecision,
+};
 import type { AdapterEventMap, AdapterEventName, AdapterEventListener } from './events.js';
 import { evaluateRisk } from '../security/risk-evaluator.js';
 import { AdapterSecurityError } from './errors.js';

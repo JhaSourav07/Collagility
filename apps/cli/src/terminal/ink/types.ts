@@ -54,6 +54,16 @@ export interface FileEditCard {
   additions: number;
   deletions: number;
   diffSummary?: string;
+  patch?: string;
+  diffLines?: Array<{ type: 'add' | 'delete' | 'context'; line: string }>;
+}
+
+export interface FileAnalysisBadgeData {
+  toolName?: string;
+  filePath?: string;
+  lineRange?: string;
+  query?: string;
+  content?: string;
 }
 
 export interface ChatMessageItem {
@@ -68,6 +78,7 @@ export interface ChatMessageItem {
   thoughtBlock?: string;
   toolCard?: ToolExecutionCard;
   fileEditCard?: FileEditCard;
+  analysisBadge?: FileAnalysisBadgeData;
 }
 
 export interface ActivityLogItem {

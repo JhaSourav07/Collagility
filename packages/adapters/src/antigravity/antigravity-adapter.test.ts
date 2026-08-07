@@ -124,7 +124,7 @@ describe('AntigravityAIAdapter', () => {
 
       const result = await promptPromise;
 
-      expect(thoughtListener).toHaveBeenCalledWith({ content: 'Analyzing project structure...' });
+      expect(thoughtListener).toHaveBeenCalledWith({ content: '> _Analyzing project structure..._' });
       expect(toolCallListener).toHaveBeenCalledWith({
         toolName: 'run_command',
         toolArgs: { CommandLine: 'pnpm test' },
@@ -190,6 +190,114 @@ describe('AntigravityAIAdapter', () => {
       await adapter.dispose();
       expect(adapter.status).toBe('uninitialized');
     });
+
+    it('should write y\\n to childProcess.stdin upon resolvePermission approval', async () => {
+      const fakeProcess = new EventEmitter() as any;
+      fakeProcess.stdin = { write: vi.fn(), writable: true };
+      fakeProcess.stdout = new EventEmitter();
+      fakeProcess.stderr = new EventEmitter();
+      fakeProcess.killed = false;
+
+      const mockAdapter = new AntigravityAIAdapter({
+        mockProcessFactory: () => fakeProcess,
+      });
+
+      await mockAdapter.start();
+
+      // Start prompt execution to assign childProcess
+      const promptPromise = mockAdapter.sendPrompt('Create hello.txt');
+
+      // Intercept permission & resolve approval
+      const permPromise = mockAdapter.interceptCommandPermission('write_to_file', 'create hello.txt');
+      const pendingIds = Array.from((mockAdapter as any)._pendingPermissions.keys());
+      expect(pendingIds.length).toBeGreaterThan(0);
+
+      mockAdapter.resolvePermission(pendingIds[0] as string, 'allow-once');
+      await permPromise;
+
+      expect(fakeProcess.stdin.write).toHaveBeenCalledWith('y\n');
+
+      fakeProcess.emit('exit', 0, null);
+      await promptPromise;
+    });
+
+    it('should write stdin newline on TOOL_FILE_EDIT and resume final text response stream', async () => {
+      const fakeProcess = new EventEmitter() as any;
+      fakeProcess.stdin = { write: vi.fn(), writable: true };
+      fakeProcess.stdout = new EventEmitter();
+      fakeProcess.stderr = new EventEmitter();
+      fakeProcess.killed = false;
+
+      const mockAdapter = new AntigravityAIAdapter({
+        mockProcessFactory: () => fakeProcess,
+      });
+
+      await mockAdapter.start();
+
+      const toolEditListener = vi.fn();
+      const chunkListener = vi.fn();
+      mockAdapter.on('tool_file_edit' as any, toolEditListener);
+      mockAdapter.on('chunk' as any, chunkListener);
+
+      const promptPromise = mockAdapter.sendPrompt('Create hello.txt file edit');
+
+      // 1. Emit TOOL_FILE_EDIT event stream chunk
+      fakeProcess.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            toolName: 'write_to_file',
+            targetFile: 'hello.txt',
+            TargetContent: '',
+            ReplacementContent: 'Hello World',
+          }) + '\n'
+        )
+      );
+
+      // Verify stdin write was triggered for tool edit resumption
+      expect(fakeProcess.stdin.write).toHaveBeenCalledWith('\n');
+      expect(toolEditListener).toHaveBeenCalled();
+
+      // 2. Emit final text summary stream chunk
+      fakeProcess.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            event: 'step_update',
+            step_update: {
+              step_type: 'agent_response',
+              text_delta: 'Created hello.txt with requested plan content.',
+            },
+          }) + '\n'
+        )
+      );
+
+      fakeProcess.emit('exit', 0, null);
+
+      const result = await promptPromise;
+      expect(result.type).toBe('ai.completed');
+      expect(chunkListener).toHaveBeenCalledWith('Created hello.txt with requested plan content.');
+    });
+
+    it('should flush initial stdin newline on spawn to bypass welcome prompts', async () => {
+      const fakeProcess = new EventEmitter() as any;
+      fakeProcess.stdin = { write: vi.fn(), writable: true };
+      fakeProcess.stdout = new EventEmitter();
+      fakeProcess.stderr = new EventEmitter();
+      fakeProcess.killed = false;
+
+      const mockAdapter = new AntigravityAIAdapter({
+        mockProcessFactory: () => fakeProcess,
+      });
+
+      await mockAdapter.start();
+      const promptPromise = mockAdapter.sendPrompt('Test initial stdin flush');
+
+      expect(fakeProcess.stdin.write).toHaveBeenCalledWith('\n');
+
+      fakeProcess.emit('exit', 0, null);
+      await promptPromise;
+    });
   });
 
   describe('AntigravityOutputParser', () => {
@@ -204,22 +312,21 @@ describe('AntigravityAIAdapter', () => {
         JSON.stringify({ type: 'thought', content: 'Analyzing repository dependencies' })
       );
       expect(event.type).toBe('THOUGHT');
-      expect(event.content).toBe('Analyzing repository dependencies');
+      expect(event.content).toBe('> _Analyzing repository dependencies_');
     });
 
-    it('should parse JSON TOOL_CALL stream events with metadata', () => {
+    it('should parse JSON TOOL_ANALYSIS stream events with metadata', () => {
       const event = parser.parseLine(
         JSON.stringify({
-          type: 'tool_call',
           toolName: 'view_file',
-          toolArgs: { AbsolutePath: '/src/main.ts' },
+          filePath: '/src/main.ts',
           content: 'Viewing main.ts',
         })
       );
-      expect(event.type).toBe('TOOL_CALL');
+      expect(event.type).toBe('TOOL_ANALYSIS');
       expect(event.content).toBe('Viewing main.ts');
       expect(event.metadata?.toolName).toBe('view_file');
-      expect(event.metadata?.toolArgs).toEqual({ AbsolutePath: '/src/main.ts' });
+      expect(event.metadata?.filePath).toBe('/src/main.ts');
     });
 
     it('should parse JSON FILE_CHANGE stream events with metadata', () => {
@@ -253,7 +360,7 @@ describe('AntigravityAIAdapter', () => {
     it('should parse plain text THOUGHT, TOOL_CALL, FILE_CHANGE, and ERROR lines', () => {
       const thoughtEvt = parser.parseLine('[THOUGHT] Exploring codebase structure');
       expect(thoughtEvt.type).toBe('THOUGHT');
-      expect(thoughtEvt.content).toBe('Exploring codebase structure');
+      expect(thoughtEvt.content).toBe('> _Exploring codebase structure_');
 
       const toolEvt = parser.parseLine('Calling tool: grep_search');
       expect(toolEvt.type).toBe('TOOL_CALL');
