@@ -15,12 +15,12 @@ describe('SessionManager', () => {
     return new SessionManager(store, generator, logger);
   };
 
-  it('should create a new session with owner as sole initial member and store workspacePath', () => {
+  it('should create a new session with owner as sole initial member and store workspacePath', async () => {
     const manager = createTestManager();
     const ownerId = 'user-owner-1';
     const workspacePath = '/run/media/sourav/New Volume/Projects/Collagility';
 
-    const session = manager.createSession(ownerId, { title: 'Test Session', workspacePath });
+    const session = await manager.createSession(ownerId, { title: 'Test Session', workspacePath });
 
     expect(session.id).toBeDefined();
     expect(session.ownerId).toBe(ownerId);
@@ -31,42 +31,42 @@ describe('SessionManager', () => {
     expect(session.metadata).toEqual({ title: 'Test Session', workspacePath });
   });
 
-  it('should reject creating a second session if user is already in a session', () => {
+  it('should reject creating a second session if user is already in a session', async () => {
     const manager = createTestManager();
     const ownerId = 'user-owner-1';
 
-    manager.createSession(ownerId);
+    await manager.createSession(ownerId);
 
-    expect(() => manager.createSession(ownerId)).toThrow(UserAlreadyInSessionError);
+    await expect(manager.createSession(ownerId)).rejects.toThrow(UserAlreadyInSessionError);
   });
 
-  it('should allow another user to join an active session', () => {
+  it('should allow another user to join an active session', async () => {
     const manager = createTestManager();
     const ownerId = 'user-owner';
     const memberId = 'user-member';
 
-    const session = manager.createSession(ownerId);
-    const joinedSession = manager.joinSession(session.id, memberId);
+    const session = await manager.createSession(ownerId);
+    const joinedSession = await manager.joinSession(session.id, memberId);
 
     expect(joinedSession.members.has(memberId)).toBe(true);
     expect(joinedSession.members.size).toBe(2);
   });
 
-  it('should throw error when joining non-existent session ID', () => {
+  it('should throw error when joining non-existent session ID', async () => {
     const manager = createTestManager();
-    expect(() => manager.joinSession('invalid-id', 'user-member')).toThrow(SessionNotFoundError);
+    await expect(manager.joinSession('invalid-id', 'user-member')).rejects.toThrow(SessionNotFoundError);
   });
 
-  it('should handle member leaving session and auto-destroy session when empty', () => {
+  it('should handle member leaving session and auto-destroy session when empty', async () => {
     const manager = createTestManager();
     const ownerId = 'user-owner';
 
-    const session = manager.createSession(ownerId);
-    const leaveResult = manager.leaveSession(ownerId);
+    const session = await manager.createSession(ownerId);
+    const leaveResult = await manager.leaveSession(ownerId);
 
     expect(leaveResult).toBeDefined();
     expect(leaveResult?.destroyed).toBe(true);
     expect(leaveResult?.wasOwner).toBe(true);
-    expect(manager.getSession(session.id)).toBeUndefined();
+    expect(await manager.getSession(session.id)).toBeUndefined();
   });
 });

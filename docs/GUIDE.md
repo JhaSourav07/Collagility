@@ -26,7 +26,7 @@ This is the single, complete reference for installing, running, and using Collag
 
 ## 1. What Collagility Is
 
-Collagility turns a local AI coding CLI (`agy`, `gemini`, `claude`, `aider`, and others) into a **multiplayer** session: you and your collaborators watch the same AI agent work in real time, from your own terminals, on your own machines.
+Collagility turns a local AI coding CLI (`agy` / Antigravity and `gemini` live; `claude`, `aider`, `goose`, `codex` planned stubs) into a **multiplayer** session: you and your collaborators watch the same AI agent work in real time, from your own terminals, on your own machines.
 
 The important design choice, if you've used similar tools before: Collagility does **not** re-parse and re-render the AI CLI's output into its own custom UI. The AI CLI runs completely raw, in its own real terminal pane, driven by [`tmux`](https://github.com/tmux/tmux). What you see on the right is exactly what you'd see if you'd run the tool yourself — same colors, same native prompts, same interactive UI — because it *is* that tool, unmodified. Collagility's own interface (the left pane) is only for chatting with collaborators and sending prompts; it never tries to reconstruct the AI's screen.
 
@@ -45,7 +45,7 @@ The important design choice, if you've used similar tools before: Collagility do
 | **Node.js** | `>= 22.0.0` | Enforced by `engines` in `package.json`. Older Node versions will not run the CLI correctly. |
 | **pnpm** | `>= 9` (repo pinned to `9.15.4`) | `corepack enable` is the easiest way to get the right version automatically. |
 | **tmux** | Any recent version | Required — Collagility orchestrates real tmux split sessions to host the AI CLI. See platform notes below. |
-| **An AI CLI** | — | At least one of: `agy` (Google Antigravity CLI), `gemini`, `claude` (Claude Code), `aider`, or run with `--mock` to try Collagility without any AI CLI installed. |
+| **An AI CLI** | — | Fully supported: `agy` (Google Antigravity CLI, default) or `gemini` (Google Gemini CLI). Planned stubs: `claude`, `aider`, `goose`, `codex`. (Use `--mock` to try Collagility without an AI CLI). |
 
 ### Platform notes for tmux
 
@@ -182,7 +182,7 @@ All commands below are exactly what `collagility --help` will show you — this 
 | `-s, --server <url>` | WebSocket server URL (global flag, also works on `join`). |
 | `-v, --verbose` | Enable verbose debug logging. |
 | `--no-reconnect` | Disable automatic WebSocket reconnection. |
-| `-c, --cli <binary>` | Specify which AI CLI to spawn (e.g. `agy`, `gemini`). Overrides auto-detection. |
+| `-c, --cli <binary>` | Specify which AI CLI to spawn (`agy`, `gemini` supported live; `claude`, `aider`, `goose`, `codex` exit as planned stubs). |
 | `--cli-version <ver>` | Override the detected AI CLI version. |
 | `-r, --resume <session>` | Resume a previous session from its disk checkpoint. |
 | `-m, --mock` | Run with a simulated AI driver — no real CLI process spawned. |
@@ -213,6 +213,9 @@ Cycle between modes with `Shift+Tab` (order: `manual` → `accept-edits` → `pl
 | `HIGH` | `rm -rf`, `sudo`, `chmod`, `kill`, path traversal (`../`), piping remote scripts into a shell |
 
 When your local mode allows a `HIGH`-risk action to auto-proceed only under explicit approval, Collagility shows a permission card you can answer with `y` (approve) / `n` (deny) / `e` (edit before approving). If a remote collaborator's turn requires approval, their answer is relayed back to your local session and Collagility injects the corresponding keystroke into the right pane on their behalf — they still never touch the pane directly. Full technical detail: [RFC-0009](RFC-0009-SECURITY-AND-PERMISSION-ENGINE.md).
+
+> [!IMPORTANT]
+> **Security Notice**: Risk classification is best-effort text pattern matching and does not act as an isolated sandbox or execution guarantee. Command obfuscation, shell substitution, or multi-step execution can bypass pattern heuristics. Users should not treat `auto` security mode as a hard security boundary for untrusted prompts.
 
 ---
 
@@ -350,7 +353,7 @@ No. Remote participants only ever interact through Collagility's structured prot
 Both exist side by side by design. The AI CLI's native UI (including its own prompts) renders normally in the right pane. Collagility's risk-evaluation engine watches a copy of that output and can either auto-approve safe actions (based on your security mode) by injecting the AI CLI's expected keystroke, or surface its own permission card for you (or a remote collaborator) to answer manually.
 
 **Which AI CLIs are supported?**
-`agy` (Google Antigravity CLI), `gemini`, `claude` (Claude Code), `aider`, and `codex`/`goose` in progress — check [RFC-0005](RFC-0005-AI-ADAPTER-ARCHITECTURE.md) for the current adapter list and how to add a new one.
+`agy` (Google Antigravity CLI, default) and `gemini` (Google Gemini CLI) are fully supported for live sessions. `claude`, `aider`, `goose`, and `codex` exist as experimental stubs — check [RFC-0005](RFC-0005-AI-ADAPTER-ARCHITECTURE.md) for the adapter architecture and roadmap.
 
 **Can I try it without installing an AI CLI at all?**
 Yes — `collagility start --mock` uses a simulated driver.

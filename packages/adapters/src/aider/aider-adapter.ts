@@ -55,7 +55,7 @@ export class AiderAIAdapter extends AIAdapter {
   }
 
   public async sendInput(text: string): Promise<void> {
-    this.emit('chunk' as any, `[Aider Input]: ${text}\n`);
+    this.emit('chunk', `[Aider Input]: ${text}\n`);
   }
 
   public async cancel(): Promise<void> {

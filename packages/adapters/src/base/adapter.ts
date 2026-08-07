@@ -18,6 +18,7 @@ export type {
   PermissionDecision,
 };
 import type { AdapterEventMap, AdapterEventName, AdapterEventListener } from './events.js';
+import { debugLog } from './logger.js';
 import { evaluateRisk } from '../security/risk-evaluator.js';
 import { AdapterSecurityError } from './errors.js';
 
@@ -75,7 +76,6 @@ export abstract class AIAdapter extends EventEmitter {
   public isPermissionRequired(riskLevel: RiskLevel): boolean {
     switch (this._securityMode) {
       case 'auto':
-        return false;
       case 'accept-edits':
         return riskLevel === 'HIGH';
       case 'plan-only':
@@ -122,7 +122,9 @@ export abstract class AIAdapter extends EventEmitter {
     this._pendingPermissions.delete(id);
     resolver(decision);
     if (decision === 'allow-once' || decision === 'allow-session') {
-      this.sendTmuxApproval(this._approvalKeystroke).catch(() => {});
+      this.sendTmuxApproval(this._approvalKeystroke).catch((err) => {
+        debugLog('Failed to send tmux approval keystroke', err);
+      });
     }
     return true;
   }
@@ -159,8 +161,8 @@ export abstract class AIAdapter extends EventEmitter {
     });
 
     // Emit typed permission required events
-    this.emit('permission_required' as any, envelope);
-    this.emit('PERMISSION_REQUIRED' as any, envelope);
+    this.emit('permission_required', envelope);
+    this.emit('PERMISSION_REQUIRED', envelope);
 
     const decision = await new Promise<PermissionDecision>((resolve) => {
       this._pendingPermissions.set(id, resolve);

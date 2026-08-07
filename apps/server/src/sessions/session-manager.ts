@@ -25,8 +25,8 @@ export class SessionManager {
     this.logger = logger;
   }
 
-  public createSession(ownerId: string, metadata: Record<string, unknown> = {}): Session {
-    const existingSession = this.store.getByClientId(ownerId);
+  public async createSession(ownerId: string, metadata: Record<string, unknown> = {}): Promise<Session> {
+    const existingSession = await this.store.getByClientId(ownerId);
     if (existingSession) {
       throw new UserAlreadyInSessionError(ownerId, existingSession.id);
     }
@@ -44,13 +44,13 @@ export class SessionManager {
       metadata,
     };
 
-    this.store.save(session);
+    await this.store.save(session);
     this.logger.info({ sessionId, ownerId }, 'Session created');
     return session;
   }
 
-  public joinSession(sessionId: string, clientId: string): Session {
-    const session = this.store.getById(sessionId);
+  public async joinSession(sessionId: string, clientId: string): Promise<Session> {
+    const session = await this.store.getById(sessionId);
     if (!session) {
       throw new SessionNotFoundError(sessionId);
     }
@@ -59,24 +59,24 @@ export class SessionManager {
       throw new SessionClosedError(sessionId);
     }
 
-    const existingSession = this.store.getByClientId(clientId);
+    const existingSession = await this.store.getByClientId(clientId);
     if (existingSession && existingSession.id !== sessionId) {
       throw new UserAlreadyInSessionError(clientId, existingSession.id);
     }
 
-    this.store.addMember(sessionId, clientId);
+    await this.store.addMember(sessionId, clientId);
     this.logger.info({ sessionId, clientId, memberCount: session.members.size }, 'Member joined session');
     return session;
   }
 
-  public leaveSession(clientId: string): LeaveSessionResult | undefined {
-    const session = this.store.getByClientId(clientId);
+  public async leaveSession(clientId: string): Promise<LeaveSessionResult | undefined> {
+    const session = await this.store.getByClientId(clientId);
     if (!session) {
       return undefined;
     }
 
     const wasOwner = session.ownerId === clientId;
-    this.store.removeMember(session.id, clientId);
+    await this.store.removeMember(session.id, clientId);
     this.logger.info(
       { sessionId: session.id, clientId, wasOwner, remainingMembers: session.members.size },
       'Member left session'
@@ -87,7 +87,7 @@ export class SessionManager {
     // Automatic destruction rule: if empty, delete session automatically
     if (session.members.size === 0) {
       session.status = 'closed';
-      this.store.delete(session.id);
+      await this.store.delete(session.id);
       destroyed = true;
       this.logger.info({ sessionId: session.id }, 'Session destroyed because all members left');
     }
@@ -95,22 +95,22 @@ export class SessionManager {
     return { session, destroyed, wasOwner };
   }
 
-  public getSession(sessionId: string): Session | undefined {
-    return this.store.getById(sessionId);
+  public async getSession(sessionId: string): Promise<Session | undefined> {
+    return await this.store.getById(sessionId);
   }
 
-  public getClientSession(clientId: string): Session | undefined {
-    return this.store.getByClientId(clientId);
+  public async getClientSession(clientId: string): Promise<Session | undefined> {
+    return await this.store.getByClientId(clientId);
   }
 
-  public closeSession(sessionId: string): Session | undefined {
-    const session = this.store.getById(sessionId);
+  public async closeSession(sessionId: string): Promise<Session | undefined> {
+    const session = await this.store.getById(sessionId);
     if (!session) {
       return undefined;
     }
 
     session.status = 'closed';
-    this.store.delete(sessionId);
+    await this.store.delete(sessionId);
     this.logger.info({ sessionId }, 'Session closed explicitly');
     return session;
   }

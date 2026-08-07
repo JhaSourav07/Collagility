@@ -11,7 +11,7 @@ RED="\033[31m"
 RESET="\033[0m"
 
 echo -e "${CYAN}${BOLD}"
-echo "  ⚡ Collagility Beta Installer"
+echo "   Collagility Installer"
 echo "  The Realtime Agentic Terminal for Collaborative AI Pair Programming"
 echo -e "${RESET}\n"
 

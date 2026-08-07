@@ -3,6 +3,11 @@ import type { RiskLevel } from '@collagility/protocol';
 /**
  * Evaluates the risk level of a shell command or tool invocation.
  *
+ * NOTE: This is heuristic pattern-matching on command text, not a secure sandbox
+ * or execution guarantee. It can be bypassed by string obfuscation, command
+ * substitution (e.g. `$(...)` or `` `...` ``), multi-step execution (e.g. downloading
+ * a script in step 1 and running it in step 2), or unusual shell syntax/aliases.
+ *
  * @param command - The CLI command string or tool invocation command
  * @param toolName - The name of the tool being executed (e.g. 'run_command', 'write_to_file', 'view_file')
  * @returns RiskLevel - 'LOW' | 'MEDIUM' | 'HIGH'
@@ -15,12 +20,9 @@ export function evaluateRisk(command: string, toolName: string = 'run_command'):
 
   // 1. High Risk Check: Destructive commands, system privilege escalation, process manipulation, system path writes, piping remote scripts into shell
   const HIGH_RISK_PATTERNS = [
-    /\brm\s+-[a-z]*r[a-z]*f\b/i,             // rm -rf / rm -fr
-    /\brm\s+-[a-z]*f[a-z]*r\b/i,
-    /\brm\s+-[a-z]*f\b/i,                   // rm -f
-    /\brm\s+-[a-z]*r\b/i,                   // rm -r
-    /\b(sudo|su|chmod|chown|chgrp)\b/i,      // Privilege & permission escalation
-    /\b(kill|pkill|killall)\b/i,            // Process termination
+    /\brm\b(?=.*?\b(?:-[a-z]*[rR][a-z]*|--recursive)\b)(?=.*?\b(?:-[a-z]*f[a-z]*|--force)\b)/i, // rm with recursive (-r/-R/--recursive) and force (-f/--force) flags
+    /\b(sudo|su|chmod|chown|chgrp)\b/i,      // Privilege & permission escalation (chmod -R / --recursive, chown, sudo)
+    /\b(kill|pkill|killall)\b/i,            // Process termination (-9, -SIGKILL, --signal=KILL)
     /\b(dd|mkfs|format|fdisk)\b/i,           // Disk formatting/wiping
     />>\s*\/(etc|usr|var|boot|sys|proc)\b/i, // Direct system directory mutation
     /\b(curl|wget)\b.*\|\s*(sh|bash|zsh)\b/i, // Piping remote script directly to shell
@@ -84,6 +86,6 @@ export function evaluateRisk(command: string, toolName: string = 'run_command'):
     return 'MEDIUM';
   }
 
-  // Fallback for general run_command / shell executions
-  return 'MEDIUM';
+  // Fallback for unrecognized tools / general shell executions
+  return 'HIGH';
 }

@@ -58,6 +58,7 @@ export interface WSClientEvents {
 }
 
 import { EventEmitter } from 'node:events';
+import { CLILogger } from '../terminal/logger.js';
 
 export class WebSocketClient extends EventEmitter {
   private socket: WebSocket | null = null;
@@ -67,6 +68,7 @@ export class WebSocketClient extends EventEmitter {
   private clientId: string | null = null;
   private sessionId: string | null = null;
   private isExplicitClose = false;
+  private logger: CLILogger;
 
   public getSessionId(): string | null {
     return this.sessionId;
@@ -76,6 +78,7 @@ export class WebSocketClient extends EventEmitter {
     super();
     this.config = config;
     this.events = events;
+    this.logger = new CLILogger(config.verbose);
     this.reconnectHandler = new ReconnectHandler(
       config.maxReconnectAttempts,
       config.reconnectIntervalMs
@@ -126,7 +129,9 @@ export class WebSocketClient extends EventEmitter {
               this.events.onReconnecting(this.reconnectHandler.getAttempts(), delay);
             }
             setTimeout(() => {
-              this.connect().catch(() => {});
+              this.connect().catch((err) => {
+                this.logger.debug('Auto-reconnect attempt failed', err);
+              });
             }, delay);
           }
         });

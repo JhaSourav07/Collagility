@@ -6,7 +6,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 
-Collagility is an open-source multiplayer terminal workspace that turns local AI coding agents into real-time collaborative pair programming sessions. Connect your local CLI tools (`agy`, `gemini`, `claude`, `aider`, `goose`, `codex`) with remote collaborators, stream multi-step AI execution output token-by-token across every participant's terminal simultaneously, and manage security permissions with a built-in risk evaluation engine.
+Collagility is an open-source multiplayer terminal workspace that turns local AI coding agents into real-time collaborative pair programming sessions. Connect your local CLI tools (**`agy`** / Antigravity and **`gemini`** live; `claude`, `aider`, `goose`, `codex` planned stubs) with remote collaborators, stream multi-step AI execution output token-by-token across every participant's terminal simultaneously, and manage security permissions with a built-in risk evaluation engine.
+
+> [!NOTE]
+> **Supported AI CLI Adapters**: Currently **`agy`** (Google Antigravity AI CLI) and **`gemini`** (Google Gemini CLI) are fully supported and functional for live sessions. Adapters for `claude`, `aider`, `goose`, and `codex` exist as experimental stubs and will be enabled in a future release. Selecting `--cli claude` (etc.) will exit with an informative status message.
 
 📖 **New here?** This README is the quick pitch — [`docs/GUIDE.md`](docs/GUIDE.md) is the full manual: every command, every flag, security modes, LAN setup, and troubleshooting.
 
@@ -81,6 +84,9 @@ The Security Engine automatically categorizes tool calls and terminal commands i
 - `LOW`: Safe read-only operations (`ls`, `cat`, `grep`, `git status`, `view_file`, `search_web`).
 - `MEDIUM`: Standard project modifications (`write_to_file`, `mkdir`, `npm install`, `git commit`).
 - `HIGH`: Destructive or sensitive system actions (`rm -rf`, `sudo`, `chmod`, `kill`, path traversal `../`, piping remote scripts to shell).
+
+> [!IMPORTANT]
+> **Security Notice**: Risk classification is best-effort text pattern matching and does not act as an isolated sandbox or execution guarantee. Command obfuscation, shell substitution, or multi-step execution can bypass pattern heuristics. Users should not treat `auto` security mode as a hard security boundary for untrusted prompts.
 
 ---
 

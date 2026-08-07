@@ -81,8 +81,8 @@ export class GeminiAIAdapter extends AIAdapter {
         this.promptHandler.completeActivePrompt();
       } else if (parsed.type === 'plan') {
         this.promptHandler.appendOutputChunk(parsed.content);
-        this.emit('chunk' as any, parsed.content);
-        this.emit('plan' as any, {
+        this.emit('chunk', parsed.content);
+        this.emit('plan', {
           title: 'AI Implementation Plan Proposed',
           filePath: parsed.filePath,
           content: parsed.content,
@@ -90,21 +90,21 @@ export class GeminiAIAdapter extends AIAdapter {
         });
       } else if (parsed.type === 'confirmation') {
         this.promptHandler.appendOutputChunk(parsed.content);
-        this.emit('chunk' as any, parsed.content);
-        this.emit('confirmation' as any, {
+        this.emit('chunk', parsed.content);
+        this.emit('confirmation', {
           prompt: parsed.content,
           options: ['Yes, proceed', 'No, cancel'],
         });
       } else if (parsed.type === 'question') {
         this.promptHandler.appendOutputChunk(parsed.content);
-        this.emit('chunk' as any, parsed.content);
-        this.emit('question' as any, {
+        this.emit('chunk', parsed.content);
+        this.emit('question', {
           prompt: parsed.content,
           options: parsed.options || ['1. Proceed with defaults', '2. Modify plan', '3. Ask follow-up question'],
         });
       } else {
         this.promptHandler.appendOutputChunk(parsed.content);
-        this.emit('chunk' as any, parsed.content);
+        this.emit('chunk', parsed.content);
       }
     });
 
@@ -114,7 +114,7 @@ export class GeminiAIAdapter extends AIAdapter {
 
     this.stderrHandler.onErrorLine((errLine) => {
       if (errLine.trim().length > 0) {
-        this.emit('chunk' as any, `${errLine}\n`);
+        this.emit('chunk', `${errLine}\n`);
       }
     });
 

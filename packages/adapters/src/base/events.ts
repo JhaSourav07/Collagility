@@ -11,6 +11,16 @@ import type {
 } from '@collagility/protocol';
 
 export interface AdapterEventMap {
+  'chunk': string;
+  'thought': { content: string };
+  'tool_call': { toolName: string; command: string; riskLevel?: string; metadata?: Record<string, unknown> };
+  'tool_analysis': { content: string };
+  'tool_file_edit': { path: string; instruction: string };
+  'file_change': { path: string; action: string };
+  'plan': { title?: string; filePath?: string; content: string; options?: string[] };
+  'confirmation': { message?: string; prompt?: string; options?: string[] };
+  'question': { question?: string; prompt?: string; options?: string[] };
+  'error': { message: string; details?: unknown };
   'ai.started': EventEnvelope<AIStatusPayload>;
   'ai.ready': EventEnvelope<AIStatusPayload>;
   'ai.prompt': EventEnvelope<AIPromptPayload>;

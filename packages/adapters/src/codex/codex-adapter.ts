@@ -55,7 +55,7 @@ export class CodexAIAdapter extends AIAdapter {
   }
 
   public async sendInput(text: string): Promise<void> {
-    this.emit('chunk' as any, `[Codex Input]: ${text}\n`);
+    this.emit('chunk', `[Codex Input]: ${text}\n`);
   }
 
   public async cancel(): Promise<void> {

@@ -20,8 +20,8 @@ export const Footer: React.FC<FooterProps> = ({
   onCycleSecurityMode,
 }) => {
   const { stdout } = useStdout();
-  const rawColumns = stdout?.columns;
-  const columns = typeof rawColumns === 'number' && rawColumns > 0 ? rawColumns : 60;
+  const rawColumns = stdout?.columns || process.stdout.columns;
+  const columns = typeof rawColumns === 'number' && rawColumns > 0 ? rawColumns : 120;
   const tier = getHeaderTier(columns);
 
   useInput((_input, key) => {
@@ -94,7 +94,37 @@ export const Footer: React.FC<FooterProps> = ({
     );
   }
 
-  // Standard/Wide/Compact Layout (columns >= 60)
+  if (tier === 'compact') {
+    return (
+      <Box flexDirection="column" width="100%" marginTop={0}>
+        {/* Row 1: Mode, Tokens, Model */}
+        <Box width="100%" justifyContent="space-between" paddingX={1}>
+          <Box gap={1}>
+            <Text color="gray">Mode:</Text>
+            {getSecurityBadge(securityMode)}
+          </Box>
+
+          <Box gap={1}>
+            <Text color="gray">Tokens:</Text>
+            {renderTokenText()}
+          </Box>
+
+          <Text color="magenta">{modelName}</Text>
+        </Box>
+
+        {/* Row 2: Shortcuts */}
+        <Box width="100%" justifyContent="center" paddingX={1}>
+          <Text color="gray">
+            <Text color="cyan">?</Text> help <Text color="gray">•</Text>{' '}
+            <Text color="cyan">/config</Text> settings <Text color="gray">•</Text>{' '}
+            <Text color="cyan">Shift+Tab</Text> cycle
+          </Text>
+        </Box>
+      </Box>
+    );
+  }
+
+  // Tier: Wide (columns >= 100)
   return (
     <Box width="100%" justifyContent="space-between" paddingX={1} marginTop={0}>
       <Box gap={1}>

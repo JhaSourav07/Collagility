@@ -26,11 +26,22 @@ import { TmuxSession } from '../terminal/tmux/tmux-session.js';
 export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
   const logger = new CLILogger(options.verbose);
   const streamRenderer = new TerminalStreamRenderer();
-  const isInteractive = Boolean(process.stdout.isTTY || process.stdin.isTTY || process.env.FORCE_TUI || !process.env.CI);
+  const isInteractive = Boolean(process.env.FORCE_TUI) || (Boolean(process.stdout.isTTY && process.stdin.isTTY) && !process.env.CI);
   const splitRenderer = isInteractive ? new SplitTerminalRenderer({ isOwner: true }) : null;
   let chatPrompt: ChatPrompt | null = null;
 
   const targetBinary = options.cliBinary || 'agy';
+  const requestedCli = targetBinary.toLowerCase();
+  const stubCLIs = ['claude', 'aider', 'goose', 'codex'];
+  if (stubCLIs.includes(requestedCli)) {
+    logger.error(`✖ The '--cli ${requestedCli}' adapter is an experimental stub and not yet supported in live sessions.`);
+    console.log(colors.dim('\nSupported AI CLI adapters:'));
+    console.log(colors.cyan('  • agy / antigravity (Google Antigravity AI CLI — Default)'));
+    console.log(colors.cyan('  • gemini (Google Gemini CLI)\n'));
+    console.log(colors.dim('Full support for Claude, Aider, Goose, and Codex adapters is planned for a future release.\n'));
+    process.exit(1);
+  }
+
   const isMock = Boolean(options.mockMode || process.env.GEMINI_MOCK);
   const workspacePath = process.cwd();
 
@@ -223,10 +234,6 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
                 }
               }
 
-              if (promptRouter && isAiPrompt(trimmed)) {
-                promptRouter.forwardPrompt(trimmed).catch(() => {});
-              }
-
               if (trimmed.startsWith('/leave')) {
                 client.leaveSession();
                 console.log(`\n💡 Session checkpoint saved. To resume, run: collagility start --resume ${sessionId}`);
@@ -345,7 +352,9 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
         streamRenderer.onStreamStarted(payload.streamId, payload.adapterName, payload.prompt);
 
         if (promptRouter && payload.prompt) {
-          promptRouter.forwardPrompt(payload.prompt).catch(() => {});
+          promptRouter.forwardPrompt(payload.prompt).catch((err) => {
+            logger.debug('Failed to forward stream prompt', err);
+          });
         }
 
         const reqName = payload.adapterName?.toLowerCase();
@@ -696,7 +705,9 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
         const activeAdapterName = adapter.name || 'agy';
         if (frame.type === 'ai.plan.approve' || frame.type === 'ai.tool.approved') {
           if (adapter.status === 'processing') {
-            adapter.sendInput('y').catch(() => {});
+            adapter.sendInput('y').catch((err) => {
+              logger.debug('Failed to send input "y"', err);
+            });
           } else {
             client.sendAIPrompt(
               'The implementation plan is APPROVED. Please execute the plan now step by step.',
@@ -705,7 +716,9 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
           }
         } else if (frame.type === 'ai.plan.reject' || frame.type === 'ai.tool.rejected') {
           if (adapter.status === 'processing') {
-            adapter.sendInput('n').catch(() => {});
+            adapter.sendInput('n').catch((err) => {
+              logger.debug('Failed to send input "n"', err);
+            });
           } else {
             const reason = (frame.payload as any)?.reason || 'Rejected by user';
             client.sendAIPrompt(
@@ -716,21 +729,27 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
         } else if (frame.type === 'ai.confirmation.response') {
           const approved = (frame.payload as any)?.approved !== false;
           if (adapter.status === 'processing') {
-            adapter.sendInput(approved ? 'y' : 'n').catch(() => {});
+            adapter.sendInput(approved ? 'y' : 'n').catch((err) => {
+              logger.debug('Failed to send confirmation input', err);
+            });
           } else {
             client.sendAIPrompt(approved ? 'Yes' : 'No', activeAdapterName);
           }
         } else if (frame.type === 'ai.selection.response') {
           const key = (frame.payload as any)?.selectedKey || '1';
           if (adapter.status === 'processing') {
-            adapter.sendInput(key).catch(() => {});
+            adapter.sendInput(key).catch((err) => {
+              logger.debug('Failed to send selection key input', err);
+            });
           } else {
             client.sendAIPrompt(`Option ${key} selected`, activeAdapterName);
           }
         } else if (frame.type === 'ai.answer') {
           const ans = (frame.payload as any)?.answer || '';
           if (adapter.status === 'processing') {
-            adapter.sendInput(ans).catch(() => {});
+            adapter.sendInput(ans).catch((err) => {
+              logger.debug('Failed to send answer input', err);
+            });
           } else if (ans) {
             client.sendAIPrompt(ans, activeAdapterName);
           }
@@ -800,7 +819,9 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
         if (ink) ink.unmount();
       }
       logger.info('Leaving session and disconnecting...');
-      adapter.dispose().catch(() => {});
+      adapter.dispose().catch((err) => {
+        logger.debug('Failed to dispose adapter cleanly on exit', err);
+      });
       client.leaveSession();
       client.disconnect();
       process.exit(0);
