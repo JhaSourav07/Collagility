@@ -1,7 +1,8 @@
 import React from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, Text, useInput, useStdout } from 'ink';
 import type { SecurityMode } from '@collagility/protocol';
 import type { TokenStatus } from './types.js';
+import { getHeaderTier } from './Header.js';
 
 export interface FooterProps {
   modelName?: string;
@@ -16,6 +17,10 @@ export const Footer: React.FC<FooterProps> = ({
   tokenStatus = { used: 14200, limit: 1000000 },
   onCycleSecurityMode,
 }) => {
+  const { stdout } = useStdout();
+  const columns = stdout?.columns || 80;
+  const tier = getHeaderTier(columns);
+
   useInput((_input, key) => {
     // Shift + Tab cycling listener
     if (key.tab && key.shift) {
@@ -45,6 +50,36 @@ export const Footer: React.FC<FooterProps> = ({
     return `${num}`;
   };
 
+  if (tier === 'minimal') {
+    return (
+      <Box flexDirection="column" width="100%" marginTop={0}>
+        {/* Row 1: Mode badge + Tokens */}
+        <Box width="100%" justifyContent="space-between" paddingX={1}>
+          <Box gap={1}>
+            <Text color="gray">Mode:</Text>
+            {getSecurityBadge(securityMode)}
+          </Box>
+
+          <Box gap={1}>
+            <Text color="gray">Tokens:</Text>
+            <Text color="white" bold>
+              {formatTokens(tokenStatus.used)} / {formatTokens(tokenStatus.limit)}
+            </Text>
+          </Box>
+        </Box>
+
+        {/* Row 2: Model name & simple help hint */}
+        <Box width="100%" justifyContent="space-between" paddingX={1}>
+          <Text color="magenta">{modelName}</Text>
+          <Text color="gray">
+            <Text color="cyan">?</Text> help
+          </Text>
+        </Box>
+      </Box>
+    );
+  }
+
+  // Standard/Wide/Compact Layout (columns >= 60)
   return (
     <Box width="100%" justifyContent="space-between" paddingX={1} marginTop={0}>
       <Box gap={1}>
