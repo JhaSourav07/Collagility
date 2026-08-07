@@ -134,6 +134,22 @@ export class AgentPtyProcess {
     }
   }
 
+  public scrollLines(amount: number): void {
+    this.terminal.scrollLines(amount);
+  }
+
+  public scrollPages(pageCount: number): void {
+    this.terminal.scrollPages(pageCount);
+  }
+
+  public scrollToTop(): void {
+    this.terminal.scrollToTop();
+  }
+
+  public scrollToBottom(): void {
+    this.terminal.scrollToBottom();
+  }
+
   public getScreenSnapshot(): StyledRun[][] {
     const buffer = this.terminal.buffer.active;
     const cols = this.terminal.cols;
@@ -143,7 +159,7 @@ export class AgentPtyProcess {
     const nullCell = buffer.getNullCell();
 
     for (let y = 0; y < rows; y++) {
-      const lineIndex = buffer.baseY + y;
+      const lineIndex = buffer.viewportY + y;
       const line = buffer.getLine(lineIndex);
       const rowRuns: StyledRun[] = [];
 

@@ -134,6 +134,47 @@ describe('AgentPtyProcess', () => {
     agentPty.kill('SIGKILL');
     expect(mockPtyInstance!.killedSignal).toBe('SIGKILL');
   });
+
+  it('supports scrolling through active scrollback buffer via scrollPages/scrollLines', async () => {
+    let mockPtyInstance: MockPty | null = null;
+
+    const agentPty = new AgentPtyProcess({
+      binaryPath: 'bash',
+      cols: 40,
+      rows: 5,
+      mockPtyFactory: () => {
+        mockPtyInstance = new MockPty();
+        return mockPtyInstance;
+      },
+    });
+
+    agentPty.spawn();
+
+    // Emit 20 lines of output to fill scrollback
+    const lines = Array.from({ length: 20 }, (_, i) => `Line ${i + 1}`).join('\r\n');
+    mockPtyInstance!.emitData(lines);
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Initially at bottom: last visible line should be "Line 20"
+    const bottomSnapshot = agentPty.getScreenSnapshot();
+    const bottomText = bottomSnapshot.map((r) => r.map((cell) => cell.text).join('')).join('\n');
+    expect(bottomText).toContain('Line 20');
+
+    // Scroll up by 1 page
+    agentPty.scrollPages(-1);
+
+    const scrolledSnapshot = agentPty.getScreenSnapshot();
+    const scrolledText = scrolledSnapshot.map((r) => r.map((cell) => cell.text).join('')).join('\n');
+    expect(scrolledText).not.toContain('Line 20');
+    expect(scrolledText).toContain('Line 15');
+
+    // Scroll back to bottom
+    agentPty.scrollToBottom();
+    const resetSnapshot = agentPty.getScreenSnapshot();
+    const resetText = resetSnapshot.map((r) => r.map((cell) => cell.text).join('')).join('\n');
+    expect(resetText).toContain('Line 20');
+  });
 });
 
 describe('processPtyAutoApproval', () => {

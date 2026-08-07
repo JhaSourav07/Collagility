@@ -111,6 +111,18 @@ export class InkTerminalRenderer {
     }
   }
 
+  public scrollPty(amount: number, unit: 'page' | 'line' = 'page'): void {
+    if (this.agentPty) {
+      if (unit === 'page') {
+        this.agentPty.scrollPages(amount);
+      } else {
+        this.agentPty.scrollLines(amount);
+      }
+      this.ptySnapshot = this.agentPty.getScreenSnapshot();
+      this.scheduleThrottledRerender();
+    }
+  }
+
   public getPtySnapshot(): StyledRun[][] {
     if (this.agentPty) {
       this.ptySnapshot = this.agentPty.getScreenSnapshot();
@@ -368,6 +380,17 @@ export class InkTerminalRenderer {
           onClearScreen: () => {
             this.clearScreen();
           },
+          onPtyWrite: (data: string) => {
+            if (this.agentPty) {
+              this.agentPty.write(data);
+            }
+          },
+          onPtyResize: (cols: number, rows: number) => {
+            this.resizePty(cols, rows);
+          },
+          onPtyScroll: (amount: number, unit?: 'page' | 'line') => {
+            this.scrollPty(amount, unit);
+          },
         })
       );
     } else {
@@ -390,6 +413,7 @@ export class InkTerminalRenderer {
           interactivePrompt: currentPrompt,
           permissionPrompt: currentPermission,
           queueCount: Math.max(this.promptQueue.length, this.permissionQueue.length),
+          ptySnapshot: this.getPtySnapshot(),
           onCommand: (input: string) => {
             if (this.commandHandler) {
               this.commandHandler(input);
@@ -402,6 +426,17 @@ export class InkTerminalRenderer {
           },
           onClearScreen: () => {
             this.clearScreen();
+          },
+          onPtyWrite: (data: string) => {
+            if (this.agentPty) {
+              this.agentPty.write(data);
+            }
+          },
+          onPtyResize: (cols: number, rows: number) => {
+            this.resizePty(cols, rows);
+          },
+          onPtyScroll: (amount: number, unit?: 'page' | 'line') => {
+            this.scrollPty(amount, unit);
           },
         })
       );

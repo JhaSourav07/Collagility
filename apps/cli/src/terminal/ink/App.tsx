@@ -40,6 +40,7 @@ export interface AppProps {
   onExitSession?: () => void;
   onPtyWrite?: (data: string) => void;
   onPtyResize?: (cols: number, rows: number) => void;
+  onPtyScroll?: (amount: number, unit?: 'page' | 'line') => void;
 }
 
 export const App: React.FC<AppProps> = ({
@@ -59,6 +60,7 @@ export const App: React.FC<AppProps> = ({
   onExitSession,
   onPtyWrite,
   onPtyResize,
+  onPtyScroll,
 }) => {
   const [activeOverlay, setActiveOverlay] = useState<OverlayType>(propOverlay);
   const [focusedPane, setFocusedPane] = useState<'chat' | 'terminal'>('chat');
@@ -78,7 +80,7 @@ export const App: React.FC<AppProps> = ({
     }
   }, [rightWidth, ptyHeight, onPtyResize]);
 
-  // Keybinding handler supporting focus toggle & raw PTY input
+  // Keybinding handler supporting focus toggle, scrollback, & raw PTY input
   useInput((input, key) => {
     // Tab or Ctrl+T toggles keyboard focus between Chat Input and AI Terminal PTY
     if (key.tab || (key.ctrl && input.toLowerCase() === 't')) {
@@ -86,8 +88,17 @@ export const App: React.FC<AppProps> = ({
       return;
     }
 
-    // When terminal pane is focused, forward raw keystrokes to PTY and bypass global App shortcuts
+    // When terminal pane is focused, handle PageUp/PageDown scroll & raw keystrokes
     if (focusedPane === 'terminal') {
+      if (key.pageUp) {
+        if (onPtyScroll) onPtyScroll(-1, 'page');
+        return;
+      }
+      if (key.pageDown) {
+        if (onPtyScroll) onPtyScroll(1, 'page');
+        return;
+      }
+
       if (onPtyWrite) {
         if (key.return) {
           onPtyWrite('\r');
