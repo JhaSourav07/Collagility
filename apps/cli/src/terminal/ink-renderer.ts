@@ -136,6 +136,9 @@ export class InkTerminalRenderer {
   }
 
   public clearScreen(): void {
+    if (process.stdout.isTTY) {
+      process.stdout.write('\x1Bc');
+    }
     this.messages = this.messages.filter((m) => m.id.startsWith('sys-init'));
     this.activities = [];
     this.appendMessage({
@@ -310,6 +313,9 @@ export class InkTerminalRenderer {
     const currentPrompt = this.getInteractivePrompt();
     const currentPermission = this.getPermissionPrompt();
     if (!this.instance) {
+      if (process.stdout.isTTY) {
+        process.stdout.write('\x1Bc');
+      }
       this.instance = render(
         React.createElement(App, {
           session: this.session,

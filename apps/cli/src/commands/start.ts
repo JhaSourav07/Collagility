@@ -234,12 +234,6 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
                 }
               }
 
-              if (promptRouter && isAiPrompt(trimmed)) {
-                promptRouter.forwardPrompt(trimmed).catch((err) => {
-                  logger.debug('Failed to forward prompt', err);
-                });
-              }
-
               if (trimmed.startsWith('/leave')) {
                 client.leaveSession();
                 console.log(`\n💡 Session checkpoint saved. To resume, run: collagility start --resume ${sessionId}`);

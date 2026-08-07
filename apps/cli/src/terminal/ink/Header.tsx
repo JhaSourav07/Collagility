@@ -27,8 +27,8 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ session, aiDriver, subagents = [] }) => {
   const { stdout } = useStdout();
-  const rawColumns = stdout?.columns;
-  const columns = typeof rawColumns === 'number' && rawColumns > 0 ? rawColumns : 60;
+  const rawColumns = stdout?.columns || process.stdout.columns;
+  const columns = typeof rawColumns === 'number' && rawColumns > 0 ? rawColumns : 120;
   const tier = getHeaderTier(columns);
 
   const workspace = session.workspacePath || process.cwd();
