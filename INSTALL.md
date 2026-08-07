@@ -10,12 +10,16 @@ This guide provides instructions for installing, building, and configuring Colla
 - **Node.js**: `>=22.0.0`
 - **pnpm**: `>=9.0.0` (`corepack enable` or `npm install -g pnpm`)
 
-### Optional AI Agent Executables
-Collagility includes a built-in mock mode (`--mock`), but for live AI pair programming you should have at least one AI CLI tool installed and accessible in your system `PATH`:
-- **Google Antigravity CLI**: `agy` (v2.0+)
-- **Google Gemini CLI**: `gemini`
-- **Anthropic Claude Code**: `claude`
-- **Aider**: `aider`
+### AI Agent Executables
+Collagility includes a built-in mock mode (`--mock`), but for live AI pair programming you should have a supported AI CLI tool installed and accessible in your system `PATH`:
+- **Live Supported**:
+  - **Google Antigravity CLI**: `agy` / `antigravity` (Default)
+  - **Google Gemini CLI**: `gemini`
+- **Planned / Experimental Stubs**:
+  - **Anthropic Claude Code**: `claude` (Stub — planned for future release)
+  - **Aider**: `aider` (Stub — planned for future release)
+  - **Goose**: `goose` (Stub — planned for future release)
+  - **OpenAI Codex CLI**: `codex` (Stub — planned for future release)
 
 ## ⚡ Quick Installation (Production / Global CLI)
 

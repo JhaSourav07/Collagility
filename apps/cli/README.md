@@ -6,7 +6,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 
-Collagility is an open-source multiplayer terminal workspace that turns local AI coding agents into real-time collaborative pair programming sessions. Connect your local CLI tools (`agy`, `gemini`, `claude`, `aider`, `goose`, `codex`) with remote collaborators, stream multi-step AI execution output token-by-token across every participant's terminal simultaneously, and manage security permissions with a built-in risk evaluation engine.
+Collagility is an open-source multiplayer terminal workspace that turns local AI coding agents into real-time collaborative pair programming sessions. Connect your local CLI tools (**`agy`** / Antigravity and **`gemini`** live; `claude`, `aider`, `goose`, `codex` planned stubs) with remote collaborators, stream multi-step AI execution output token-by-token across every participant's terminal simultaneously, and manage security permissions with a built-in risk evaluation engine.
+
+> [!NOTE]
+> **Supported AI CLI Adapters**: Currently **`agy`** (Google Antigravity AI CLI) and **`gemini`** (Google Gemini CLI) are fully supported and functional for live sessions. Adapters for `claude`, `aider`, `goose`, and `codex` exist as experimental stubs and will be enabled in a future release. Selecting `--cli claude` (etc.) will exit with an informative status message.
 
 📖 **New here?** This README is the quick pitch — [`docs/GUIDE.md`](docs/GUIDE.md) is the full manual: every command, every flag, security modes, LAN setup, and troubleshooting.
 

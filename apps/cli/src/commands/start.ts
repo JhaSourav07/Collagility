@@ -31,6 +31,17 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
   let chatPrompt: ChatPrompt | null = null;
 
   const targetBinary = options.cliBinary || 'agy';
+  const requestedCli = targetBinary.toLowerCase();
+  const stubCLIs = ['claude', 'aider', 'goose', 'codex'];
+  if (stubCLIs.includes(requestedCli)) {
+    logger.error(`✖ The '--cli ${requestedCli}' adapter is an experimental stub and not yet supported in live sessions.`);
+    console.log(colors.dim('\nSupported AI CLI adapters:'));
+    console.log(colors.cyan('  • agy / antigravity (Google Antigravity AI CLI — Default)'));
+    console.log(colors.cyan('  • gemini (Google Gemini CLI)\n'));
+    console.log(colors.dim('Full support for Claude, Aider, Goose, and Codex adapters is planned for a future release.\n'));
+    process.exit(1);
+  }
+
   const isMock = Boolean(options.mockMode || process.env.GEMINI_MOCK);
   const workspacePath = process.cwd();
 
