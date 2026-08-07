@@ -11,11 +11,12 @@ export function isAiPrompt(input: string): boolean {
   const trimmed = input.trim();
   if (!trimmed) return false;
   if (isSlashCommand(input)) return false;
+  const lower = trimmed.toLowerCase();
   return (
-    trimmed.startsWith('@agi') ||
-    trimmed.startsWith('@agy') ||
-    trimmed.startsWith('@gemini') ||
-    trimmed.startsWith('/gemini')
+    lower.startsWith('@agi') ||
+    lower.startsWith('@agy') ||
+    lower.startsWith('@gemini') ||
+    lower.startsWith('/gemini')
   );
 }
 
@@ -29,13 +30,11 @@ export class TmuxPromptRouter {
   }
 
   public async forwardPrompt(input: string): Promise<boolean> {
-    if (!isAiPrompt(input)) {
-      return false;
-    }
-
     const trimmed = input.trim();
-    const cleanPrompt = trimmed.replace(/^(@agi|@agy|@gemini|\/gemini)\s*/i, '') || trimmed;
+    if (!trimmed) return false;
+    if (isSlashCommand(trimmed)) return false;
 
+    const cleanPrompt = trimmed.replace(/^(@agi|@agy|@gemini|\/gemini)\s*/i, '') || trimmed;
     await this.tmuxSession.sendPrompt(this.sessionName, 1, cleanPrompt);
     return true;
   }

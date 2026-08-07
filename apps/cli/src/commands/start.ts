@@ -308,7 +308,7 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
       onStreamStarted: (payload) => {
         streamRenderer.onStreamStarted(payload.streamId, payload.adapterName, payload.prompt);
 
-        if (promptRouter && payload.prompt && isAiPrompt(payload.prompt)) {
+        if (promptRouter && payload.prompt) {
           promptRouter.forwardPrompt(payload.prompt).catch(() => {});
         }
 

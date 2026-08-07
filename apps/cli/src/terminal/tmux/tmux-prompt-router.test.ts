@@ -13,7 +13,7 @@ describe('TmuxPromptRouter & AI Tag Filter', () => {
     expect(isAiPrompt('/leave')).toBe(false);
 
     expect(isAiPrompt('@agi fix this bug')).toBe(true);
-    expect(isAiPrompt('@agy create a file')).toBe(true);
+    expect(isAiPrompt('@AGY create a file')).toBe(true);
     expect(isAiPrompt('@gemini hello')).toBe(true);
     expect(isAiPrompt('/gemini hello')).toBe(true);
   });
@@ -40,7 +40,7 @@ describe('TmuxPromptRouter & AI Tag Filter', () => {
     ]);
   });
 
-  it('does NOT forward normal chat messages or slash commands to the right pane', async () => {
+  it('does NOT forward slash commands or empty input to the right pane', async () => {
     const mockSendPrompt = vi.fn().mockResolvedValue(undefined);
     const mockSession = {
       sendPrompt: mockSendPrompt,
@@ -48,17 +48,17 @@ describe('TmuxPromptRouter & AI Tag Filter', () => {
 
     const router = new TmuxPromptRouter('collagility-123', mockSession);
 
-    const forwardedHello = await router.forwardPrompt('hello');
+    const forwardedEmpty = await router.forwardPrompt('   ');
     const forwardedLeave = await router.forwardPrompt('/leave');
     const forwardedMode = await router.forwardPrompt('/mode auto');
 
-    expect(forwardedHello).toBe(false);
+    expect(forwardedEmpty).toBe(false);
     expect(forwardedLeave).toBe(false);
     expect(forwardedMode).toBe(false);
     expect(mockSendPrompt).not.toHaveBeenCalled();
   });
 
-  it('forwards AI prompts tagged with @agi/@agy/@gemini to the right pane with stripped tag prefix', async () => {
+  it('forwards AI prompts (tagged or clean) to the right pane', async () => {
     const mockSendPrompt = vi.fn().mockResolvedValue(undefined);
     const mockSession = {
       sendPrompt: mockSendPrompt,
@@ -67,12 +67,12 @@ describe('TmuxPromptRouter & AI Tag Filter', () => {
     const router = new TmuxPromptRouter('collagility-123', mockSession);
 
     const forwardedAgi = await router.forwardPrompt('@agi create a new file');
-    const forwardedAgy = await router.forwardPrompt('@agy refactor function');
+    const forwardedClean = await router.forwardPrompt('refactor function');
 
     expect(forwardedAgi).toBe(true);
     expect(mockSendPrompt).toHaveBeenNthCalledWith(1, 'collagility-123', 1, 'create a new file');
 
-    expect(forwardedAgy).toBe(true);
+    expect(forwardedClean).toBe(true);
     expect(mockSendPrompt).toHaveBeenNthCalledWith(2, 'collagility-123', 1, 'refactor function');
   });
 });
