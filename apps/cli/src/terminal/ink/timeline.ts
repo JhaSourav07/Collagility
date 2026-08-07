@@ -14,9 +14,18 @@ export interface TimelineEvent {
   analysisBadge?: ChatMessageItem['analysisBadge'];
 }
 
+function parseTimeString(t: string): number {
+  if (!t) return 0;
+  const parts = t.split(':').map((p) => parseInt(p, 10));
+  if (parts.length === 3 && !parts.some(Number.isNaN)) {
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  }
+  return 0;
+}
+
 /**
  * Builds a timeline stream for human/system messages and activity logs.
- * Filters out AI driver messages (which are rendered separately in PTY/stream views).
+ * Sorts messages and activity logs chronologically by timestamp.
  */
 export function buildHumanTimeline(
   messages: ChatMessageItem[],
@@ -26,7 +35,6 @@ export function buildHumanTimeline(
 
   for (const msg of messages) {
     if (msg.senderRole === 'ai') {
-      // Filter out AI messages from human timeline
       continue;
     }
 
@@ -57,6 +65,13 @@ export function buildHumanTimeline(
       content: act.text,
     });
   }
+
+  timeline.sort((a, b) => {
+    const timeA = parseTimeString(a.timestamp);
+    const timeB = parseTimeString(b.timestamp);
+    if (timeA !== timeB) return timeA - timeB;
+    return 0;
+  });
 
   return timeline;
 }

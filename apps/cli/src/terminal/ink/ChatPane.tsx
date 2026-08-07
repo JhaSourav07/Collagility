@@ -263,12 +263,17 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
         }
 
         // User Chat Message
+        const displaySender =
+          event.sender && event.sender.includes('-')
+            ? event.sender.split('-')[0]
+            : event.sender;
+
         return (
           <Box key={event.id} gap={1} marginY={0.2}>
             <Text color="gray">{event.timestamp}</Text>
             {event.icon && <Text>{event.icon} </Text>}
             <Text color={senderColor} bold>
-              {event.sender}&gt;
+              {displaySender}&gt;
             </Text>
             <Text color="white">{event.content}</Text>
           </Box>

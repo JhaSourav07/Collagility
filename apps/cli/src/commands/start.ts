@@ -702,32 +702,34 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
       },
 
       onMemberJoined: (sessionId, memberId) => {
+        const displayId = memberId.includes('-') ? memberId.split('-')[0] : memberId.slice(0, 8);
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();
           if (ink) {
-            ink.appendActivity(`${memberId} joined`, 'join');
-            ink.addUser({ name: memberId });
+            ink.appendActivity(`${displayId} joined`, 'join');
+            ink.addUser({ name: displayId });
           }
         } else if (chatPrompt) {
-          const notice = TerminalRenderer.renderSystemMessage(`Member ${memberId} joined the session`);
+          const notice = TerminalRenderer.renderSystemMessage(`Member ${displayId} joined the session`);
           chatPrompt.printAbovePrompt(notice);
         } else {
-          logger.success(`Member ${colors.cyan(memberId)} joined session ${colors.code(sessionId)}`);
+          logger.success(`Member ${colors.cyan(displayId)} joined session ${colors.code(sessionId)}`);
         }
       },
 
       onMemberLeft: (sessionId, memberId, _isOwner) => {
+        const displayId = memberId.includes('-') ? memberId.split('-')[0] : memberId.slice(0, 8);
         if (splitRenderer) {
           const ink = splitRenderer.getInkRenderer();
           if (ink) {
-            ink.appendActivity(`${memberId} left`, 'leave');
-            ink.removeUser(memberId);
+            ink.appendActivity(`${displayId} left`, 'leave');
+            ink.removeUser(displayId);
           }
         } else if (chatPrompt) {
-          const notice = TerminalRenderer.renderSystemMessage(`Member ${memberId} left the session`);
+          const notice = TerminalRenderer.renderSystemMessage(`Member ${displayId} left the session`);
           chatPrompt.printAbovePrompt(notice);
         } else {
-          logger.info(`Member ${colors.cyan(memberId)} left session ${colors.code(sessionId)}`);
+          logger.info(`Member ${colors.cyan(displayId)} left session ${colors.code(sessionId)}`);
         }
       },
 

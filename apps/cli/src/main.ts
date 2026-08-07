@@ -143,7 +143,18 @@ export function createProgram(): Command {
       }
 
       const sessionName = `collagility-join-${sessionId}`;
+      const logPath = path.join(os.tmpdir(), `${sessionName}-screenshare.log`);
+      try {
+        fs.writeFileSync(
+          logPath,
+          '\x1b[1;36m📺 LIVE AI SCREENSHARE\x1b[0m\n\x1b[2m(Streaming from host — zero tokens used)\x1b[0m\n\n'
+        );
+      } catch {
+        // Ignore log creation error
+      }
+
       process.env['COLLAGILITY_TMUX_SESSION'] = sessionName;
+      process.env['COLLAGILITY_SCREENSHARE_LOG'] = logPath;
 
       const leftCommand = [
         process.argv[0],
@@ -158,17 +169,8 @@ export function createProgram(): Command {
         ...(opts.verbose ? ['--verbose'] : []),
       ];
 
-      // Right pane: display a static header then block — the join command
-      // will echo live AI stream chunks into this pane via tmux send-keys -l.
-      const rightCommand = [
-        'bash',
-        '-c',
-        [
-          `printf '\\033[1;36m📺 LIVE AI SCREENSHARE\\033[0m\\n'`,
-          `printf '\\033[2m(Streaming from host — zero tokens used)\\033[0m\\n\\n'`,
-          `cat`,   // keep pane open and accepting input from send-keys -l
-        ].join(' && '),
-      ];
+      // Right pane streams real-time AI chunk output directly from log file
+      const rightCommand = ['tail', '-f', '-n', '+1', logPath];
 
       const tmuxSession = new TmuxSession();
       try {
