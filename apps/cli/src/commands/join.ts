@@ -33,7 +33,7 @@ export async function joinCommand(rawTarget: string, options: Partial<CLIConfig>
 
   const logger = new CLILogger(config.verbose);
   const streamRenderer = new TerminalStreamRenderer();
-  const isInteractive = Boolean(process.stdout.isTTY || process.stdin.isTTY || process.env.FORCE_TUI || !process.env.CI);
+  const isInteractive = Boolean(process.env.FORCE_TUI) || (Boolean(process.stdout.isTTY && process.stdin.isTTY) && !process.env.CI);
   const splitRenderer = isInteractive
     ? new SplitTerminalRenderer({ isOwner: false, sessionId: targetSessionId })
     : null;

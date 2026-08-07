@@ -6,12 +6,12 @@ import {
   createSessionClosedEvent,
 } from '../session-events.js';
 
-export function handleLeaveSession(
+export async function handleLeaveSession(
   clientId: string,
   sessionManager: SessionManager,
   broadcaster: Broadcaster
-): void {
-  const result = sessionManager.leaveSession(clientId);
+): Promise<void> {
+  const result = await sessionManager.leaveSession(clientId);
   if (!result) {
     return;
   }
@@ -25,10 +25,10 @@ export function handleLeaveSession(
   if (destroyed) {
     // Notify session closure if last member left
     const closedEvent = createSessionClosedEvent(session.id, 'all_members_left');
-    broadcaster.broadcastToSession(session.id, closedEvent);
+    await broadcaster.broadcastToSession(session.id, closedEvent);
   } else {
     // Notify remaining peers that a member left
     const memberLeftEvent = createMemberLeftEvent(session.id, clientId, wasOwner);
-    broadcaster.broadcastToSession(session.id, memberLeftEvent);
+    await broadcaster.broadcastToSession(session.id, memberLeftEvent);
   }
 }

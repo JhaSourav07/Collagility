@@ -77,6 +77,7 @@ export function buildServer(): ServerInstance {
 
   const listen = async (port = 8080, host = '0.0.0.0'): Promise<string> => {
     heartbeatManager.start();
+    sessionStore.startCleanupTimer();
     const address = await app.listen({ port, host });
     logger.info({ address, port }, 'Collagility Realtime Server listening');
     return address;
@@ -85,6 +86,7 @@ export function buildServer(): ServerInstance {
   const close = async (): Promise<void> => {
     logger.info('Shutting down Collagility Realtime Server...');
     heartbeatManager.stop();
+    sessionStore.stopCleanupTimer();
     connectionManager.clearAll();
     sessionStore.clear();
     await app.close();

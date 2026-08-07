@@ -4,15 +4,15 @@ import { toSessionDTO } from '../session.js';
 import { createSessionCreatedEvent, createSessionErrorEvent } from '../session-events.js';
 import { SessionError } from '../session-errors.js';
 
-export function handleCreateSession(
+export async function handleCreateSession(
   clientId: string,
   payload: Record<string, unknown> | undefined,
   sessionManager: SessionManager,
   broadcaster: Broadcaster
-): void {
+): Promise<void> {
   try {
     const metadata = (payload?.['metadata'] as Record<string, unknown>) || {};
-    const session = sessionManager.createSession(clientId, metadata);
+    const session = await sessionManager.createSession(clientId, metadata);
     const dto = toSessionDTO(session);
     const event = createSessionCreatedEvent(dto);
     broadcaster.sendToClient(clientId, event);

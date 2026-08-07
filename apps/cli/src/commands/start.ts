@@ -26,7 +26,7 @@ import { TmuxSession } from '../terminal/tmux/tmux-session.js';
 export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
   const logger = new CLILogger(options.verbose);
   const streamRenderer = new TerminalStreamRenderer();
-  const isInteractive = Boolean(process.stdout.isTTY || process.stdin.isTTY || process.env.FORCE_TUI || !process.env.CI);
+  const isInteractive = Boolean(process.env.FORCE_TUI) || (Boolean(process.stdout.isTTY && process.stdin.isTTY) && !process.env.CI);
   const splitRenderer = isInteractive ? new SplitTerminalRenderer({ isOwner: true }) : null;
   let chatPrompt: ChatPrompt | null = null;
 

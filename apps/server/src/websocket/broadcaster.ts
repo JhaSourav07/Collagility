@@ -46,13 +46,13 @@ export class Broadcaster {
     return deliveredCount;
   }
 
-  public broadcastToSession(sessionId: string, message: string | object, excludeClientId?: string): number {
+  public async broadcastToSession(sessionId: string, message: string | object, excludeClientId?: string): Promise<number> {
     if (!this.sessionManager) {
       this.logger.warn('SessionManager not set on Broadcaster, falling back to global broadcast');
       return this.broadcast(message, excludeClientId);
     }
 
-    const session = this.sessionManager.getSession(sessionId);
+    const session = await this.sessionManager.getSession(sessionId);
     if (!session) {
       this.logger.warn({ sessionId }, 'Cannot broadcast: Session not found');
       return 0;
@@ -92,11 +92,11 @@ export class Broadcaster {
     return this.sendToClient(clientId, message);
   }
 
-  public broadcastToOwner(sessionId: string, message: string | object): boolean {
+  public async broadcastToOwner(sessionId: string, message: string | object): Promise<boolean> {
     if (!this.sessionManager) {
       return false;
     }
-    const session = this.sessionManager.getSession(sessionId);
+    const session = await this.sessionManager.getSession(sessionId);
     if (!session) {
       return false;
     }

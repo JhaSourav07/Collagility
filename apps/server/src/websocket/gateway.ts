@@ -69,7 +69,9 @@ export class WebSocketGateway {
         return;
       }
 
-      this.messageHandler.handleMessage(client.id, validationResult.data);
+      this.messageHandler.handleMessage(client.id, validationResult.data).catch((err) => {
+        this.logger.error({ clientId: client.id, error: err }, 'Error handling message');
+      });
     });
 
     // Handle socket disconnect
@@ -78,7 +80,9 @@ export class WebSocketGateway {
       this.logger.info({ clientId: client.id, code, reason: reasonStr }, 'WebSocket connection closed');
 
       // Leave any active session upon socket close
-      handleLeaveSession(client.id, this.sessionManager, this.broadcaster);
+      handleLeaveSession(client.id, this.sessionManager, this.broadcaster).catch((err) => {
+        this.logger.error({ clientId: client.id, error: err }, 'Error handling session leave on close');
+      });
 
       // Remove from global connection manager
       this.connectionManager.removeClient(client.id);

@@ -36,7 +36,7 @@ export class MessageHandler {
     return this.streamManager;
   }
 
-  public handleMessage(clientId: string, message: IncomingMessage): void {
+  public async handleMessage(clientId: string, message: IncomingMessage): Promise<void> {
     this.logger.debug({ clientId, messageType: message.type }, 'Handling incoming packet');
 
     switch (message.type) {
@@ -48,7 +48,7 @@ export class MessageHandler {
       }
 
       case 'session.create': {
-        handleCreateSession(
+        await handleCreateSession(
           clientId,
           message.payload as Record<string, unknown> | undefined,
           this.sessionManager,
@@ -58,7 +58,7 @@ export class MessageHandler {
       }
 
       case 'session.join': {
-        handleJoinSession(
+        await handleJoinSession(
           clientId,
           message.payload as { sessionId: string },
           this.sessionManager,
@@ -81,13 +81,13 @@ export class MessageHandler {
       }
 
       case 'session.leave': {
-        handleLeaveSession(clientId, this.sessionManager, this.broadcaster);
+        await handleLeaveSession(clientId, this.sessionManager, this.broadcaster);
         break;
       }
 
       case 'chat':
       case 'chat.message': {
-        const session = this.sessionManager.getClientSession(clientId);
+        const session = await this.sessionManager.getClientSession(clientId);
         const text = (message.payload as { text?: string })?.text || String(message.payload || '');
 
         if (session) {
@@ -108,7 +108,7 @@ export class MessageHandler {
             'Broadcasting chat message to session members'
           );
           // Broadcast to EVERY participant in the session (including sender for confirmation)
-          this.broadcaster.broadcastToSession(session.id, chatEnvelope);
+          await this.broadcaster.broadcastToSession(session.id, chatEnvelope);
         } else {
           // Fallback if client is not in a session yet
           const fallbackEnvelope = createChatMessageEvent(
@@ -122,7 +122,7 @@ export class MessageHandler {
 
       case 'ai.prompt':
       case 'ai.stream.prompt': {
-        const session = this.sessionManager.getClientSession(clientId);
+        const session = await this.sessionManager.getClientSession(clientId);
         if (!session) {
           this.broadcaster.sendToClient(
             clientId,
@@ -166,7 +166,7 @@ export class MessageHandler {
       }
 
       case 'ai.stream.chunk': {
-        const session = this.sessionManager.getClientSession(clientId);
+        const session = await this.sessionManager.getClientSession(clientId);
         if (session) {
           const chunkObj = message.payload as any;
           this.logger.debug(
@@ -179,7 +179,7 @@ export class MessageHandler {
       }
 
       case 'ai.stream.completed': {
-        const session = this.sessionManager.getClientSession(clientId);
+        const session = await this.sessionManager.getClientSession(clientId);
         if (session) {
           this.logger.info({ clientId, sessionId: session.id }, 'AI Stream completed');
           this.streamManager.completeStream(session.id);
@@ -188,7 +188,7 @@ export class MessageHandler {
       }
 
       case 'ai.stream.failed': {
-        const session = this.sessionManager.getClientSession(clientId);
+        const session = await this.sessionManager.getClientSession(clientId);
         if (session) {
           const errStr = (message.payload as { error?: string })?.error || 'AI execution failed';
           this.logger.error({ clientId, sessionId: session.id, error: errStr }, 'AI Stream failed');
@@ -199,7 +199,7 @@ export class MessageHandler {
 
       case 'ai.cancel':
       case 'ai.stream.cancel': {
-        const session = this.sessionManager.getClientSession(clientId);
+        const session = await this.sessionManager.getClientSession(clientId);
         if (session) {
           if (session.ownerId !== clientId) {
             this.broadcaster.sendToClient(
@@ -221,7 +221,7 @@ export class MessageHandler {
       case 'ai.confirmation.response':
       case 'ai.tool.approved':
       case 'ai.tool.rejected': {
-        const session = this.sessionManager.getClientSession(clientId);
+        const session = await this.sessionManager.getClientSession(clientId);
         if (!session) {
           this.broadcaster.sendToClient(
             clientId,
@@ -248,14 +248,14 @@ export class MessageHandler {
           timestamp: Date.now(),
         };
 
-        this.broadcaster.broadcastToSession(session.id, interactiveEnvelope);
+        await this.broadcaster.broadcastToSession(session.id, interactiveEnvelope);
         break;
       }
 
       case EVENT_TYPES.SESSION_PERMISSION_REQUEST:
       case 'session.permission.request':
       case 'permission_required': {
-        const session = this.sessionManager.getClientSession(clientId);
+        const session = await this.sessionManager.getClientSession(clientId);
         if (!session) {
           this.broadcaster.sendToClient(
             clientId,
@@ -278,14 +278,14 @@ export class MessageHandler {
           'Relaying session permission request to all session participants'
         );
 
-        this.broadcaster.broadcastToSession(session.id, permReqEnvelope);
+        await this.broadcaster.broadcastToSession(session.id, permReqEnvelope);
         break;
       }
 
       case EVENT_TYPES.SESSION_PERMISSION_RESPONSE:
       case 'session.permission.response':
       case 'permission_response': {
-        const session = this.sessionManager.getClientSession(clientId);
+        const session = await this.sessionManager.getClientSession(clientId);
         if (!session) {
           this.broadcaster.sendToClient(
             clientId,
@@ -321,13 +321,12 @@ export class MessageHandler {
           'Broadcasting host permission resolution response to session'
         );
 
-        this.broadcaster.broadcastToSession(session.id, permResEnvelope);
+        await this.broadcaster.broadcastToSession(session.id, permResEnvelope);
         break;
       }
 
-
       default: {
-        const session = this.sessionManager.getClientSession(clientId);
+        const session = await this.sessionManager.getClientSession(clientId);
         const genericEvent = {
           version: 1,
           type: message.type,
@@ -338,7 +337,7 @@ export class MessageHandler {
         };
 
         if (session) {
-          this.broadcaster.broadcastToSession(session.id, genericEvent);
+          await this.broadcaster.broadcastToSession(session.id, genericEvent);
         } else {
           this.broadcaster.broadcast(genericEvent);
         }
