@@ -76,9 +76,8 @@ export const App: React.FC<AppProps> = ({
     if (key.ctrl && input.toLowerCase() === 'c') {
       if (activeOverlay !== 'none') {
         setActiveOverlay('none');
-      } else {
-        if (onExitSession) onExitSession();
-        else onCommand('/leave');
+      } else if (onClearScreen) {
+        onClearScreen();
       }
       return;
     }

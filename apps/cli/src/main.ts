@@ -80,7 +80,7 @@ export function createProgram(): Command {
         // Ignore log file creation error
       }
 
-      const leftCommand = [
+      const rawLeftArgs = [
         process.argv[0],
         process.argv[1],
         'start',
@@ -95,6 +95,8 @@ export function createProgram(): Command {
         ...(opts.server ? ['--server', opts.server] : []),
         ...(opts.verbose ? ['--verbose'] : []),
       ];
+      const leftCmdString = rawLeftArgs.map((arg) => (arg.includes(' ') ? `'${arg}'` : arg)).join(' ');
+      const leftCommand = ['bash', '-c', `${leftCmdString} || exec bash` ];
 
       const rightCommand = [targetBinary];
 
@@ -158,7 +160,7 @@ export function createProgram(): Command {
       process.env['COLLAGILITY_TMUX_SESSION'] = sessionName;
       process.env['COLLAGILITY_SCREENSHARE_LOG'] = logPath;
 
-      const leftCommand = [
+      const rawLeftArgs = [
         process.argv[0],
         process.argv[1],
         'join',
@@ -170,6 +172,8 @@ export function createProgram(): Command {
         ...(opts.server ? ['--server', opts.server] : []),
         ...(opts.verbose ? ['--verbose'] : []),
       ];
+      const leftCmdString = rawLeftArgs.map((arg) => (arg.includes(' ') ? `'${arg}'` : arg)).join(' ');
+      const leftCommand = ['bash', '-c', `${leftCmdString} || exec bash` ];
 
       // Right pane streams real-time AI chunk output directly from log file
       const rightCommand = ['tail', '-f', '-n', '+1', logPath];

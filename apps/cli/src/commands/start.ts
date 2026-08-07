@@ -839,6 +839,35 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
       // next render cycle — no manual action needed here.
     });
 
+    // Guard process against uncaught exceptions and unhandled rejections so background errors never kill the process
+    process.on('uncaughtException', (err) => {
+      logger.debug('Trapped uncaught exception', err);
+      if (splitRenderer) {
+        const ink = splitRenderer.getInkRenderer();
+        if (ink) {
+          ink.appendMessage({
+            sender: 'System',
+            senderRole: 'system',
+            content: `⚠️ Background Warning: ${err instanceof Error ? err.message : String(err)}`,
+          });
+        }
+      }
+    });
+
+    process.on('unhandledRejection', (reason) => {
+      logger.debug('Trapped unhandled promise rejection', reason);
+      if (splitRenderer) {
+        const ink = splitRenderer.getInkRenderer();
+        if (ink) {
+          ink.appendMessage({
+            sender: 'System',
+            senderRole: 'system',
+            content: `⚠️ Background Rejection: ${reason instanceof Error ? reason.message : String(reason)}`,
+          });
+        }
+      }
+    });
+
     // Guard stdout/stderr against EPIPE (e.g. when tmux temporarily detaches
     // the pseudo-terminal during a tab switch). Without this, Node throws an
     // uncaught EPIPE error which kills the process and closes the left pane.

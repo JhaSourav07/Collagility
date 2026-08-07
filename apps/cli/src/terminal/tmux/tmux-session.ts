@@ -65,7 +65,8 @@ export class TmuxSession {
       String(rightPanePercent),
       ...rightCommand,
     ]);
-    // Enable history scrollback limit and mouse support for pane scrolling
+    // Enable history scrollback limit, mouse support, and remain-on-exit so panes never close automatically
+    await this.runTmux(['set-option', '-t', name, 'remain-on-exit', 'on']);
     await this.runTmux(['set-option', '-t', name, 'history-limit', '50000']);
     await this.runTmux(['set-option', '-t', name, 'mouse', 'on']);
     await this.runTmux(['set-option', '-t', name, 'status-left', ' ⚡ COLLAGILITY ']);

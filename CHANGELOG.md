@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [v0.1.6] - 2026-08-07
+
+### Fixed
+- **Pane Persistence & Panel Closure Fix**:
+  - Enabled `remain-on-exit` in `TmuxSession` and wrapped left pane execution in a persistent shell fallback (`bash -c "... || exec bash"`), guaranteeing the left pane panel never closes automatically under any circumstance.
+  - Added global `uncaughtException` and `unhandledRejection` traps to prevent unexpected background errors from terminating the Node process.
+  - Fixed `Ctrl+C` behavior in React Ink TUI so `Ctrl+C` closes active overlays/prompts or clears input instead of killing the session.
+
+---
+
 ## [v0.1.5] - 2026-08-07
 
 ### Fixed
