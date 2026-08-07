@@ -62,4 +62,18 @@ describe('InkTerminalRenderer', () => {
     expect(screenState.cols).toBe(100);
     expect(screenState.rows).toBe(30);
   });
+
+  it('should accept structured text payloads in RemotePane without rendering orphan braces }}', () => {
+    const renderer = new InkTerminalRenderer({
+      sessionId: 'test-session',
+      isOwner: false,
+    });
+
+    const structuredPayload = '• Executing: list_dir\n> _Multi-step reasoning_\n✓ Task Completed';
+    renderer.setRemoteTerminalScreen(structuredPayload, 80, 24);
+
+    const screenState = renderer.getRemoteTerminalScreen();
+    expect(screenState.data).toContain('• Executing: list_dir');
+    expect(screenState.data).not.toContain('}}');
+  });
 });

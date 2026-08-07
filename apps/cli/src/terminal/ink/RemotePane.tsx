@@ -9,15 +9,6 @@ export interface RemotePaneProps {
   statusText?: string;
 }
 
-export function sanitizeTerminalStreamText(text: string): string {
-  if (!text) return '';
-  return text
-    .replace(/^\s*\{"event":.*?\}(?:\r?\n)?/gm, '')
-    .replace(/^\s*\{"type":.*?\}(?:\r?\n)?/gm, '')
-    .replace(/\{"event":"(?:step_update|telemetry|init|result)".*?\}/g, '')
-    .replace(/\{"step_type":".*?\}/g, '');
-}
-
 export function formatRemoteScreenLines(
   screenData: string,
   cols = 80,
@@ -25,23 +16,11 @@ export function formatRemoteScreenLines(
 ): string[] {
   if (!screenData) return [];
 
-  const sanitized = sanitizeTerminalStreamText(screenData);
-  if (!sanitized.trim()) return [];
-
   const screenHeight = Math.min(Math.max(rows, 10), 30);
   const screenWidth = Math.max(cols, 40);
   const screen = new VirtualScreen(screenWidth, screenHeight);
 
-  const rawLines = sanitized.split(/\r?\n/).filter((l) => {
-    const trimmed = l.trim();
-    return (
-      trimmed.length > 0 &&
-      !trimmed.startsWith('{"event":') &&
-      !trimmed.startsWith('{"type":') &&
-      !trimmed.startsWith('{"step_type":')
-    );
-  });
-
+  const rawLines = screenData.split(/\r?\n/).filter((l) => l.length > 0);
   const visibleLines = rawLines.slice(-screenHeight);
 
   visibleLines.forEach((line, idx) => {

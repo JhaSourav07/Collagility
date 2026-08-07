@@ -22,6 +22,7 @@ import {
 import { createStreamChunk } from '@collagility/stream';
 import { TmuxPromptRouter, isAiPrompt } from '../terminal/tmux/tmux-prompt-router.js';
 import { TmuxSession } from '../terminal/tmux/tmux-session.js';
+import { SessionHostBroadcaster } from '../terminal/session-host.js';
 
 export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
   const logger = new CLILogger(options.verbose);
@@ -436,15 +437,22 @@ export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
           }
         }, 25);
 
-        const onStdoutData = (data: string) => {
-          terminalStreamer.push(data);
-          if (splitRenderer) {
-            const ink = splitRenderer.getInkRenderer();
-            if (ink && data) {
-              const current = ink.getRemoteTerminalScreen();
-              ink.setRemoteTerminalScreen((current.data || '') + data);
+        const hostBroadcaster = new SessionHostBroadcaster({
+          sessionId: currentSessionId,
+          onEmitStream: (payload) => {
+            terminalStreamer.push(payload.data);
+            if (splitRenderer) {
+              const ink = splitRenderer.getInkRenderer();
+              if (ink && payload.data) {
+                const current = ink.getRemoteTerminalScreen();
+                ink.setRemoteTerminalScreen((current.data || '') + '\n' + payload.data);
+              }
             }
-          }
+          },
+        });
+
+        const onStdoutData = (data: string) => {
+          hostBroadcaster.processStdout(data);
         };
 
         targetAdapter.on('chunk' as any, onChunk);

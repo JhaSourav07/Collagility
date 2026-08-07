@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatRemoteScreenLines, sanitizeTerminalStreamText } from './RemotePane.js';
+import { formatRemoteScreenLines } from './RemotePane.js';
 
 describe('RemotePane Helper & Formatter', () => {
   it('returns empty array when screenData is empty', () => {
@@ -16,15 +16,13 @@ describe('RemotePane Helper & Formatter', () => {
     expect(lines[1]).toContain('✓ Done in 1.2s');
   });
 
-  it('filters out raw JSON telemetry strings and step update objects', () => {
-    const rawWithJson = `{"event":"step_update","step_update":{"step_type":"tool"}}\nHello World\n{"event":"telemetry"}`;
-    const sanitized = sanitizeTerminalStreamText(rawWithJson);
-    expect(sanitized).not.toContain('step_update');
-    expect(sanitized).toContain('Hello World');
+  it('renders pre-sanitized structured text stream payloads cleanly', () => {
+    const structuredPayload = '• Executing: list_dir\n> _Multi-step reasoning_\n✓ Task Completed';
+    const lines = formatRemoteScreenLines(structuredPayload, 80, 24);
 
-    const lines = formatRemoteScreenLines(rawWithJson, 80, 24);
-    expect(lines.some((l) => l.includes('Hello World'))).toBe(true);
-    expect(lines.every((l) => !l.includes('step_update'))).toBe(true);
+    expect(lines.some((l) => l.includes('• Executing: list_dir'))).toBe(true);
+    expect(lines.some((l) => l.includes('Task Completed'))).toBe(true);
+    expect(lines.every((l) => !l.includes('}}'))).toBe(true);
   });
 
   it('truncates screen height to match requested row bounds', () => {

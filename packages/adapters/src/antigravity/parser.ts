@@ -111,10 +111,16 @@ function tryParseJsonWithExtraBraces(input: string): any | null {
   return null;
 }
 
-export class AntigravityOutputParser {
+import { EventEmitter } from 'node:events';
+
+export class AntigravityOutputParser extends EventEmitter {
   private buffer = '';
   private subagentsMap = new Map<string, SubagentWorkerState>();
   private lastEmittedEvent: { type: string; content: string } | null = null;
+
+  constructor() {
+    super();
+  }
 
   public getSubagents(): SubagentWorkerState[] {
     return Array.from(this.subagentsMap.values());
@@ -871,6 +877,23 @@ export class AntigravityOutputParser {
     return { type: 'TEXT', content: line };
   }
 
+  private emitParsedEvent(ev: AntigravityParsedEvent): void {
+    if (!ev) return;
+    this.emit('event', ev);
+    if (ev.type === 'TEXT' && ev.content) {
+      this.emit('text_delta', ev.content);
+    } else if (ev.type === 'THOUGHT' && ev.content) {
+      this.emit('thought', ev.content);
+    } else if (ev.type === 'TOOL_CALL' || ev.type === 'TOOL_ANALYSIS' || ev.type === 'TOOL_FILE_EDIT') {
+      this.emit('tool_use', {
+        name: ev.metadata?.toolName || 'tool',
+        content: ev.content,
+      });
+    } else if (ev.type === 'COMPLETION') {
+      this.emit('step_complete', ev.content);
+    }
+  }
+
   /**
    * Parse a raw chunk of stream data (which may contain multiple lines).
    */
@@ -882,7 +905,11 @@ export class AntigravityOutputParser {
     const events: AntigravityParsedEvent[] = [];
     for (const line of lines) {
       if (line.trim()) {
-        events.push(this.parseLine(line));
+        const ev = this.parseLine(line);
+        if (ev) {
+          events.push(ev);
+          this.emitParsedEvent(ev);
+        }
       }
     }
     return events;
@@ -892,7 +919,9 @@ export class AntigravityOutputParser {
     if (this.buffer.trim()) {
       const line = this.buffer;
       this.buffer = '';
-      return [this.parseLine(line)];
+      const evs = [this.parseLine(line)];
+      evs.forEach((e) => this.emitParsedEvent(e));
+      return evs;
     }
     return [];
   }
