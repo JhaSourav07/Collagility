@@ -19,7 +19,7 @@ import {
   AdapterRegistry,
 } from '@collagility/adapters';
 import { createStreamChunk } from '@collagility/stream';
-import { TmuxPromptRouter, isSlashCommand, isAiPrompt } from '../terminal/tmux/tmux-prompt-router.js';
+import { TmuxPromptRouter, isAiPrompt } from '../terminal/tmux/tmux-prompt-router.js';
 import { TmuxSession } from '../terminal/tmux/tmux-session.js';
 
 export async function startCommand(options: Partial<CLIConfig>): Promise<void> {
